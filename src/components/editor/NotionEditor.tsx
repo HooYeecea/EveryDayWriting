@@ -33,8 +33,10 @@ export function NotionEditor({
   })
 
   useEffect(() => {
-    if (editor && content === '' && !editor.isEmpty) {
-      editor.commands.clearContent()
+    if (!editor) return
+    const current = editor.getHTML()
+    if (content !== current) {
+      editor.commands.setContent(content || '')
     }
   }, [editor, content])
 

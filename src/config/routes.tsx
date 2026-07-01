@@ -1,17 +1,17 @@
+import type { ReactNode } from 'react'
 import type { MenuKey } from '../types'
 import { UserCenter } from '../components/views/UserCenter'
 import { StartWriting } from '../components/views/StartWriting'
 import { WritingRecords } from '../components/views/WritingRecords'
 import { PersonalVocabulary } from '../components/views/PersonalVocabulary'
 import { PersonalAssessment } from '../components/views/PersonalAssessment'
-import * as React from "react";
 
 export interface AppRoute {
   key: MenuKey
   path: string
   label: string
   icon: 'user' | 'pen' | 'clipboard' | 'book' | 'chart'
-  element: React.ReactNode
+  element: ReactNode
 }
 
 export const DEFAULT_PATH = '/writing'
