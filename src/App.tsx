@@ -1,35 +1,30 @@
-import { useState } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
-import { UserCenter } from './components/views/UserCenter'
-import { StartWriting } from './components/views/StartWriting'
-import { WritingRecords } from './components/views/WritingRecords'
-import { PersonalVocabulary } from './components/views/PersonalVocabulary'
-import { PersonalAssessment } from './components/views/PersonalAssessment'
-import type { MenuKey } from './types'
+import { APP_ROUTES, DEFAULT_PATH, isAppPath } from './config/routes'
 
 function App() {
-  const [activeMenu, setActiveMenu] = useState<MenuKey>('start-writing')
+  const location = useLocation()
 
-  const renderContent = () => {
-    switch (activeMenu) {
-      case 'user-center':
-        return <UserCenter />
-      case 'start-writing':
-        return <StartWriting />
-      case 'writing-records':
-        return <WritingRecords />
-      case 'personal-vocabulary':
-        return <PersonalVocabulary />
-      case 'personal-assessment':
-        return <PersonalAssessment />
-      default:
-        return null
-    }
+  if (location.pathname === '/') {
+    return <Navigate to={DEFAULT_PATH} replace />
+  }
+
+  if (!isAppPath(location.pathname)) {
+    return <Navigate to={DEFAULT_PATH} replace />
   }
 
   return (
-    <Layout activeKey={activeMenu} onMenuSelect={setActiveMenu}>
-      {renderContent()}
+    <Layout>
+      {APP_ROUTES.map(({ path, key, element }) => (
+        <div
+          key={key}
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+            location.pathname !== path ? 'hidden' : ''
+          }`}
+        >
+          {element}
+        </div>
+      ))}
     </Layout>
   )
 }

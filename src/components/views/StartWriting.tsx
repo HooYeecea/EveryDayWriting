@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
+import { saveWritingDraft } from '../../api/writing'
 import { NotionEditor } from '../editor/NotionEditor'
 import { getRandomTopic } from '../../data/mockTopics'
 import type { WritingTopic } from '../../types'
@@ -9,9 +10,23 @@ export function StartWriting() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleChangeTopic = () => {
     setTopic(getRandomTopic(topic.id))
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await saveWritingDraft({
+        topicId: topic.id,
+        title,
+        content,
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSubmit = () => {
@@ -71,7 +86,15 @@ export function StartWriting() {
 
         {/* 提交按钮 */}
         <div className="sticky bottom-0 shrink-0 border-t border-neutral-200 bg-white px-8 py-4">
-          <div className="mx-auto flex max-w-3xl justify-end">
+          <div className="mx-auto flex max-w-3xl justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="rounded-lg border border-neutral-200 bg-white px-6 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              {isSaving ? '保存中…' : '保存'}
+            </button>
             <button
               type="button"
               onClick={handleSubmit}
