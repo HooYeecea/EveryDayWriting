@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #fafafa;
+  color: #37352f;
+}
+
+/* Notion-like editor */
+.notion-editor .tiptap {
+  outline: none;
+  min-height: 420px;
+  padding: 4px 0 80px;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #37352f;
+}
+
+.notion-editor .tiptap p.is-editor-empty:first-child::before {
+  color: #b4b4b4;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.notion-editor .tiptap h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.notion-editor .tiptap h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.notion-editor .tiptap h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1rem 0 0.5rem;
+}
+
+.notion-editor .tiptap p {
+  margin: 0.25rem 0;
+}
+
+.notion-editor .tiptap ul,
+.notion-editor .tiptap ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.notion-editor .tiptap blockquote {
+  border-left: 3px solid #e9e9e7;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: #787774;
+}
+
+.notion-editor .tiptap strong {
+  font-weight: 600;
+}
+
+.notion-editor .tiptap em {
+  font-style: italic;
+}
