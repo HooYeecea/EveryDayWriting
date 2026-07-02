@@ -25,6 +25,7 @@ export const API_PATHS = {
     sendCode: '/auth/send-code',
     register: '/auth/register',
     login: '/auth/login',
+    resetPassword: '/auth/reset-password',
   },
   user: {
     profile: '/user/profile',

@@ -1,7 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
-import { Login } from './components/views/Login'
-import { Register } from './components/views/Register'
+import { AuthRouteTransition, isAuthPath } from './components/auth/AuthRouteTransition'
 import { APP_ROUTES, DEFAULT_PATH, isAppPath } from './config/routes'
 
 function App() {
@@ -11,12 +10,8 @@ function App() {
     return <Navigate to={DEFAULT_PATH} replace />
   }
 
-  if (location.pathname === '/login') {
-    return <Login />
-  }
-
-  if (location.pathname === '/register') {
-    return <Register />
+  if (isAuthPath(location.pathname)) {
+    return <AuthRouteTransition />
   }
 
   if (!isAppPath(location.pathname)) {

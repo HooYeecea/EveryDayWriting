@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw } from 'lucide-react'
+import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { loadDraftById, loadLatestDraft, saveWritingDraft, submitWriting } from '../../api/writing'
 import { useAuth } from '../../context/AuthContext'
 import { NotionEditor } from '../editor/NotionEditor'
@@ -20,6 +21,7 @@ export function StartWriting() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -46,9 +48,9 @@ export function StartWriting() {
     })
   }, [user, draftIdParam])
 
-  const requireAuth = (): boolean => {
+  const promptLogin = (): boolean => {
     if (isAuthenticated && user) return true
-    navigate('/login', { state: { from: '/writing' } })
+    setShowLoginModal(true)
     return false
   }
 
@@ -57,7 +59,7 @@ export function StartWriting() {
   }
 
   const handleSave = async () => {
-    if (!requireAuth() || !user) return
+    if (!promptLogin() || !user) return
 
     setIsSaving(true)
     setSaveMessage('')
@@ -78,7 +80,7 @@ export function StartWriting() {
   }
 
   const handleSubmit = async () => {
-    if (!requireAuth() || !user) return
+    if (!promptLogin() || !user) return
 
     setIsSubmitting(true)
     try {
@@ -172,6 +174,19 @@ export function StartWriting() {
           </div>
         </div>
       </div>
+
+      <LoginRequiredModal
+        open={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={() => {
+          setShowLoginModal(false)
+          navigate('/login', { state: { from: '/writing' } })
+        }}
+        onRegister={() => {
+          setShowLoginModal(false)
+          navigate('/register', { state: { from: '/writing' } })
+        }}
+      />
     </div>
   )
 }

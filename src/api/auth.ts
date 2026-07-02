@@ -1,6 +1,11 @@
 import type { StoredUser, UserProfile } from '../types'
 import { STATIC_USERS, createUserProfile } from '../data/mockUsers'
 import { SESSION_KEY, USERS_KEY, setSessionUserId } from '../storage/authStorage'
+import {
+  clearVerificationCode,
+  sendVerificationCode,
+  verifyCode,
+} from '../storage/verificationCodeStorage'
 
 function readUsers(): StoredUser[] {
   const raw = localStorage.getItem(USERS_KEY)
@@ -25,7 +30,8 @@ export function getAllUsers(): StoredUser[] {
 }
 
 export function findUserByEmail(email: string): StoredUser | undefined {
-  return readUsers().find((user) => user.email === email)
+  const normalized = email.trim().toLowerCase()
+  return readUsers().find((user) => user.email.toLowerCase() === normalized)
 }
 
 export function findUserById(id: string): StoredUser | undefined {
@@ -64,4 +70,42 @@ export function getCurrentUser(): UserProfile | null {
   const sessionId = localStorage.getItem(SESSION_KEY)
   if (!sessionId) return null
   return findUserById(sessionId)?.profile ?? null
+}
+
+/** 发送邮箱验证码（演示模式，后续对接 POST /api/auth/send-code） */
+export function sendEmailCode(email: string): { demoCode?: string } {
+  const user = findUserByEmail(email.trim())
+  if (!user) {
+    throw new Error('该邮箱尚未注册')
+  }
+  return sendVerificationCode(email)
+}
+
+/** 重置密码（演示模式，后续对接 POST /api/auth/reset-password） */
+export function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): void {
+  const normalized = email.trim()
+  const user = findUserByEmail(normalized)
+  if (!user) {
+    throw new Error('该邮箱尚未注册')
+  }
+  if (!verifyCode(normalized, code)) {
+    throw new Error('验证码错误或已过期')
+  }
+  if (newPassword.length < 6) {
+    throw new Error('密码至少 6 位')
+  }
+
+  const users = readUsers()
+  const index = users.findIndex((item) => item.email === normalized)
+  if (index < 0) {
+    throw new Error('该邮箱尚未注册')
+  }
+
+  users[index] = { ...users[index], password: newPassword }
+  writeUsers(users)
+  clearVerificationCode(normalized)
 }
