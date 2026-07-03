@@ -111,18 +111,26 @@ export function StartWriting() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className={`shrink-0 ${PANEL_TOPIC_HEADER_CLASS}`}>
-        <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-          <div className="shrink-0">
-            <p className={PANEL_TITLE_CLASS}>题目</p>
-            <p className={`${PANEL_SUBTITLE_CLASS} max-w-[8rem] truncate sm:max-w-none`}>
-              {topic.type}
-            </p>
+        <div className="flex w-full flex-col items-stretch gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <div className="flex w-full items-start justify-between gap-2 lg:block lg:w-auto lg:shrink-0">
+            <div className="min-w-0">
+              <p className={PANEL_TITLE_CLASS}>题目</p>
+              <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>{topic.type}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleChangeTopic}
+              className="flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 lg:hidden"
+            >
+              <RefreshCw size={14} />
+              换一个题目
+            </button>
           </div>
           <TopicPromptBox prompt={topic.prompt} type={topic.type} />
           <button
             type="button"
             onClick={handleChangeTopic}
-            className="flex shrink-0 items-center justify-center gap-1.5 self-start rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 lg:self-center"
+            className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 lg:flex lg:self-center"
           >
             <RefreshCw size={14} />
             换一个题目
