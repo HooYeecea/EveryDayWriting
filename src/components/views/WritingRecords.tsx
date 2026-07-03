@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Clock, FileText, LogIn, PenLine } from 'lucide-react'
+import { ArrowLeft, Clock, FileText, LogIn, PenLine } from 'lucide-react'
 import {
   getSavedWritingById,
   getSavedWritings,
@@ -25,6 +25,7 @@ export function WritingRecords() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedRecord, setSelectedRecord] = useState<WritingRecord | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mobileShowDetail, setMobileShowDetail] = useState(false)
 
   const list = tab === 'saves' ? saves : submits
 
@@ -56,7 +57,7 @@ export function WritingRecords() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-8 py-16">
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 sm:px-8">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100">
           <LogIn size={28} className="text-neutral-400" strokeWidth={1.5} />
         </div>
@@ -77,8 +78,12 @@ export function WritingRecords() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <div className="flex w-96 shrink-0 flex-col border-r border-neutral-200 bg-white">
-        <div className="border-b border-neutral-200 px-5 py-5">
+      <div
+        className={`flex w-full shrink-0 flex-col border-r border-neutral-200 bg-white md:w-80 lg:w-96 ${
+          mobileShowDetail ? 'hidden lg:flex' : 'flex'
+        }`}
+      >
+        <div className="border-b border-neutral-200 px-4 py-4 sm:px-5 sm:py-5">
           <h2 className="text-lg font-semibold text-neutral-900">写作记录</h2>
           <p className="mt-1 text-xs text-neutral-400">按 ID 查看保存与提交记录</p>
         </div>
@@ -89,6 +94,7 @@ export function WritingRecords() {
             onClick={() => {
               setTab('saves')
               setSelectedId(null)
+              setMobileShowDetail(false)
             }}
             className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
               tab === 'saves'
@@ -103,6 +109,7 @@ export function WritingRecords() {
             onClick={() => {
               setTab('submits')
               setSelectedId(null)
+              setMobileShowDetail(false)
             }}
             className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
               tab === 'submits'
@@ -125,7 +132,10 @@ export function WritingRecords() {
             <button
               key={record.id}
               type="button"
-              onClick={() => setSelectedId(record.id)}
+              onClick={() => {
+                setSelectedId(record.id)
+                setMobileShowDetail(true)
+              }}
               className={`mb-1 w-full rounded-lg px-3 py-3 text-left transition-colors ${
                 selectedId === record.id
                   ? 'bg-neutral-100'
@@ -146,7 +156,22 @@ export function WritingRecords() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#fafafa] px-8 py-8">
+      <div
+        className={`flex-1 overflow-y-auto bg-[#fafafa] px-4 py-5 sm:px-6 sm:py-8 lg:px-8 ${
+          mobileShowDetail ? 'flex flex-col' : 'hidden lg:block'
+        }`}
+      >
+        {mobileShowDetail && (
+          <button
+            type="button"
+            onClick={() => setMobileShowDetail(false)}
+            className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
+          >
+            <ArrowLeft size={16} />
+            返回列表
+          </button>
+        )}
+
         {!selectedRecord && (
           <div className="flex h-full flex-col items-center justify-center text-neutral-400">
             <FileText size={32} strokeWidth={1.5} />
@@ -156,13 +181,13 @@ export function WritingRecords() {
 
         {selectedRecord && (
           <div className="mx-auto max-w-3xl">
-            <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
                     {tab === 'saves' ? '保存记录' : '提交记录'}
                   </span>
-                  <h3 className="mt-3 text-xl font-semibold text-neutral-900">
+                  <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
                     {selectedRecord.title || '无标题'}
                   </h3>
                 </div>
@@ -170,7 +195,7 @@ export function WritingRecords() {
                   <button
                     type="button"
                     onClick={() => navigate(`/writing?draftId=${selectedRecord.id}`)}
-                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                    className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
                   >
                     <PenLine size={14} />
                     继续编辑
@@ -198,7 +223,7 @@ export function WritingRecords() {
               </dl>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
               <h4 className="text-sm font-medium text-neutral-500">正文内容</h4>
               <div
                 className="notion-editor mt-4 text-neutral-800"

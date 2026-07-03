@@ -13,7 +13,7 @@ export function PlaceholderView({
   icon: Icon = Construction,
 }: PlaceholderViewProps) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-8 py-16">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 sm:px-8">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100">
         <Icon size={28} className="text-neutral-400" strokeWidth={1.5} />
       </div>

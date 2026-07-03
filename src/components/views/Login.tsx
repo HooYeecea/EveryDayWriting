@@ -52,7 +52,7 @@ export function Login() {
       title="登录"
       subtitle="登录后即可保存和提交写作"
       footer={
-        <div className="flex w-full items-center justify-between gap-4">
+        <div className="flex w-full flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <Link
             to="/forgot-password"
             state={{ from }}

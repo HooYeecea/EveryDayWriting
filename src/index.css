@@ -26,11 +26,24 @@ body {
 /* Notion-like editor */
 .notion-editor .tiptap {
   outline: none;
-  min-height: 420px;
+  min-height: 280px;
   padding: 4px 0 80px;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.75;
   color: #37352f;
+}
+
+@media (min-width: 640px) {
+  .notion-editor .tiptap {
+    min-height: 360px;
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .notion-editor .tiptap {
+    min-height: 420px;
+  }
 }
 
 .notion-editor .tiptap p.is-editor-empty:first-child::before {
