@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { ChevronLeft, ChevronRight, LayoutGrid, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { ChevronLeft, ChevronRight, GripHorizontal, LayoutGrid, X } from 'lucide-react'
 import { ASSIST_FEATURES, getAssistFeature, type AssistFeatureId } from './assistConfig'
 import { formatSecondsForRail, WritingTimerAssist } from './WritingTimerAssist'
 import { WritingAiAssist } from './WritingAiAssist'
@@ -17,6 +17,292 @@ function useIsDesktop() {
   }, [])
 
   return isDesktop
+}
+
+const MOBILE_PANEL_WIDTH = 352
+const MOBILE_PANEL_MAX_HEIGHT = 480
+const MOBILE_BOTTOM_RESERVE = 68
+const MOBILE_FAB_STORAGE_KEY = 'ew-mobile-assist-fab-position'
+const DRAG_THRESHOLD = 8
+
+type FloatingPosition = { x: number; y: number }
+
+function clampFloatingPosition(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  bottomReserve = MOBILE_BOTTOM_RESERVE,
+) {
+  const pad = 8
+  const maxX = window.innerWidth - width - pad
+  const maxY = window.innerHeight - height - pad - bottomReserve
+
+  return {
+    x: Math.min(Math.max(pad, x), Math.max(pad, maxX)),
+    y: Math.min(Math.max(pad, y), Math.max(pad, maxY)),
+  }
+}
+
+function loadStoredFabPosition(): FloatingPosition | null {
+  try {
+    const raw = sessionStorage.getItem(MOBILE_FAB_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as FloatingPosition
+    if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+      return parsed
+    }
+  } catch {
+    // ignore invalid storage
+  }
+  return null
+}
+
+function getDefaultFabPosition() {
+  const width = 92
+  const height = 40
+
+  return clampFloatingPosition(
+    window.innerWidth - width - 16,
+    window.innerHeight - MOBILE_BOTTOM_RESERVE - 56 - height,
+    width,
+    height,
+  )
+}
+
+function getDefaultMobilePanelPosition() {
+  const width = Math.min(window.innerWidth - 32, MOBILE_PANEL_WIDTH)
+  const height = Math.min(window.innerHeight * 0.65, MOBILE_PANEL_MAX_HEIGHT)
+
+  return clampFloatingPosition(
+    window.innerWidth - width - 16,
+    window.innerHeight - height - MOBILE_BOTTOM_RESERVE - 16,
+    width,
+    height,
+  )
+}
+
+function getMobilePanelPositionNearFab(fabRect: DOMRect) {
+  const width = Math.min(window.innerWidth - 32, MOBILE_PANEL_WIDTH)
+  const height = Math.min(window.innerHeight * 0.65, MOBILE_PANEL_MAX_HEIGHT)
+
+  return clampFloatingPosition(
+    fabRect.left + fabRect.width / 2 - width / 2,
+    fabRect.top - height - 12,
+    width,
+    height,
+  )
+}
+
+interface MobileDraggableAssistFabProps {
+  position: FloatingPosition
+  onPositionChange: (position: FloatingPosition) => void
+  onOpen: () => void
+  timerRunning: boolean
+  timerDisplaySeconds: number
+  fabRef: RefObject<HTMLButtonElement | null>
+}
+
+function MobileDraggableAssistFab({
+  position,
+  onPositionChange,
+  onOpen,
+  timerRunning,
+  timerDisplaySeconds,
+  fabRef,
+}: MobileDraggableAssistFabProps) {
+  const dragRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+    moved: boolean
+  } | null>(null)
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: position.x,
+      originY: position.y,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    if (!drag.moved && Math.hypot(deltaX, deltaY) >= DRAG_THRESHOLD) {
+      drag.moved = true
+    }
+    if (!drag.moved) return
+
+    const rect = fabRef.current?.getBoundingClientRect()
+    const width = rect?.width ?? 92
+    const height = rect?.height ?? 40
+    onPositionChange(
+      clampFloatingPosition(drag.originX + deltaX, drag.originY + deltaY, width, height),
+    )
+  }
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const moved = drag.moved
+    dragRef.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
+
+    if (!moved) {
+      onOpen()
+      return
+    }
+
+    const rect = fabRef.current?.getBoundingClientRect()
+    const width = rect?.width ?? 92
+    const height = rect?.height ?? 40
+    const next = clampFloatingPosition(
+      drag.originX + event.clientX - drag.startX,
+      drag.originY + event.clientY - drag.startY,
+      width,
+      height,
+    )
+    onPositionChange(next)
+    sessionStorage.setItem(MOBILE_FAB_STORAGE_KEY, JSON.stringify(next))
+  }
+
+  useEffect(() => {
+    const keepInView = () => {
+      const rect = fabRef.current?.getBoundingClientRect()
+      if (!rect) return
+      onPositionChange(clampFloatingPosition(position.x, position.y, rect.width, rect.height))
+    }
+
+    window.addEventListener('resize', keepInView)
+    return () => window.removeEventListener('resize', keepInView)
+  }, [fabRef, onPositionChange, position.x, position.y])
+
+  return (
+    <button
+      ref={fabRef}
+      type="button"
+      style={{ left: position.x, top: position.y }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className="fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md active:cursor-grabbing"
+      aria-label="打开写作辅助，按住可拖动"
+      title="点击打开，按住拖动"
+    >
+      <LayoutGrid size={18} strokeWidth={1.75} />
+      辅助
+      {timerRunning && (
+        <span className="font-mono text-xs text-amber-600">
+          {formatSecondsForRail(timerDisplaySeconds)}
+        </span>
+      )}
+    </button>
+  )
+}
+
+interface MobileFloatingAssistPanelProps {
+  open: boolean
+  position: { x: number; y: number }
+  onPositionChange: (position: { x: number; y: number }) => void
+  children: ReactNode
+}
+
+function MobileFloatingAssistPanel({
+  open,
+  position,
+  onPositionChange,
+  children,
+}: MobileFloatingAssistPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(
+    null,
+  )
+
+  const handleDragPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: position.x,
+      originY: position.y,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const handleDragPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const rect = panelRef.current?.getBoundingClientRect()
+    const width = rect?.width ?? MOBILE_PANEL_WIDTH
+    const height = rect?.height ?? MOBILE_PANEL_MAX_HEIGHT
+    const next = clampFloatingPosition(
+      drag.originX + event.clientX - drag.startX,
+      drag.originY + event.clientY - drag.startY,
+      width,
+      height,
+    )
+    onPositionChange(next)
+  }
+
+  const handleDragPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    dragRef.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  useEffect(() => {
+    if (!open) return
+
+    const keepInView = () => {
+      const rect = panelRef.current?.getBoundingClientRect()
+      if (!rect) return
+      onPositionChange(clampFloatingPosition(position.x, position.y, rect.width, rect.height))
+    }
+
+    window.addEventListener('resize', keepInView)
+    return () => window.removeEventListener('resize', keepInView)
+  }, [open, onPositionChange, position.x, position.y])
+
+  return (
+    <div className={open ? 'fixed inset-0 z-50 pointer-events-none' : 'hidden'}>
+      <div
+        ref={panelRef}
+        style={{ left: position.x, top: position.y }}
+        className="pointer-events-auto absolute flex w-[min(calc(100vw-2rem),22rem)] max-h-[min(70dvh,30rem)] flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl"
+      >
+        <div
+          className="flex h-10 shrink-0 cursor-grab items-center justify-center border-b border-neutral-100 bg-neutral-50/80 touch-none active:cursor-grabbing"
+          onPointerDown={handleDragPointerDown}
+          onPointerMove={handleDragPointerMove}
+          onPointerUp={handleDragPointerUp}
+          onPointerCancel={handleDragPointerUp}
+          aria-label="拖动辅助面板"
+          title="按住拖动"
+        >
+          <GripHorizontal size={18} className="text-neutral-400" strokeWidth={1.75} />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      </div>
+    </div>
+  )
 }
 
 interface AssistPanelContentProps {
@@ -118,6 +404,11 @@ export function WritingAssistPanel() {
   const [activeFeature, setActiveFeature] = useState<AssistFeatureId | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerDisplaySeconds, setTimerDisplaySeconds] = useState(0)
+  const [mobilePosition, setMobilePosition] = useState(getDefaultMobilePanelPosition)
+  const [fabPosition, setFabPosition] = useState(
+    () => loadStoredFabPosition() ?? getDefaultFabPosition(),
+  )
+  const mobileFabRef = useRef<HTMLButtonElement>(null)
 
   const handleTimerRunningChange = useCallback((running: boolean, displaySeconds: number) => {
     setTimerRunning(running)
@@ -128,6 +419,12 @@ export function WritingAssistPanel() {
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
   const showAiDetail = panelOpen && activeFeature === 'ai-assistant'
+
+  const openMobile = () => {
+    const fabRect = mobileFabRef.current?.getBoundingClientRect()
+    setMobilePosition(fabRect ? getMobilePanelPositionNearFab(fabRect) : getDefaultMobilePanelPosition())
+    setMobileOpen(true)
+  }
 
   const closeMobile = () => {
     setMobileOpen(false)
@@ -256,47 +553,35 @@ export function WritingAssistPanel() {
       {!isDesktop && (
         <>
           {!mobileOpen && (
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom))] right-4 z-30 flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md transition-colors hover:bg-neutral-50"
-              aria-label="打开写作辅助"
-            >
-              <LayoutGrid size={18} strokeWidth={1.75} />
-              辅助
-              {timerRunning && (
-                <span className="font-mono text-xs text-amber-600">
-                  {formatSecondsForRail(timerDisplaySeconds)}
-                </span>
-              )}
-            </button>
+            <MobileDraggableAssistFab
+              fabRef={mobileFabRef}
+              position={fabPosition}
+              onPositionChange={setFabPosition}
+              onOpen={openMobile}
+              timerRunning={timerRunning}
+              timerDisplaySeconds={timerDisplaySeconds}
+            />
           )}
 
-          <div className={mobileOpen ? 'fixed inset-0 z-50' : 'hidden'}>
-            {mobileOpen && (
-              <button
-                type="button"
-                className="absolute inset-0 bg-black/40"
-                onClick={closeMobile}
-                aria-label="关闭写作辅助"
-              />
-            )}
-            <div className="absolute inset-x-0 bottom-0 top-10 flex max-h-[85dvh] flex-col rounded-t-2xl border-t border-neutral-200 bg-white shadow-xl">
-              <AssistPanelContent
-                {...mobileContentProps}
-                headerClose={
-                  <button
-                    type="button"
-                    onClick={closeMobile}
-                    className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
-                    aria-label="关闭"
-                  >
-                    <X size={18} />
-                  </button>
-                }
-              />
-            </div>
-          </div>
+          <MobileFloatingAssistPanel
+            open={mobileOpen}
+            position={mobilePosition}
+            onPositionChange={setMobilePosition}
+          >
+            <AssistPanelContent
+              {...mobileContentProps}
+              headerClose={
+                <button
+                  type="button"
+                  onClick={closeMobile}
+                  className="shrink-0 rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                  aria-label="关闭"
+                >
+                  <X size={18} />
+                </button>
+              }
+            />
+          </MobileFloatingAssistPanel>
         </>
       )}
     </>
