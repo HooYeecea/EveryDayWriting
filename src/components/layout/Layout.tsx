@@ -1,7 +1,9 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { MobileBottomNav } from './MobileBottomNav'
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
 
 interface LayoutProps {
   children: ReactNode
@@ -9,9 +11,24 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed))
+    } catch {
+      // ignore
+    }
+  }, [sidebarCollapsed])
 
   return (
-    <div className="flex h-full min-h-screen flex-col lg:flex-row">
+    <div className="flex h-full min-h-screen flex-col lg:h-screen lg:flex-row">
       <header className="flex shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-4 py-3 lg:hidden">
         <button
           type="button"
@@ -29,6 +46,8 @@ export function Layout({ children }: LayoutProps) {
 
       <Sidebar
         mobileOpen={mobileMenuOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
         onClose={() => setMobileMenuOpen(false)}
       />
 

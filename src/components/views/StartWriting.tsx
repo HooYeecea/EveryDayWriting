@@ -5,7 +5,16 @@ import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { loadDraftById, loadLatestDraft, saveWritingDraft, submitWriting } from '../../api/writing'
 import { useAuth } from '../../context/AuthContext'
 import { NotionEditor } from '../editor/NotionEditor'
+import { TopicPromptBox } from '../writing/TopicPromptBox'
 import { getRandomTopic } from '../../data/mockTopics'
+import {
+  MAIN_CONTENT_X_CLASS,
+  PANEL_FOOTER_CLASS,
+  PANEL_FOOTER_INNER_CLASS,
+  PANEL_SUBTITLE_CLASS,
+  PANEL_TITLE_CLASS,
+  PANEL_TOPIC_HEADER_CLASS,
+} from '../layout/layoutConstants'
 import type { WritingTopic } from '../../types'
 
 export function StartWriting() {
@@ -100,19 +109,20 @@ export function StartWriting() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
-        <div className="mx-auto flex max-w-4xl flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:gap-4">
-          <div className="min-w-0 flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 sm:px-5 sm:py-4">
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-neutral-400">
-              题目
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className={`shrink-0 ${PANEL_TOPIC_HEADER_CLASS}`}>
+        <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <div className="shrink-0">
+            <p className={PANEL_TITLE_CLASS}>题目</p>
+            <p className={`${PANEL_SUBTITLE_CLASS} max-w-[8rem] truncate sm:max-w-none`}>
+              {topic.type}
             </p>
-            <p className="text-sm leading-relaxed text-neutral-800 sm:text-[15px]">{topic.prompt}</p>
           </div>
+          <TopicPromptBox prompt={topic.prompt} type={topic.type} />
           <button
             type="button"
             onClick={handleChangeTopic}
-            className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 sm:mt-1 sm:justify-start"
+            className="flex shrink-0 items-center justify-center gap-1.5 self-start rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 lg:self-center"
           >
             <RefreshCw size={14} />
             换一个题目
@@ -120,25 +130,18 @@ export function StartWriting() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className={`mx-auto w-full max-w-3xl flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
           <div className="mb-6">
-            <div className="relative sm:pr-24">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="自定义标题"
-                className={`w-full border-none bg-transparent text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl ${
-                  title.trim() ? 'text-center sm:text-center' : 'text-left'
-                }`}
-              />
-              <div className="mt-2 sm:absolute sm:right-0 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2">
-                <span className="inline-block rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-500">
-                  {topic.type}
-                </span>
-              </div>
-            </div>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="自定义标题"
+              className={`w-full border-none bg-transparent text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl ${
+                title.trim() ? 'text-center' : 'text-left'
+              }`}
+            />
           </div>
 
           <NotionEditor
@@ -148,19 +151,19 @@ export function StartWriting() {
           />
         </div>
 
-        <div className="sticky bottom-0 shrink-0 border-t border-neutral-200 bg-white px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-          <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-center text-xs text-neutral-400 sm:text-left">
+        <div className={PANEL_FOOTER_CLASS}>
+          <div className={`${PANEL_FOOTER_INNER_CLASS} flex-col lg:flex-row`}>
+            <p className="w-full text-left text-xs leading-none text-neutral-400 lg:min-w-0 lg:flex-1">
               {!isAuthenticated
                 ? '登录后可保存和提交'
                 : saveMessage || (draftId ? '将继续编辑上次保存的内容' : '')}
             </p>
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex w-full shrink-0 items-center gap-2 lg:w-auto lg:gap-3">
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex-1 rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 sm:flex-none sm:px-6"
+                className="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 lg:flex-none lg:px-6"
               >
                 {isSaving ? '保存中…' : '保存'}
               </button>
@@ -168,7 +171,7 @@ export function StartWriting() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 sm:flex-none sm:px-6"
+                className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 lg:flex-none lg:px-6"
               >
                 {isSubmitting ? '提交中…' : '提交'}
               </button>

@@ -9,6 +9,14 @@ import {
 } from '../../api/writing'
 import { useAuth } from '../../context/AuthContext'
 import type { WritingRecord } from '../../types'
+import {
+  MAIN_CONTENT_X_CLASS,
+  PANEL_HEADER_CLASS,
+  PANEL_HEADER_ROW_CLASS,
+  PANEL_SUBTITLE_CLASS,
+  PANEL_TITLE_CLASS,
+  SIDE_PANEL_WIDTH_CLASS,
+} from '../layout/layoutConstants'
 
 type RecordTab = 'saves' | 'submits'
 
@@ -79,16 +87,20 @@ export function WritingRecords() {
   return (
     <div className="flex flex-1 overflow-hidden">
       <div
-        className={`flex w-full shrink-0 flex-col border-r border-neutral-200 bg-white md:w-80 lg:w-96 ${
+        className={`flex w-full shrink-0 flex-col border-r border-neutral-200 bg-white md:w-56 ${SIDE_PANEL_WIDTH_CLASS} ${
           mobileShowDetail ? 'hidden lg:flex' : 'flex'
         }`}
       >
-        <div className="border-b border-neutral-200 px-4 py-4 sm:px-5 sm:py-5">
-          <h2 className="text-lg font-semibold text-neutral-900">写作记录</h2>
-          <p className="mt-1 text-xs text-neutral-400">按 ID 查看保存与提交记录</p>
+        <div className={PANEL_HEADER_CLASS}>
+          <div className={PANEL_HEADER_ROW_CLASS}>
+            <div className="min-w-0">
+              <h2 className={PANEL_TITLE_CLASS}>写作记录</h2>
+              <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>保存与提交记录</p>
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-1 border-b border-neutral-200 p-2">
+        <div className="flex gap-1 border-b border-neutral-200 p-2 max-md:flex-row md:flex-col md:gap-0.5">
           <button
             type="button"
             onClick={() => {
@@ -96,7 +108,7 @@ export function WritingRecords() {
               setSelectedId(null)
               setMobileShowDetail(false)
             }}
-            className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
+            className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:flex-none md:px-2 md:text-xs ${
               tab === 'saves'
                 ? 'bg-neutral-100 font-medium text-neutral-900'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -111,7 +123,7 @@ export function WritingRecords() {
               setSelectedId(null)
               setMobileShowDetail(false)
             }}
-            className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
+            className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:flex-none md:px-2 md:text-xs ${
               tab === 'submits'
                 ? 'bg-neutral-100 font-medium text-neutral-900'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -157,7 +169,7 @@ export function WritingRecords() {
       </div>
 
       <div
-        className={`flex-1 overflow-y-auto bg-[#fafafa] px-4 py-5 sm:px-6 sm:py-8 lg:px-8 ${
+        className={`flex-1 overflow-y-auto bg-[#fafafa] py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS} ${
           mobileShowDetail ? 'flex flex-col' : 'hidden lg:block'
         }`}
       >
