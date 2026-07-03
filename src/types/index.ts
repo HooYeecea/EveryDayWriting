@@ -65,3 +65,12 @@ export interface WritingSubmitPayload {
   title: string
   content: string
 }
+
+/** 写作打卡记录 */
+export interface WritingCheckInRecord {
+  id: string
+  userId: string
+  /** YYYY-MM-DD */
+  date: string
+  checkedInAt: string
+}

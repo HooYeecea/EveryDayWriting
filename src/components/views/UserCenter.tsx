@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Calendar, Flame, LogIn, Mail, PenLine, Trophy } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
 
 export function UserCenter() {
   const { user, isAuthenticated, logout } = useAuth()
@@ -94,6 +95,8 @@ export function UserCenter() {
             </div>
           ))}
         </div>
+
+        <WritingCheckInPanel userId={user.id} />
       </div>
     </div>
   )
