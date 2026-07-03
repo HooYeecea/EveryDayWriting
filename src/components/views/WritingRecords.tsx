@@ -17,6 +17,7 @@ import {
   PANEL_TITLE_CLASS,
   SIDE_PANEL_WIDTH_CLASS,
 } from '../layout/layoutConstants'
+import { WritingRecordsSearchBar } from '../writing/WritingRecordsSearchBar'
 
 type RecordTab = 'saves' | 'submits'
 
@@ -169,30 +170,33 @@ export function WritingRecords() {
       </div>
 
       <div
-        className={`flex-1 overflow-y-auto bg-[#fafafa] py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS} ${
-          mobileShowDetail ? 'flex flex-col' : 'hidden lg:block'
+        className={`flex min-w-0 flex-1 flex-col overflow-hidden bg-[#fafafa] ${
+          mobileShowDetail ? 'flex' : 'hidden lg:flex'
         }`}
       >
-        {mobileShowDetail && (
-          <button
-            type="button"
-            onClick={() => setMobileShowDetail(false)}
-            className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
-          >
-            <ArrowLeft size={16} />
-            返回列表
-          </button>
-        )}
+        <WritingRecordsSearchBar tab={tab} />
 
-        {!selectedRecord && (
-          <div className="flex h-full flex-col items-center justify-center text-neutral-400">
-            <FileText size={32} strokeWidth={1.5} />
-            <p className="mt-3 text-sm">选择一条记录查看详情</p>
-          </div>
-        )}
+        <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+          {mobileShowDetail && (
+            <button
+              type="button"
+              onClick={() => setMobileShowDetail(false)}
+              className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
+            >
+              <ArrowLeft size={16} />
+              返回列表
+            </button>
+          )}
 
-        {selectedRecord && (
-          <div className="mx-auto max-w-3xl">
+          {!selectedRecord && (
+            <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
+              <FileText size={32} strokeWidth={1.5} />
+              <p className="mt-3 text-sm">选择一条记录查看详情</p>
+            </div>
+          )}
+
+          {selectedRecord && (
+            <div className="mx-auto max-w-3xl">
             <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
@@ -242,8 +246,9 @@ export function WritingRecords() {
                 dangerouslySetInnerHTML={{ __html: selectedRecord.content || '<p></p>' }}
               />
             </div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
