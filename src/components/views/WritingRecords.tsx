@@ -17,7 +17,11 @@ import {
   PANEL_TITLE_CLASS,
   SIDE_PANEL_WIDTH_CLASS,
 } from '../layout/layoutConstants'
-import { WritingRecordsSearchBar } from '../writing/WritingRecordsSearchBar'
+import {
+  DEFAULT_RECORD_SEARCH_FIELDS,
+  type RecordSearchField,
+  WritingRecordsSearchBar,
+} from '../writing/WritingRecordsSearchBar'
 
 type RecordTab = 'saves' | 'submits'
 
@@ -35,8 +39,37 @@ export function WritingRecords() {
   const [selectedRecord, setSelectedRecord] = useState<WritingRecord | null>(null)
   const [loading, setLoading] = useState(false)
   const [mobileShowDetail, setMobileShowDetail] = useState(false)
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [searchFields, setSearchFields] = useState<RecordSearchField[]>(
+    DEFAULT_RECORD_SEARCH_FIELDS,
+  )
 
   const list = tab === 'saves' ? saves : submits
+
+  const resetSearch = () => {
+    setSearchKeyword('')
+    setSearchFields([...DEFAULT_RECORD_SEARCH_FIELDS])
+  }
+
+  const toggleSearchField = (field: RecordSearchField) => {
+    setSearchFields((prev) =>
+      prev.includes(field) ? prev.filter((item) => item !== field) : [...prev, field],
+    )
+  }
+
+  const searchBarProps = {
+    tab,
+    keyword: searchKeyword,
+    onKeywordChange: setSearchKeyword,
+    fields: searchFields,
+    onToggleField: toggleSearchField,
+    onReset: resetSearch,
+  }
+
+  useEffect(() => {
+    setSearchKeyword('')
+    setSearchFields([...DEFAULT_RECORD_SEARCH_FIELDS])
+  }, [tab])
 
   useEffect(() => {
     if (!user) return
@@ -134,6 +167,10 @@ export function WritingRecords() {
           </button>
         </div>
 
+        <div className="shrink-0 lg:hidden">
+          <WritingRecordsSearchBar {...searchBarProps} compact />
+        </div>
+
         <div className="flex-1 overflow-y-auto p-2">
           {loading && <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>}
           {!loading && list.length === 0 && (
@@ -174,7 +211,9 @@ export function WritingRecords() {
           mobileShowDetail ? 'flex' : 'hidden lg:flex'
         }`}
       >
-        <WritingRecordsSearchBar tab={tab} />
+        <div className="hidden shrink-0 lg:block">
+          <WritingRecordsSearchBar {...searchBarProps} />
+        </div>
 
         <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
           {mobileShowDetail && (

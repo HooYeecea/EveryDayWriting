@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
 import { Search, X } from 'lucide-react'
 
 export type RecordSearchField = 'topic' | 'title' | 'content' | 'time'
+
+export const DEFAULT_RECORD_SEARCH_FIELDS: RecordSearchField[] = [
+  'topic',
+  'title',
+  'content',
+  'time',
+]
 
 const SEARCH_FIELD_OPTIONS: { id: RecordSearchField; label: string }[] = [
   { id: 'topic', label: '题目' },
@@ -12,32 +18,29 @@ const SEARCH_FIELD_OPTIONS: { id: RecordSearchField; label: string }[] = [
 
 interface WritingRecordsSearchBarProps {
   tab: 'saves' | 'submits'
+  keyword: string
+  onKeywordChange: (value: string) => void
+  fields: RecordSearchField[]
+  onToggleField: (field: RecordSearchField) => void
+  onReset: () => void
+  compact?: boolean
 }
 
-export function WritingRecordsSearchBar({ tab }: WritingRecordsSearchBarProps) {
-  const [keyword, setKeyword] = useState('')
-  const [fields, setFields] = useState<RecordSearchField[]>([
-    'topic',
-    'title',
-    'content',
-    'time',
-  ])
-
-  useEffect(() => {
-    setKeyword('')
-    setFields(['topic', 'title', 'content', 'time'])
-  }, [tab])
-
-  const toggleField = (field: RecordSearchField) => {
-    setFields((prev) =>
-      prev.includes(field) ? prev.filter((item) => item !== field) : [...prev, field],
-    )
-  }
-
+export function WritingRecordsSearchBar({
+  tab,
+  keyword,
+  onKeywordChange,
+  fields,
+  onToggleField,
+  onReset,
+  compact = false,
+}: WritingRecordsSearchBarProps) {
   const tabLabel = tab === 'saves' ? '保存记录' : '提交记录'
 
   return (
-    <div className="border-b border-neutral-200 bg-white px-4 py-3 sm:px-5">
+    <div
+      className={`border-b border-neutral-200 bg-white ${compact ? 'px-3 py-2.5' : 'px-4 py-3 sm:px-5'}`}
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-neutral-600">搜索{tabLabel}</p>
         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
@@ -53,14 +56,14 @@ export function WritingRecordsSearchBar({ tab }: WritingRecordsSearchBarProps) {
         <input
           type="search"
           value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          onChange={(e) => onKeywordChange(e.target.value)}
           placeholder={`在${tabLabel}中搜索关键字…`}
           className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-9 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:bg-white"
         />
         {keyword && (
           <button
             type="button"
-            onClick={() => setKeyword('')}
+            onClick={() => onKeywordChange('')}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-neutral-400 hover:bg-neutral-200/80 hover:text-neutral-600"
             aria-label="清空关键字"
           >
@@ -78,7 +81,7 @@ export function WritingRecordsSearchBar({ tab }: WritingRecordsSearchBarProps) {
               <button
                 key={id}
                 type="button"
-                onClick={() => toggleField(id)}
+                onClick={() => onToggleField(id)}
                 className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                   active
                     ? 'border-neutral-900 bg-neutral-900 text-white'
@@ -102,10 +105,7 @@ export function WritingRecordsSearchBar({ tab }: WritingRecordsSearchBarProps) {
         </button>
         <button
           type="button"
-          onClick={() => {
-            setKeyword('')
-            setFields(['topic', 'title', 'content', 'time'])
-          }}
+          onClick={onReset}
           className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
         >
           重置
