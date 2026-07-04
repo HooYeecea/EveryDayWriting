@@ -35,12 +35,14 @@ export interface RequestOptions {
 export class ApiError extends Error {
   readonly code: number
   readonly httpStatus: number
+  readonly data: unknown
 
-  constructor(code: number, message: string, httpStatus: number) {
+  constructor(code: number, message: string, httpStatus: number, data: unknown = null) {
     super(message)
     this.name = 'ApiError'
     this.code = code
     this.httpStatus = httpStatus
+    this.data = data
   }
 
   get isUnauthorized(): boolean {

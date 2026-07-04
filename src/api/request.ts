@@ -1,13 +1,19 @@
-import { getApiBaseUrl, SUCCESS_CODES } from './config'
+import { API_PREFIX, getApiBaseUrl, SUCCESS_CODES } from './config'
 import type { ApiResponse, RequestOptions } from './types'
 import { ApiError } from './types'
-import { getToken } from '../storage/tokenStorage'
+import {
+  clearAuthTokens,
+  getRefreshToken,
+  getToken,
+  persistAuthSession,
+} from '../storage/tokenStorage'
+import { API_PATHS } from './config'
 
 type UnauthorizedHandler = () => void
 
 let unauthorizedHandler: UnauthorizedHandler | null = null
+let refreshPromise: Promise<boolean> | null = null
 
-/** 注册 401 全局处理（后续可在 AuthContext 中接入） */
 export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
   unauthorizedHandler = handler
 }
@@ -15,13 +21,19 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): voi
 function resolveApiUrl(path: string): string {
   const base = getApiBaseUrl()
   const normalized = path.startsWith('/') ? path : `/${path}`
-  const apiPath = normalized.startsWith('/api') ? normalized : `/api${normalized}`
 
-  if (base.startsWith('http')) {
-    return `${base.replace(/\/$/, '')}${apiPath}`
+  if (normalized.startsWith('/api/v1')) {
+    return base.startsWith('http') ? `${base.replace(/\/api\/v1$/, '')}${normalized}` : normalized
   }
 
-  return apiPath
+  const fullPath = `${API_PREFIX}${normalized}`
+
+  if (base.startsWith('http')) {
+    const origin = base.replace(/\/api\/v1$/, '')
+    return `${origin}${fullPath}`
+  }
+
+  return fullPath
 }
 
 function buildUrl(path: string, params?: RequestOptions['params']): string {
@@ -81,30 +93,116 @@ async function parseResponse<T>(response: Response): Promise<T> {
       businessCode,
       json.message ?? '请求失败',
       response.status,
+      json.data ?? null,
     )
   }
 
   return json.data
 }
 
-/**
- * 统一请求方法
- * @param path 接口路径，如 `/auth/login`（相对 /api）
- * @returns 解包后的 data 字段
- */
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken()
+  const accessToken = getToken()
+  if (!refreshToken || !accessToken) {
+    return false
+  }
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    headers.Authorization = `Bearer ${accessToken}`
+
+    const response = await fetch(buildUrl(API_PATHS.auth.refresh), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ refreshToken }),
+    })
+
+    if (!response.ok) {
+      clearAuthTokens()
+      unauthorizedHandler?.()
+      return false
+    }
+
+    const json = (await response.json()) as ApiResponse<{
+      token: string
+      refreshToken: string
+      expiresAt: string
+    }>
+
+    if (!SUCCESS_CODES.has(json.code)) {
+      clearAuthTokens()
+      unauthorizedHandler?.()
+      return false
+    }
+
+    persistAuthSession(json.data.token, json.data.refreshToken, json.data.expiresAt)
+    return true
+  } catch {
+    clearAuthTokens()
+    unauthorizedHandler?.()
+    return false
+  }
+}
+
+async function ensureRefreshed(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
+}
+
 export async function request<T>(
   path: string,
   method: string,
   options: RequestOptions = {},
+  retried = false,
 ): Promise<T> {
   const { params, body, skipAuth = false, fetchOptions } = options
 
-  const response = await fetch(buildUrl(path, params), {
+  const url = buildUrl(path, params)
+
+  if (import.meta.env.DEV && path.includes('/topics/random')) {
+    console.debug('[api:topics/random]', method, url, {
+      skipAuth,
+      hasToken: !skipAuth && Boolean(getToken()),
+      retried,
+    })
+  }
+
+  const response = await fetch(url, {
     ...fetchOptions,
     method,
     headers: buildHeaders({ ...options, skipAuth }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
+
+  if (
+    !skipAuth &&
+    (response.status === 401 || response.status === 403) &&
+    getRefreshToken() &&
+    !retried &&
+    !path.includes(API_PATHS.auth.refresh)
+  ) {
+    if (import.meta.env.DEV && path.includes('/topics/random')) {
+      console.warn('[api:topics/random] 401/403，尝试刷新 Token 后重试')
+    }
+    const refreshed = await ensureRefreshed()
+    if (refreshed) {
+      return request<T>(path, method, options, true)
+    }
+  }
+
+  if (import.meta.env.DEV && path.includes('/topics/random')) {
+    const debugBody = await response.clone().json().catch(() => null)
+    console.debug('[api:topics/random] 响应', {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      body: debugBody,
+    })
+  }
 
   return parseResponse<T>(response)
 }

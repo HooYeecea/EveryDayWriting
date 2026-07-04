@@ -1,28 +1,59 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { isApiError } from '../../api/request'
+import { sendEmailCode } from '../../api/auth'
+import type { LoginErrorData } from '../../types'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
 
 export function Login() {
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
+  const [requireCaptcha, setRequireCaptcha] = useState(false)
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [privacyWarning, setPrivacyWarning] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [sendingCode, setSendingCode] = useState(false)
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
+
+  if (isLoading) {
+    return (
+      <AuthLayout title="登录" subtitle="正在恢复登录状态…" footer={null}>
+        <p className="text-sm text-neutral-400">加载中…</p>
+      </AuthLayout>
+    )
+  }
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSendCaptcha = async () => {
+    if (!email.trim()) {
+      setError('请先输入邮箱')
+      return
+    }
+    setSendingCode(true)
+    setError('')
+    try {
+      await sendEmailCode(email.trim(), 'login_captcha')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '验证码发送失败')
+    } finally {
+      setSendingCode(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -32,11 +63,21 @@ export function Login() {
     }
 
     setPrivacyWarning(false)
+    setSubmitting(true)
     try {
-      login(email.trim(), password)
+      await login(email.trim(), password, requireCaptcha ? code : undefined)
       navigate(from, { replace: true })
     } catch (err) {
+      if (isApiError(err)) {
+        const data = err.data as LoginErrorData | null
+        const message = err.message
+        if (data?.requireCaptcha || message.includes('验证码')) {
+          setRequireCaptcha(true)
+        }
+      }
       setError(err instanceof Error ? err.message : '登录失败')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -81,7 +122,7 @@ export function Login() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="alex.chen@example.com"
+            placeholder="your@email.com"
             required
             className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
           />
@@ -97,14 +138,36 @@ export function Login() {
             className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
           />
         </div>
-        <p className="text-xs text-neutral-400">
-          演示账号：alex.chen@example.com / 123456
-        </p>
+        {requireCaptcha && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-neutral-700">邮箱验证码</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6 位验证码"
+                required
+                maxLength={6}
+                className="min-w-0 flex-1 rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+              />
+              <button
+                type="button"
+                onClick={handleSendCaptcha}
+                disabled={sendingCode}
+                className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              >
+                {sendingCode ? '发送中…' : '获取验证码'}
+              </button>
+            </div>
+          </div>
+        )}
         <button
           type="submit"
-          className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white hover:opacity-90"
+          disabled={submitting}
+          className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
-          登录
+          {submitting ? '登录中…' : '登录'}
         </button>
         <PrivacyAgreementField
           checked={privacyAgreed}

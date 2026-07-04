@@ -161,3 +161,86 @@ body {
     animation: none;
   }
 }
+
+/* 打卡日历：视图切换时由 JS 缓动控制高度，避免 React 同帧更新导致 transition 失效 */
+.checkin-calendar-panel {
+  overflow-anchor: none;
+}
+
+.checkin-calendar-shell {
+  overflow: hidden;
+  overflow-anchor: none;
+}
+
+.checkin-calendar-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity;
+}
+
+.checkin-calendar-layer.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+  visibility: visible;
+}
+
+.checkin-calendar-layer.is-inactive {
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  visibility: hidden;
+}
+
+.checkin-calendar-inner {
+  width: 100%;
+}
+
+.checkin-slide-enter-next {
+  animation: checkin-slide-next 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.checkin-slide-enter-prev {
+  animation: checkin-slide-prev 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes checkin-slide-next {
+  from {
+    opacity: 0.45;
+    transform: translateX(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes checkin-slide-prev {
+  from {
+    opacity: 0.45;
+    transform: translateX(-14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkin-calendar-layer {
+    transition: none;
+  }
+
+  .checkin-calendar-shell {
+    transition: none;
+  }
+
+  .checkin-slide-enter-next,
+  .checkin-slide-enter-prev {
+    animation: none;
+  }
+}

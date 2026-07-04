@@ -11,7 +11,7 @@
 | 样式 | Tailwind CSS 4 |
 | 路由 | React Router 7 |
 | 富文本编辑器 | Tiptap（Notion 风格） |
-| 本地 API | Express 5（读写 JSON 文件） |
+| 后端 API | ASP.NET Core `/api/v1`（JWT 鉴权） |
 | 代码检查 | Oxlint |
 
 ## 功能概览
@@ -24,7 +24,8 @@
 - 长题目省略显示，支持弹窗查看全文
 - 自定义标题（有内容时居中显示）
 - Notion 风格富文本编辑器
-- 保存 / 提交（需登录）；登录后自动恢复最近草稿；支持从写作记录继续编辑（`/writing?draftId=xxx`）
+- 保存 / 提交（需登录，对接 `POST/PUT /api/v1/writings/drafts` 与 `POST /api/v1/writings/submits`）；登录后自动恢复最近草稿
+- 题目来自 `GET /api/v1/topics/random`（未登录时 fallback 本地 mock 题目）
 
 **写作辅助面板**（桌面右侧窄条 / 手机浮动入口）
 
@@ -36,27 +37,26 @@
 
 #### 写作记录
 
-- 「保存记录」「提交记录」双 Tab 列表
-- 点击记录查看详情（题目、标题、时间、正文 HTML）
-- 保存记录支持「继续编辑」
-- 搜索栏 UI：关键字输入、检索范围多选（题目 / 标题 / 内容 / 时间）；**搜索逻辑尚未实现**
+- 「草稿」「提交记录」双 Tab 列表（分页接口）
+- 提交记录支持关键字搜索（`GET /api/v1/writings/submits?keyword=`）
+- 提交详情展示 AI 评分与批改内容
+- 草稿支持「继续编辑」（`/writing?draftId=xxx`）
 - 响应式：桌面双栏；手机列表 / 详情主从切换
 
 #### 用户中心
 
-- 个人信息与学习概览（累计写作、累计字数、连续打卡等演示数据）
-- **坚持写作打卡**（演示数据 + 本地追加）
-  - 「今日打卡」按钮（同日不可重复打卡）
-  - 累计 / 连续 / 最长 / 本月打卡统计
-  - 月历展示已打卡日期，支持切换月份
-  - 当月打卡记录列表
-- 退出登录
+- 个人信息来自 `GET /api/v1/user/profile`
+- **坚持写作打卡**（`GET /api/v1/checkin/status`、`/checkin/calendar`）
+  - 每日首次**提交作文**自动打卡
+  - 连续 / 累计打卡、段位、励志语录、月历
+- 退出登录（`POST /api/v1/auth/logout`）
 
 #### 用户系统
 
-- 登录 / 注册 / 忘记密码（验证码演示模式，数据存于浏览器 `localStorage`）
-- 未登录时无法保存、提交与查看写作记录，会引导登录
-- 侧边栏 / 底部导航：未登录显示「登录」，已登录入口为「我的 / 用户中心」
+- 登录 / 注册 / 忘记密码（邮箱验证码，对接 `/api/v1/auth/*`）
+- JWT + Refresh Token 存储于浏览器 `localStorage`
+- 密码规则：至少 8 位，含大小写字母和数字
+- 登录失败 5 次后需邮箱验证码
 
 #### 布局与交互
 
@@ -69,9 +69,9 @@
 
 | 数据 | 存储方式 |
 |------|----------|
-| 写作保存 / 提交 | `data/writing-saves.json`、`data/writing-submits.json`，经 Express API（3001）读写 |
-| 用户账号 / 会话 | 浏览器 `localStorage` |
-| 打卡记录（演示） | 静态 mock + 本地 `localStorage` 追加 |
+| 写作草稿 / 提交 | 后端 PostgreSQL，经 `/api/v1/writings/*` |
+| 用户 / 打卡 | 后端数据库 |
+| Access / Refresh Token | 浏览器 `localStorage` |
 | 辅助面板折叠状态 | 浏览器 `localStorage` |
 | 手机「辅助」按钮位置 | 浏览器 `sessionStorage` |
 
@@ -81,20 +81,29 @@
 |------|------|
 | 个人词库 | 占位页 |
 | 个人测评 | 占位页 |
-| AI 助手真实能力 | UI 占位 |
-| 写作记录搜索过滤 | UI 占位 |
-| 打卡后端接口 | 前端 mock，见 `src/api/checkIn.ts` |
-| 题目接口 | 静态 mock，见 `src/data/mockTopics.ts` |
-| 真实后端与数据库 | 规划见 [API.md](./API.md) |
+| AI 助手 / 代理调用 | UI 占位，待接 `/api/v1/ai/proxy/{purpose}` |
+| 草稿按 ID 拉取详情 | 后端暂无 GET `/drafts/{id}`，仅 latest + 列表 |
+| 用户协议 / 公告 | 待接模块九、十三 |
 
 ## 演示账号
 
-| 邮箱 | 密码 | 说明 |
-|------|------|------|
-| `alex.chen@example.com` | `123456` | 较多写作与打卡演示数据 |
-| `demo@example.com` | `demo123` | 新手演示账号 |
+由后端 Seed 数据决定。本地开发请先启动 ASP.NET Core 后端并执行数据库迁移。
 
-也支持在注册页创建新账号。忘记密码流程为演示模式（验证码会展示在页面上）。
+## 环境配置
+
+复制 `.env.example` 为 `.env`（首次克隆后执行一次即可）：
+
+```bash
+cp .env.example .env
+```
+
+| 场景 | `.env` 配置 | 请求方式 |
+|------|-------------|----------|
+| **本地开发（默认）** | 不设置 `VITE_API_BASE_URL` | 浏览器请求 `/api/v1/...`，Vite 代理到 `http://localhost:5000` |
+| **直连联调** | `VITE_API_BASE_URL=http://localhost:5000` | 浏览器直连后端（需后端开启 CORS） |
+| **生产构建** | 在 `.env.production` 或 CI 中设置真实 API 域名 | 打包时写入静态资源 |
+
+后端端口非 5000 且仍走代理时，在 `.env` 中设置 `DEV_API_PROXY_TARGET=http://localhost:5001`（仅 `vite.config.ts` 读取，不影响前端）。
 
 ## 路由说明
 
@@ -151,7 +160,7 @@ npm install
 
 ## 启动开发环境
 
-项目包含**两个服务**，推荐一键启动：
+**先启动后端**（ASP.NET Core，默认 `http://localhost:5000`），再启动前端：
 
 ```bash
 npm run dev
@@ -160,23 +169,21 @@ npm run dev
 | 服务 | 地址 | 说明 |
 |------|------|------|
 | 前端（Vite） | http://localhost:5173 | 页面 UI |
-| API（Express） | http://localhost:3001 | 读写 JSON 写作数据 |
+| 后端 API | http://localhost:5000/api/v1 | 见 API 文档 |
 
-Vite 会将 `/api` 请求代理到 3001 端口。环境变量示例见 `.env.example`。
+未配置 `VITE_API_BASE_URL` 时，Vite 将 `/api/v1` 代理到 `http://localhost:5000`（可在 `.env` 中设置 `VITE_API_BASE_URL` 修改代理目标）。
 
-### 分别启动（可选）
-
-```bash
-# 仅前端（保存/提交/写作记录不可用）
-npm run dev:web
-
-# 仅 API 服务
-npm run dev:server
-```
-
-> 完整写作持久化功能（保存、提交、写作记录列表）需要 API 服务同时运行。用户、打卡等演示数据可在仅前端模式下体验。
+> 仓库内 `server/index.js` 为旧版 JSON 文件演示服务，**已不再被前端默认使用**。
 
 ## 打包构建
+
+生产环境请先配置 API 地址，例如创建 `.env.production`：
+
+```bash
+VITE_API_BASE_URL=https://api.yourdomain.com
+```
+
+然后执行：
 
 ```bash
 npm run build

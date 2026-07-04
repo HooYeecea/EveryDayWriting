@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { sendEmailCode, resetPassword } from '../../api/auth'
-import { getCodeCooldownRemaining } from '../../storage/verificationCodeStorage'
 import { AuthLayout } from '../layout/AuthLayout'
+import { validatePassword } from '../../utils/authValidation'
 
 export function ForgotPassword() {
   const navigate = useNavigate()
@@ -16,32 +16,19 @@ export function ForgotPassword() {
   const [isSending, setIsSending] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cooldown, setCooldown] = useState(0)
-  const [demoCodeHint, setDemoCodeHint] = useState('')
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
 
   useEffect(() => {
-    if (!email.trim()) {
-      setCooldown(0)
-      return
-    }
-    setCooldown(getCodeCooldownRemaining(email))
-  }, [email])
-
-  useEffect(() => {
     if (cooldown <= 0) return
-    const timer = window.setInterval(() => {
-      const remain = getCodeCooldownRemaining(email)
-      setCooldown(remain)
-    }, 1000)
+    const timer = window.setInterval(() => setCooldown((value) => value - 1), 1000)
     return () => window.clearInterval(timer)
-  }, [cooldown, email])
+  }, [cooldown])
 
   const handleSendCode = async () => {
     setError('')
     setSuccess('')
-    setDemoCodeHint('')
 
     if (!email.trim()) {
       setError('请先输入邮箱')
@@ -50,12 +37,9 @@ export function ForgotPassword() {
 
     setIsSending(true)
     try {
-      const result = sendEmailCode(email.trim())
+      await sendEmailCode(email.trim(), 'reset')
       setSuccess('验证码已发送，请查收邮箱')
       setCooldown(60)
-      if (result.demoCode) {
-        setDemoCodeHint(`演示模式验证码：${result.demoCode}`)
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '发送失败')
     } finally {
@@ -63,7 +47,7 @@ export function ForgotPassword() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccess('')
@@ -76,14 +60,16 @@ export function ForgotPassword() {
       setError('两次输入的密码不一致')
       return
     }
-    if (password.length < 6) {
-      setError('密码至少 6 位')
+
+    const passwordError = validatePassword(password)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
 
     setIsSubmitting(true)
     try {
-      resetPassword(email.trim(), code.trim(), password)
+      await resetPassword(email.trim(), code.trim(), password)
       setSuccess('密码重置成功，请使用新密码登录')
       setTimeout(() => {
         navigate('/login', { replace: true, state: { from } })
@@ -118,9 +104,6 @@ export function ForgotPassword() {
         )}
         {success && (
           <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>
-        )}
-        {demoCodeHint && (
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">{demoCodeHint}</p>
         )}
 
         <div>
@@ -164,7 +147,7 @@ export function ForgotPassword() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="至少 6 位"
+            placeholder="至少 8 位，含大小写和数字"
             required
             className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
           />

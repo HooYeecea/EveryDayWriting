@@ -1,33 +1,69 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { sendEmailCode } from '../../api/auth'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
+import { validatePassword } from '../../utils/authValidation'
 
 const fieldClass =
   'w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400'
 
 export function Register() {
-  const { register, isAuthenticated } = useAuth()
+  const { register, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [code, setCode] = useState('')
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [privacyWarning, setPrivacyWarning] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [sendingCode, setSendingCode] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = window.setInterval(() => setCooldown((value) => value - 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [cooldown])
+
+  if (isLoading) {
+    return (
+      <AuthLayout title="注册" subtitle="正在恢复登录状态…" footer={null}>
+        <p className="text-sm text-neutral-400">加载中…</p>
+      </AuthLayout>
+    )
+  }
 
   if (isAuthenticated) {
     return <Navigate to={from} replace />
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSendCode = async () => {
+    if (!email.trim()) {
+      setError('请先输入邮箱')
+      return
+    }
+    setSendingCode(true)
+    setError('')
+    try {
+      await sendEmailCode(email.trim(), 'register')
+      setCooldown(60)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '验证码发送失败')
+    } finally {
+      setSendingCode(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -36,21 +72,31 @@ export function Register() {
       return
     }
 
+    if (!code.trim()) {
+      setError('请输入邮箱验证码')
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('两次输入的密码不一致')
       return
     }
-    if (password.length < 6) {
-      setError('密码至少 6 位')
+
+    const passwordError = validatePassword(password)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
 
     setPrivacyWarning(false)
+    setSubmitting(true)
     try {
-      register(name.trim(), email.trim(), password)
+      await register(email.trim(), password, code.trim())
       navigate(from, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -81,17 +127,6 @@ export function Register() {
       <form onSubmit={handleSubmit} className="space-y-3">
         <AuthFormAlert message={error} />
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">昵称</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="你的昵称"
-            required
-            className={fieldClass}
-          />
-        </div>
-        <div>
           <label className="mb-1 block text-sm font-medium text-neutral-700">邮箱</label>
           <input
             type="email"
@@ -102,6 +137,28 @@ export function Register() {
             className={fieldClass}
           />
         </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">验证码</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="6 位验证码"
+              required
+              maxLength={6}
+              className={`min-w-0 flex-1 ${fieldClass}`}
+            />
+            <button
+              type="button"
+              onClick={handleSendCode}
+              disabled={sendingCode || cooldown > 0}
+              className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              {sendingCode ? '发送中…' : cooldown > 0 ? `${cooldown}s` : '获取验证码'}
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-700">密码</label>
@@ -109,7 +166,7 @@ export function Register() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="至少 6 位"
+              placeholder="至少 8 位，含大小写和数字"
               required
               className={fieldClass}
             />
@@ -133,9 +190,10 @@ export function Register() {
         />
         <button
           type="submit"
-          className="w-full rounded-lg bg-neutral-900 py-2 text-sm font-medium text-white hover:opacity-90"
+          disabled={submitting}
+          className="w-full rounded-lg bg-neutral-900 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
-          注册
+          {submitting ? '注册中…' : '注册'}
         </button>
       </form>
     </AuthLayout>

@@ -1,10 +1,19 @@
 import { Link } from 'react-router-dom'
-import { Calendar, Flame, LogIn, Mail, PenLine, Trophy } from 'lucide-react'
+import { Calendar, LogIn, Mail, PenLine, Trophy } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
+import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
 
 export function UserCenter() {
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-neutral-400">
+        加载中…
+      </div>
+    )
+  }
 
   if (!isAuthenticated || !user) {
     return (
@@ -35,13 +44,20 @@ export function UserCenter() {
   }
 
   const stats = [
-    { label: '累计写作', value: user.totalWritings, unit: '篇', icon: PenLine },
-    { label: '累计字数', value: user.totalWords.toLocaleString(), unit: '字', icon: Trophy },
-    { label: '连续打卡', value: user.streakDays, unit: '天', icon: Flame },
+    { label: '累计写作', value: user.stats.totalWritings, unit: '篇', icon: PenLine },
+    { label: '累计字数', value: user.stats.totalWords.toLocaleString(), unit: '字', icon: Trophy },
+    {
+      label: '词库词条',
+      value: user.stats.vocabularyCount ?? 0,
+      unit: '个',
+      icon: Calendar,
+    },
   ]
 
+  const avatarLabel = getAvatarLabel(user)
+
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <div className="flex-1 overflow-y-auto overflow-anchor-none px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
       <div className="mx-auto max-w-2xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -50,7 +66,7 @@ export function UserCenter() {
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={() => void logout()}
             className="w-full rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50 sm:w-auto"
           >
             退出登录
@@ -59,24 +75,33 @@ export function UserCenter() {
 
         <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-8 sm:p-6">
           <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white">
-              {user.avatar}
-            </div>
+            {user.avatar?.startsWith('http') ? (
+              <img
+                src={user.avatar}
+                alt={user.nickname}
+                className="h-16 w-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white">
+                {avatarLabel}
+              </div>
+            )}
             <div>
-              <h3 className="text-lg font-medium text-neutral-900">{user.name}</h3>
+              <h3 className="text-lg font-medium text-neutral-900">{user.nickname}</h3>
               <div className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500">
                 <Mail size={14} />
                 {user.email}
               </div>
               <span className="mt-2 inline-block rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
-                {user.level}
+                {getVipLabel(user.vipLevel)}
               </span>
             </div>
           </div>
 
           <div className="mt-6 flex items-center gap-1.5 text-xs text-neutral-400">
             <Calendar size={13} />
-            加入时间：{user.joinedAt}
+            加入时间：{new Date(user.createdAt).toLocaleDateString('zh-CN')}
+            {user.locationText && ` · ${user.locationText}`}
           </div>
         </div>
 
@@ -96,7 +121,7 @@ export function UserCenter() {
           ))}
         </div>
 
-        <WritingCheckInPanel userId={user.id} />
+        <WritingCheckInPanel />
       </div>
     </div>
   )

@@ -1,111 +1,121 @@
-import type { StoredUser, UserProfile } from '../types'
-import { STATIC_USERS, createUserProfile } from '../data/mockUsers'
-import { SESSION_KEY, USERS_KEY, setSessionUserId } from '../storage/authStorage'
+import { API_PATHS } from './config'
+import { get, post } from './request'
 import {
-  clearVerificationCode,
-  sendVerificationCode,
-  verifyCode,
-} from '../storage/verificationCodeStorage'
+  clearAuthTokens,
+  getToken,
+  persistAuthSession,
+} from '../storage/tokenStorage'
+import type {
+  AuthSession,
+  AuthUserBrief,
+  SendCodePurpose,
+  UserProfile,
+} from '../types'
 
-function readUsers(): StoredUser[] {
-  const raw = localStorage.getItem(USERS_KEY)
-  if (!raw) {
-    writeUsers(STATIC_USERS)
-    return STATIC_USERS
+interface LoginResponseData {
+  token: string
+  refreshToken: string
+  expiresAt: string
+  user: AuthUserBrief
+}
+
+interface RegisterResponseData {
+  token: string
+  refreshToken?: string
+  expiresAt?: string
+  user: AuthUserBrief
+}
+
+function normalizeSession(data: LoginResponseData): AuthSession {
+  return {
+    token: data.token,
+    refreshToken: data.refreshToken,
+    expiresAt: data.expiresAt,
+    user: data.user,
   }
-  try {
-    return JSON.parse(raw) as StoredUser[]
-  } catch {
-    writeUsers(STATIC_USERS)
-    return STATIC_USERS
+}
+
+function storeSession(session: AuthSession): void {
+  persistAuthSession(session.token, session.refreshToken, session.expiresAt)
+}
+
+export async function sendEmailCode(
+  email: string,
+  purpose: SendCodePurpose,
+): Promise<void> {
+  await post(API_PATHS.auth.sendCode, { email: email.trim(), purpose }, { skipAuth: true })
+}
+
+export async function login(
+  email: string,
+  password: string,
+  code?: string,
+): Promise<AuthSession> {
+  const body: Record<string, string> = {
+    email: email.trim(),
+    password,
   }
-}
-
-function writeUsers(users: StoredUser[]): void {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users, null, 2))
-}
-
-export function getAllUsers(): StoredUser[] {
-  return readUsers()
-}
-
-export function findUserByEmail(email: string): StoredUser | undefined {
-  const normalized = email.trim().toLowerCase()
-  return readUsers().find((user) => user.email.toLowerCase() === normalized)
-}
-
-export function findUserById(id: string): StoredUser | undefined {
-  return readUsers().find((user) => user.id === id)
-}
-
-export function login(email: string, password: string): UserProfile {
-  const user = findUserByEmail(email)
-  if (!user || user.password !== password) {
-    throw new Error('邮箱或密码错误')
-  }
-  setSessionUserId(user.id)
-  return user.profile
-}
-
-export function register(name: string, email: string, password: string): UserProfile {
-  const users = readUsers()
-  if (users.some((user) => user.email === email)) {
-    throw new Error('该邮箱已被注册')
+  if (code?.trim()) {
+    body.code = code.trim()
   }
 
-  const id = `user-${crypto.randomUUID()}`
-  const profile = createUserProfile(id, name, email)
-  const newUser: StoredUser = { id, email, password, profile }
-
-  writeUsers([...users, newUser])
-  setSessionUserId(id)
-  return profile
+  const data = await post<LoginResponseData>(API_PATHS.auth.login, body, { skipAuth: true })
+  const session = normalizeSession(data)
+  storeSession(session)
+  return session
 }
 
-export function logout(): void {
-  setSessionUserId(null)
+export async function register(
+  email: string,
+  password: string,
+  code: string,
+): Promise<AuthSession> {
+  await post<RegisterResponseData>(
+    API_PATHS.auth.register,
+    { email: email.trim(), password, code: code.trim() },
+    { skipAuth: true },
+  )
+
+  // 后端注册仅返回 access token，自动登录以获取 refresh token
+  return login(email, password)
 }
 
-export function getCurrentUser(): UserProfile | null {
-  const sessionId = localStorage.getItem(SESSION_KEY)
-  if (!sessionId) return null
-  return findUserById(sessionId)?.profile ?? null
-}
-
-/** 发送邮箱验证码（演示模式，后续对接 POST /api/auth/send-code） */
-export function sendEmailCode(email: string): { demoCode?: string } {
-  const user = findUserByEmail(email.trim())
-  if (!user) {
-    throw new Error('该邮箱尚未注册')
-  }
-  return sendVerificationCode(email)
-}
-
-/** 重置密码（演示模式，后续对接 POST /api/auth/reset-password） */
-export function resetPassword(
+export async function resetPassword(
   email: string,
   code: string,
   newPassword: string,
-): void {
-  const normalized = email.trim()
-  const user = findUserByEmail(normalized)
-  if (!user) {
-    throw new Error('该邮箱尚未注册')
-  }
-  if (!verifyCode(normalized, code)) {
-    throw new Error('验证码错误或已过期')
-  }
-  if (newPassword.length < 6) {
-    throw new Error('密码至少 6 位')
-  }
+): Promise<void> {
+  await post(
+    API_PATHS.auth.resetPassword,
+    { email: email.trim(), code: code.trim(), newPassword },
+    { skipAuth: true },
+  )
+}
 
-  const users = readUsers()
-  const index = users.findIndex((item) => item.email === normalized)
-  if (index < 0) {
-    throw new Error('该邮箱尚未注册')
-  }
+export async function fetchUserProfile(): Promise<UserProfile> {
+  return get<UserProfile>(API_PATHS.user.profile)
+}
 
-  users[index] = { ...users[index], password: newPassword }
-  writeUsers(users)
-  clearVerificationCode(normalized)
+export async function logout(): Promise<void> {
+  try {
+    if (getToken()) {
+      await post(API_PATHS.auth.logout)
+    }
+  } catch {
+    // 本地仍清除凭证
+  } finally {
+    clearAuthTokens()
+  }
+}
+
+export async function restoreSession(): Promise<UserProfile | null> {
+  if (!getToken()) {
+    return null
+  }
+  try {
+    return await fetchUserProfile()
+  } catch {
+    clearAuthTokens()
+    return null
+  }
 }
