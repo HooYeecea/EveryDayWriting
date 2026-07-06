@@ -1,10 +1,15 @@
 import { API_PATHS } from './config'
-import { get, post } from './request'
+import { get, post, put } from './request'
 import {
   clearAuthTokens,
   getToken,
   persistAuthSession,
 } from '../storage/tokenStorage'
+import {
+  clearMustChangePassword,
+  getMustChangePassword,
+  setMustChangePassword,
+} from '../storage/mustChangePasswordStorage'
 import type {
   AuthSession,
   AuthUserBrief,
@@ -24,6 +29,12 @@ interface RegisterResponseData {
   refreshToken?: string
   expiresAt?: string
   user: AuthUserBrief
+}
+
+interface ChangePasswordResponseData {
+  token: string
+  refreshToken: string
+  expiresAt: string
 }
 
 function normalizeSession(data: LoginResponseData): AuthSession {
@@ -62,6 +73,7 @@ export async function login(
   const data = await post<LoginResponseData>(API_PATHS.auth.login, body, { skipAuth: true })
   const session = normalizeSession(data)
   storeSession(session)
+  setMustChangePassword(Boolean(session.user.mustChangePassword))
   return session
 }
 
@@ -92,6 +104,15 @@ export async function resetPassword(
   )
 }
 
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  const data = await put<ChangePasswordResponseData>(API_PATHS.user.password, {
+    oldPassword,
+    newPassword,
+  })
+  persistAuthSession(data.token, data.refreshToken, data.expiresAt)
+  clearMustChangePassword()
+}
+
 export async function fetchUserProfile(): Promise<UserProfile> {
   return get<UserProfile>(API_PATHS.user.profile)
 }
@@ -105,6 +126,7 @@ export async function logout(): Promise<void> {
     // 本地仍清除凭证
   } finally {
     clearAuthTokens()
+    clearMustChangePassword()
   }
 }
 
@@ -112,10 +134,14 @@ export async function restoreSession(): Promise<UserProfile | null> {
   if (!getToken()) {
     return null
   }
+  if (getMustChangePassword()) {
+    return null
+  }
   try {
     return await fetchUserProfile()
   } catch {
     clearAuthTokens()
+    clearMustChangePassword()
     return null
   }
 }

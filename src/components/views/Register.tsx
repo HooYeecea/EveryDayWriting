@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { isApiError } from '../../api/request'
 import { sendEmailCode } from '../../api/auth'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
 import { validatePassword } from '../../utils/authValidation'
+import { useEmailCodeCooldown } from '../../hooks/useEmailCodeCooldown'
+import { emailCodeCooldownLabel } from '../../storage/emailCodeCooldown'
 
 const fieldClass =
   'w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400'
@@ -23,16 +26,10 @@ export function Register() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
+  const { cooldown, startCooldown } = useEmailCodeCooldown('register', email)
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
-
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const timer = window.setInterval(() => setCooldown((value) => value - 1), 1000)
-    return () => window.clearInterval(timer)
-  }, [cooldown])
 
   if (isLoading) {
     return (
@@ -55,8 +52,11 @@ export function Register() {
     setError('')
     try {
       await sendEmailCode(email.trim(), 'register')
-      setCooldown(60)
+      startCooldown()
     } catch (err) {
+      if (isApiError(err) && err.isRateLimited) {
+        startCooldown()
+      }
       setError(err instanceof Error ? err.message : '验证码发送失败')
     } finally {
       setSendingCode(false)
@@ -91,8 +91,8 @@ export function Register() {
     setPrivacyWarning(false)
     setSubmitting(true)
     try {
-      await register(email.trim(), password, code.trim())
-      navigate(from, { replace: true })
+      const result = await register(email.trim(), password, code.trim())
+      navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败')
     } finally {
@@ -155,7 +155,7 @@ export function Register() {
               disabled={sendingCode || cooldown > 0}
               className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
             >
-              {sendingCode ? '发送中…' : cooldown > 0 ? `${cooldown}s` : '获取验证码'}
+              {emailCodeCooldownLabel(cooldown, sendingCode)}
             </button>
           </div>
         </div>

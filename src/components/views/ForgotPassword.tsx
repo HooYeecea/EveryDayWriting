@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { isApiError } from '../../api/request'
 import { sendEmailCode, resetPassword } from '../../api/auth'
 import { AuthLayout } from '../layout/AuthLayout'
 import { validatePassword } from '../../utils/authValidation'
+import { useEmailCodeCooldown } from '../../hooks/useEmailCodeCooldown'
+import { emailCodeCooldownLabel } from '../../storage/emailCodeCooldown'
 
 export function ForgotPassword() {
   const navigate = useNavigate()
@@ -15,16 +18,10 @@ export function ForgotPassword() {
   const [success, setSuccess] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
+  const { cooldown, startCooldown } = useEmailCodeCooldown('reset', email)
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
-
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const timer = window.setInterval(() => setCooldown((value) => value - 1), 1000)
-    return () => window.clearInterval(timer)
-  }, [cooldown])
 
   const handleSendCode = async () => {
     setError('')
@@ -39,8 +36,11 @@ export function ForgotPassword() {
     try {
       await sendEmailCode(email.trim(), 'reset')
       setSuccess('验证码已发送，请查收邮箱')
-      setCooldown(60)
+      startCooldown()
     } catch (err) {
+      if (isApiError(err) && err.isRateLimited) {
+        startCooldown()
+      }
       setError(err instanceof Error ? err.message : '发送失败')
     } finally {
       setIsSending(false)
@@ -136,7 +136,7 @@ export function ForgotPassword() {
               disabled={isSending || cooldown > 0}
               className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSending ? '发送中…' : cooldown > 0 ? `${cooldown}s` : '获取验证码'}
+              {emailCodeCooldownLabel(cooldown, isSending)}
             </button>
           </div>
         </div>

@@ -6,16 +6,28 @@ interface AuthLayoutProps {
   subtitle: string
   children: ReactNode
   footer: ReactNode
+  /** 顶部品牌链接；传 null 时不跳转（强制改密等场景） */
+  brandHref?: string | null
 }
 
-export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+export function AuthLayout({
+  title,
+  subtitle,
+  children,
+  footer,
+  brandHref = '/writing',
+}: AuthLayoutProps) {
   return (
     <div className="min-h-full bg-[#fafafa] px-4 py-5 sm:py-6">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-4 text-center sm:mb-5">
-          <Link to="/writing" className="text-base font-semibold text-neutral-900">
-            Everyday Writing
-          </Link>
+          {brandHref === null ? (
+            <p className="text-base font-semibold text-neutral-900">Everyday Writing</p>
+          ) : (
+            <Link to={brandHref} className="text-base font-semibold text-neutral-900">
+              Everyday Writing
+            </Link>
+          )}
           <p className="mt-0.5 text-xs text-neutral-400">每日英语写作</p>
         </div>
 

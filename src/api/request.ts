@@ -80,6 +80,12 @@ async function parseResponse<T>(response: Response): Promise<T> {
   try {
     json = (await response.json()) as ApiResponse<T>
   } catch {
+    if (response.status === 401) {
+      throw new ApiError(401, '登录状态已失效，请重新登录', 401)
+    }
+    if (response.status === 403) {
+      throw new ApiError(403, '无权访问，请先完成必要操作', 403)
+    }
     throw new ApiError(response.status, '响应解析失败', response.status)
   }
 

@@ -7,6 +7,8 @@ import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
+import { useEmailCodeCooldown } from '../../hooks/useEmailCodeCooldown'
+import { emailCodeCooldownLabel } from '../../storage/emailCodeCooldown'
 
 export function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
@@ -21,6 +23,7 @@ export function Login() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
+  const { cooldown, startCooldown } = useEmailCodeCooldown('login_captcha', email)
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
@@ -46,7 +49,11 @@ export function Login() {
     setError('')
     try {
       await sendEmailCode(email.trim(), 'login_captcha')
+      startCooldown()
     } catch (err) {
+      if (isApiError(err) && err.isRateLimited) {
+        startCooldown()
+      }
       setError(err instanceof Error ? err.message : '验证码发送失败')
     } finally {
       setSendingCode(false)
@@ -65,8 +72,8 @@ export function Login() {
     setPrivacyWarning(false)
     setSubmitting(true)
     try {
-      await login(email.trim(), password, requireCaptcha ? code : undefined)
-      navigate(from, { replace: true })
+      const result = await login(email.trim(), password, requireCaptcha ? code : undefined)
+      navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
     } catch (err) {
       if (isApiError(err)) {
         const data = err.data as LoginErrorData | null
@@ -154,10 +161,10 @@ export function Login() {
               <button
                 type="button"
                 onClick={handleSendCaptcha}
-                disabled={sendingCode}
+                disabled={sendingCode || cooldown > 0}
                 className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
               >
-                {sendingCode ? '发送中…' : '获取验证码'}
+                {emailCodeCooldownLabel(cooldown, sendingCode)}
               </button>
             </div>
           </div>
