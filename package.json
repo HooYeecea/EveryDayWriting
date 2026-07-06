@@ -4,10 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"node server/index.js\"",
-    "dev:web": "vite",
+    "dev": "concurrently \"npm run dev:remote\" \"node server/index.js\"",
+    "dev:web": "npm run dev:remote",
+    "dev:local": "vite --mode localhost",
+    "dev:remote": "vite --mode remote",
     "dev:server": "node server/index.js",
     "build": "tsc -b && vite build",
+    "build:local": "tsc -b && vite build --mode localhost",
+    "build:remote": "tsc -b && vite build --mode remote",
     "lint": "oxlint",
     "preview": "vite preview"
   },

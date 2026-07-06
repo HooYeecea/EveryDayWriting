@@ -22,6 +22,7 @@ export function getApiBaseUrl(): string {
 export const API_PATHS = {
   auth: {
     sendCode: '/auth/send-code',
+    sendGraphCode: '/auth/send-graphcode',
     register: '/auth/register',
     login: '/auth/login',
     resetPassword: '/auth/reset-password',

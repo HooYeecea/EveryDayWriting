@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { UserProfile } from '../types'
+import type { LoginGraphCaptcha, UserProfile } from '../types'
 import * as authApi from '../api/auth'
 import { setUnauthorizedHandler } from '../api/request'
 import { getToken } from '../storage/tokenStorage'
@@ -16,7 +16,7 @@ interface AuthContextValue {
   user: UserProfile | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string, code?: string) => Promise<void>
+  login: (email: string, password: string, captcha?: LoginGraphCaptcha) => Promise<void>
   register: (email: string, password: string, code: string) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
-  const login = useCallback(async (email: string, password: string, code?: string) => {
-    await authApi.login(email, password, code)
+  const login = useCallback(async (email: string, password: string, captcha?: LoginGraphCaptcha) => {
+    await authApi.login(email, password, captcha)
     const profile = await authApi.fetchUserProfile()
     setUser(profile)
   }, [])

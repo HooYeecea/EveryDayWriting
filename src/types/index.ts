@@ -265,3 +265,15 @@ export interface LoginErrorData {
   remainingAttempts?: number
   requireCaptcha?: boolean
 }
+
+/** 图形验证码（GET /auth/send-graphcode） */
+export interface GraphCaptcha {
+  captchaId: string
+  imageBase64: string
+}
+
+/** 登录时携带的图形验证码（对应 LoginRequest.graphCode） */
+export interface LoginGraphCaptcha {
+  captchaId: string
+  graphCode: string
+}
