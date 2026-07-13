@@ -20,21 +20,81 @@
 
 ```
 src/
-├── api/          # API 请求层（axios 封装 + 各模块接口）
-├── components/   # 共享组件
-├── pages/        # 页面组件
-├── hooks/        # 自定义 Hooks
-├── stores/       # 状态管理
-├── types/        # TypeScript 类型定义
-├── utils/        # 工具函数
-└── assets/       # 静态资源
+├── api/          # API 请求层
+├── components/
+│   ├── auth/     # 登录/注册/隐私协议组件
+│   ├── common/   # ConfirmDialog 等通用组件
+│   ├── editor/   # NotionEditor (Tiptap)
+│   ├── layout/   # Layout, Sidebar, MobileBottomNav, AuthLayout
+│   ├── user/     # 用户中心子面板 (ProfileEditor, CheckIn, Token, Privacy, Announcements)
+│   ├── views/    # 页面级组件 (StartWriting, WritingRecords, UserCenter, Login, Register 等)
+│   ├── vocabulary/ # 词库相关组件
+│   └── writing/  # 写作辅助 (Timer, AI, Topic, SubmitNav 等)
+├── config/       # routes.tsx
+├── context/      # AuthContext
+├── storage/      # localStorage 封装
+├── types/        # TypeScript 类型
+└── utils/        # 工具函数
 ```
 
----
+## 后端配置
+
+- **生产后端**: `https://kefumiao.top`
+- 配置文件: `.env.remote` → `DEV_API_PROXY_TARGET=https://kefumiao.top`
+- 开发命令: `npm run dev` (Vite + Express) 或 `npm run dev:remote` (仅 Vite)
+- Vite 代理将 `/api/v1/*` 转发到 `DEV_API_PROXY_TARGET`
+- 前端端口: `5173`, Express 中间层: `3001`
+
+## 设计风格
+
+### 字体
+- **正文/编辑器**: Merriweather (serif) — 通过 `var(--font-serif)` 和 Tailwind `font-sans` 令牌
+- **UI/导航/标题**: Montserrat (sans-serif) — `var(--font-sans)`
+- **代码**: Inconsolata (mono) — `var(--font-mono)`
+- 字体通过 `index.html` 中 Google Fonts `<link>` 加载
+- Tailwind `@theme` 在 `src/index.css` 中覆盖了 `--font-sans` / `--font-serif` / `--font-mono`
+
+### 配色
+- 保留原始 Tailwind neutral 色阶，不做全局颜色覆盖
+- 背景 `#fafafa`，正文 `#37352f`
+- 无蓝/紫色系
+
+### AuthLayout 卡片设计
+- 表单卡片垂直居中 (`items-center justify-center`)
+- 品牌名在卡片上方独立展示
+- 卡片顶部 4px 黑线 (`border-t-4 border-neutral-900`)
+- 标题居中大字，标签使用 Montserrat 小号大写字母
+- 输入框浅灰底 (`bg-neutral-50`)，聚焦变白
+- 提交按钮黑底白字大写，hover 变 `neutral-800`
+
+### 编辑器排版
+- `.notion-editor .tiptap` — Merriweather 字体，line-height 1.75
+- h1-h3 使用 Montserrat + 900 字重 + 宽松间距
+- blockquote 左边 4px 黑线 + 斜体 + 较大字号
+- 段落间距 `1.75em`
+
+## 用户中心结构 (2026-07-13 重构)
+
+四大标签页，共享顶部资料卡：
+
+| 标签 | 内容 |
+|------|------|
+| 概览 | AnnouncementsPanel (系统公告) |
+| 打卡 | WritingCheckInPanel (打卡日历) |
+| 用量 | TokenUsagePanel (Token 统计与预算) |
+| 设置 | UserProfileEditor + PrivacySettingsPanel |
+
+页面顶部 sticky header 包含用户名/VIP等级/退出按钮。资料卡+统计数字始终可见，不受标签切换影响。
+
+## 关键交互细节
+
+- 侧栏激活态: `bg-neutral-100 font-medium text-neutral-900`
+- 页面切换时组件保持挂载 (hidden 而非 unmount)，写作内容不丢失
+- 写作辅助面板桌面右侧窄条，手机浮动拖动
+- 版本翻页动效使用 3D transform + cubic-bezier
+- 打卡日历视图切换由 JS 控制高度缓动
 
 ## 设计铁律 · 反主流美学
-
-你是一位资深独立设计师，专注于「反主流」的网页美学。你鄙视千篇一律的 SaaS 模板，追求每个像素都有温度。
 
 ### 绝对禁止项
 
@@ -48,11 +108,6 @@ src/
 - 完美居中对齐
 - 等宽多栏（必须不对称）
 
-#### 文案禁止
-- 高深的专业名词和无意义的空话
-- Lorem Ipsum 占位文本
-- 被动语态和长句
-
 #### 组件禁止
 - Shadcn/Material UI 默认组件（必须深度定制）
 - Emoji 作为功能图标
@@ -62,16 +117,7 @@ src/
 
 | 用途 | 来源 |
 |------|------|
-| 图标 | [Iconify](https://iconify.design) |
-| 占位图 | [Picsum Photos](https://picsum.photos) |
-| 真实图片 | [Pexels](https://www.pexels.com) |
-| 插画 | [unDraw](https://undraw.co) |
-
-### 设计哲学
-
-- **有温度的像素**：拒绝冷冰冰的机械化排版，每个间距、每个颜色都有手工打磨的痕迹
-- **不对称的平衡**：用不对称创造视觉张力，但在整体页面上保持重量平衡
-- **质感的追求**：背景必须有纹理或噪点，卡片必须有微妙的阴影和边框，让平面变成立体
-- **呼吸感**：留白要大胆，但不均匀——大片的空白旁边可能挤着密集的信息块
-- **自定义动画**：不使用 `ease-in-out`，用自定义贝塞尔曲线，让过渡有「弹性」或「迟滞感」
-- **手写感的排版**：字体大小不应成等差数列，行高要略大于默认，标题和正文之间要有「断裂」式的对比
+| 图标 | lucide-react (当前) / Iconify (推荐) |
+| 占位图 | Picsum Photos |
+| 真实图片 | Pexels |
+| 插画 | unDraw |
