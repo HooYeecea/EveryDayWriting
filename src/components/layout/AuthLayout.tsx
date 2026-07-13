@@ -18,24 +18,49 @@ export function AuthLayout({
   brandHref = '/writing',
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-full bg-[#fafafa] px-4 py-5 sm:py-6">
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-4 text-center sm:mb-5">
+    <div className="flex min-h-full items-center justify-center bg-[#fafafa] px-4 py-10 sm:py-16">
+      <div className="w-full max-w-sm">
+        {/* ── Brand ── */}
+        <div className="mb-8 text-center">
           {brandHref === null ? (
-            <p className="text-base font-semibold text-neutral-900">Everyday Writing</p>
+            <p className="font-sans text-xl font-bold tracking-tight text-neutral-900">
+              Everyday Writing
+            </p>
           ) : (
-            <Link to={brandHref} className="text-base font-semibold text-neutral-900">
+            <Link
+              to={brandHref}
+              className="font-sans text-xl font-bold tracking-tight text-neutral-900"
+            >
               Everyday Writing
             </Link>
           )}
-          <p className="mt-0.5 text-xs text-neutral-400">每日英语写作</p>
+          <p className="mt-1 font-sans text-xs tracking-wide text-neutral-400">
+            每日英语写作
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-          <h1 className="text-lg font-semibold text-neutral-900 sm:text-xl">{title}</h1>
-          <p className="mt-0.5 text-sm text-neutral-400">{subtitle}</p>
-          <div className="mt-4">{children}</div>
-          <div className="mt-4 border-t border-neutral-100 pt-4 text-sm text-neutral-500">
+        {/* ── Card ── */}
+        <div className="rounded-xl border border-neutral-200 bg-white px-6 py-8 shadow-sm">
+          {/* ── TS-style 4px top accent ── */}
+          <div className="-mx-6 -mt-8 mb-8 border-t-4 border-neutral-900" />
+
+          {/* ── Title ── */}
+          <h1 className="mb-6 text-center font-sans text-2xl font-bold tracking-wide text-neutral-900">
+            {title}
+          </h1>
+
+          {/* ── Subtitle (optional) ── */}
+          {subtitle ? (
+            <p className="-mt-4 mb-6 text-center font-sans text-sm text-neutral-400">
+              {subtitle}
+            </p>
+          ) : null}
+
+          {/* ── Form ── */}
+          <div className="space-y-4">{children}</div>
+
+          {/* ── Footer ── */}
+          <div className="mt-6 border-t border-neutral-100 pt-5 text-center text-sm text-neutral-500">
             {footer}
           </div>
         </div>

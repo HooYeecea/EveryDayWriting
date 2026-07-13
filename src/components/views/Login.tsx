@@ -168,7 +168,7 @@ export function Login() {
   return (
     <AuthLayout
       title="登录"
-      subtitle="登录后即可保存和提交写作"
+      subtitle=""
       footer={
         <div className="flex w-full flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <Link
@@ -191,28 +191,28 @@ export function Login() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <AuthFormAlert message={error} />
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">邮箱</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">邮箱</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="your@email.com"
             required
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">密码</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">密码</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="请输入密码"
             required
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
         {requireCaptcha && (
@@ -261,7 +261,7 @@ export function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="w-full rounded-md bg-neutral-900 py-3 font-sans text-sm font-semibold tracking-wider text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 uppercase"
         >
           {submitting ? '登录中…' : '登录'}
         </button>

@@ -25,7 +25,7 @@ export const PANEL_FOOTER_INNER_CLASS =
 export const SIDEBAR_FOOTER_INNER_CLASS = 'flex h-full w-full items-center px-2'
 
 /** 与侧边栏品牌标题一致 */
-export const PANEL_TITLE_CLASS = 'text-base font-semibold tracking-tight text-neutral-900'
+export const PANEL_TITLE_CLASS = 'font-sans text-base font-semibold tracking-tight text-neutral-900'
 
 /** 与侧边栏副标题一致 */
-export const PANEL_SUBTITLE_CLASS = 'mt-0.5 text-xs text-neutral-400'
+export const PANEL_SUBTITLE_CLASS = 'mt-0.5 font-sans text-xs text-neutral-400'

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { isApiError } from '../../api/request'
 import { sendEmailCode, resetPassword } from '../../api/auth'
@@ -107,19 +107,19 @@ export function ForgotPassword() {
         )}
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">邮箱</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">邮箱</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="请输入注册邮箱"
             required
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">验证码</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">验证码</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -142,33 +142,33 @@ export function ForgotPassword() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">新密码</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">新密码</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="至少 8 位，含大小写和数字"
             required
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">确认新密码</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">确认新密码</label>
           <input
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="再次输入新密码"
             required
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
+            className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="w-full rounded-md bg-neutral-900 py-3 font-sans text-sm font-semibold tracking-wider text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 uppercase"
         >
           {isSubmitting ? '重置中…' : '重置密码'}
         </button>

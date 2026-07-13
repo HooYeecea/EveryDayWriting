@@ -39,8 +39,8 @@ export function Layout({ children }: LayoutProps) {
           <Menu size={20} />
         </button>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-neutral-900">Everyday Writing</p>
-          <p className="text-xs text-neutral-400">每日英语写作</p>
+          <p className="truncate font-sans text-sm font-semibold text-neutral-900">Everyday Writing</p>
+          <p className="font-sans text-xs text-neutral-400">每日英语写作</p>
         </div>
       </header>
 

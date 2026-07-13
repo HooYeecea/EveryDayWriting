@@ -1,6 +1,16 @@
 @import 'tailwindcss';
 
-* {
+/* ── Font tokens only (colors stay vanilla Tailwind) ── */
+@theme {
+  --font-sans: 'Montserrat', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Merriweather', Georgia, serif;
+  --font-mono: 'Inconsolata', monospace;
+}
+
+/* ── Base ── */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -17,20 +27,44 @@ body,
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background: #fafafa;
   color: #37352f;
 }
 
-/* Notion-like editor */
+/* ── Code ── */
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+}
+
+/* ── Twenty Sixteen utility classes ── */
+.ts-link-underline {
+  box-shadow: 0 1px 0 0 currentColor;
+}
+.ts-link-underline:hover,
+.ts-link-underline:focus {
+  box-shadow: none;
+}
+
+.ts-section-top {
+  border-top: 4px solid #1a1a1a;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Notion Editor — Twenty Sixteen typography
+   ══════════════════════════════════════════════════════════════ */
 .notion-editor .tiptap {
   outline: none;
   min-height: 280px;
   padding: 4px 0 80px;
   font-size: 15px;
   line-height: 1.75;
-  color: #37352f;
+  color: #1a1a1a;
+  font-family: var(--font-serif);
 }
 
 @media (min-width: 640px) {
@@ -47,7 +81,8 @@ body {
 }
 
 .notion-editor .tiptap p.is-editor-empty:first-child::before {
-  color: #b4b4b4;
+  color: #686868;
+  font-family: var(--font-sans);
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -55,52 +90,68 @@ body {
 }
 
 .notion-editor .tiptap h1 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  line-height: 1.3;
-  margin: 1.5rem 0 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 2em 0 1em;
 }
 
 .notion-editor .tiptap h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1.35;
-  margin: 1.25rem 0 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 1.4375rem;
+  font-weight: 900;
+  line-height: 1.2174;
+  margin: 2.4348em 0 1.2174em;
 }
 
 .notion-editor .tiptap h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.4;
-  margin: 1rem 0 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 1.1875rem;
+  font-weight: 900;
+  line-height: 1.1053;
+  margin: 2.9474em 0 1.4737em;
 }
 
 .notion-editor .tiptap p {
-  margin: 0.25rem 0;
+  margin: 0 0 1.75em;
 }
 
 .notion-editor .tiptap ul,
 .notion-editor .tiptap ol {
   padding-left: 1.5rem;
-  margin: 0.5rem 0;
+  margin: 0 0 1.75em 1.25em;
 }
 
 .notion-editor .tiptap blockquote {
-  border-left: 3px solid #e9e9e7;
-  padding-left: 1rem;
-  margin: 0.75rem 0;
-  color: #787774;
+  border: 0 solid #1a1a1a;
+  border-left-width: 4px;
+  color: #686868;
+  font-size: 1.1875rem;
+  font-style: italic;
+  line-height: 1.4737;
+  margin: 0 0 1.4737em;
+  padding: 0 0 0 1.2632em;
 }
 
 .notion-editor .tiptap strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .notion-editor .tiptap em {
   font-style: italic;
 }
 
-/* 认证页切换：双页交叉淡入淡出 */
+.notion-editor .tiptap code {
+  background-color: #d1d1d1;
+  padding: 0.125em 0.25em;
+  font-family: var(--font-mono);
+  font-size: 1em;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Auth route transitions
+   ══════════════════════════════════════════════════════════════ */
 .auth-route-shell {
   position: relative;
   height: 100vh;
@@ -118,9 +169,7 @@ body {
   will-change: opacity, transform;
 }
 
-.auth-route-layer-static {
-  z-index: 1;
-}
+.auth-route-layer-static { z-index: 1; }
 
 .auth-route-layer-enter {
   z-index: 2;
@@ -134,43 +183,24 @@ body {
 }
 
 @keyframes auth-layer-in {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes auth-layer-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-16px);
-  }
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-16px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .auth-route-layer-enter,
-  .auth-route-layer-exit {
-    animation: none;
-  }
+  .auth-route-layer-exit { animation: none; }
 }
 
-/* 打卡日历：视图切换时由 JS 缓动控制高度，避免 React 同帧更新导致 transition 失效 */
-.checkin-calendar-panel {
-  overflow-anchor: none;
-}
-
-.checkin-calendar-shell {
-  overflow: hidden;
-  overflow-anchor: none;
-}
+/* ══════════════════════════════════════════════════════════════
+   Check-in calendar
+   ══════════════════════════════════════════════════════════════ */
+.checkin-calendar-panel { overflow-anchor: none; }
+.checkin-calendar-shell { overflow: hidden; overflow-anchor: none; }
 
 .checkin-calendar-layer {
   position: absolute;
@@ -181,116 +211,49 @@ body {
 }
 
 .checkin-calendar-layer.is-active {
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 2;
-  visibility: visible;
+  opacity: 1; pointer-events: auto; z-index: 2; visibility: visible;
 }
-
 .checkin-calendar-layer.is-inactive {
-  opacity: 0;
-  pointer-events: none;
-  z-index: 1;
-  visibility: hidden;
+  opacity: 0; pointer-events: none; z-index: 1; visibility: hidden;
 }
 
-.checkin-calendar-inner {
-  width: 100%;
-}
+.checkin-calendar-inner { width: 100%; }
 
-.checkin-slide-enter-next {
-  animation: checkin-slide-next 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.checkin-slide-enter-prev {
-  animation: checkin-slide-prev 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+.checkin-slide-enter-next { animation: checkin-slide-next 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.checkin-slide-enter-prev { animation: checkin-slide-prev 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 @keyframes checkin-slide-next {
-  from {
-    opacity: 0.45;
-    transform: translateX(14px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0.45; transform: translateX(14px); }
+  to   { opacity: 1;    transform: translateX(0); }
 }
-
 @keyframes checkin-slide-prev {
-  from {
-    opacity: 0.45;
-    transform: translateX(-14px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0.45; transform: translateX(-14px); }
+  to   { opacity: 1;    transform: translateX(0); }
 }
 
-/* 写作记录：版本切换翻页动效 */
-.version-page-viewport {
-  overflow: hidden;
-  touch-action: pan-y;
-  perspective: 1200px;
-}
+/* ══════════════════════════════════════════════════════════════
+   Version page flip
+   ══════════════════════════════════════════════════════════════ */
+.version-page-viewport { overflow: hidden; touch-action: pan-y; perspective: 1200px; }
+.version-page-panel { will-change: transform, opacity; backface-visibility: hidden; transform-origin: center center; }
 
-.version-page-panel {
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-  transform-origin: center center;
-}
-
-.version-page-enter-next {
-  animation: version-page-enter-next 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.version-page-enter-prev {
-  animation: version-page-enter-prev 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+.version-page-enter-next { animation: version-page-enter-next 0.62s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.version-page-enter-prev { animation: version-page-enter-prev 0.62s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 @keyframes version-page-enter-next {
-  from {
-    opacity: 0.35;
-    transform: translate3d(40px, 0, 0) rotateY(-5deg);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotateY(0deg);
-  }
+  from { opacity: 0.35; transform: translate3d(40px, 0, 0) rotateY(-5deg); }
+  to   { opacity: 1;    transform: translate3d(0, 0, 0) rotateY(0deg); }
 }
-
 @keyframes version-page-enter-prev {
-  from {
-    opacity: 0.35;
-    transform: translate3d(-40px, 0, 0) rotateY(5deg);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotateY(0deg);
-  }
+  from { opacity: 0.35; transform: translate3d(-40px, 0, 0) rotateY(5deg); }
+  to   { opacity: 1;    transform: translate3d(0, 0, 0) rotateY(0deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .checkin-calendar-layer {
-    transition: none;
-  }
-
-  .checkin-calendar-shell {
-    transition: none;
-  }
-
+  .checkin-calendar-layer,
+  .checkin-calendar-shell { transition: none; }
   .checkin-slide-enter-next,
-  .checkin-slide-enter-prev {
-    animation: none;
-  }
-
+  .checkin-slide-enter-prev,
   .version-page-enter-next,
-  .version-page-enter-prev {
-    animation: none;
-  }
+  .version-page-enter-prev { animation: none; }
 }

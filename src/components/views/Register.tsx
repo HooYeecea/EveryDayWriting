@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import type { AuthLoginResult } from '../../types'
 import { isApiError } from '../../api/request'
@@ -204,7 +204,7 @@ export function Register() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-neutral-900 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="w-full rounded-md bg-neutral-900 py-3 font-sans text-sm font-semibold tracking-wider text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 uppercase"
         >
           {submitting ? '注册中…' : '注册'}
         </button>
