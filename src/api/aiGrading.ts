@@ -55,6 +55,15 @@ export async function runPreSubmitGrading(content: string): Promise<PreSubmitGra
           GrammarCheckResult | StructureResult | VocabularyCheckResult
         >(result.content.trim())
         stageContents[task.purpose] = parsed
+        if (import.meta.env.DEV) {
+          console.debug(
+            `[aiGrading] ${task.purpose} 解析结果:`,
+            typeof parsed === 'string' ? 'string (markdown 兼容)' : 'object',
+            typeof parsed === 'object' ? Object.keys(parsed) : parsed.slice(0, 120),
+          )
+        }
+      } else {
+        console.warn(`[aiGrading] ${task.purpose} 返回空内容`)
       }
       completedTasks.push(task.label)
     } catch (err) {

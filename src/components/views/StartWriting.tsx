@@ -380,7 +380,7 @@ export function StartWriting() {
         settings.encryptedKey &&
         settings.providerId &&
         settings.modelId &&
-        (settings.postSubmitReview || settings.postSubmitSuggestions)
+        (settings.postSubmitReview || settings.postSubmitStructure || settings.postSubmitSuggestions)
 
       let gradingSessionId: string | undefined
       let completedTasks: string[] = []

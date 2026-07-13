@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Calendar, Check, LogIn, LogOut, Mail, PenLine, Pencil, Trophy, Bell, Gauge, Settings, CalendarDays, X } from 'lucide-react'
+import { Calendar, Camera, Check, Loader2, LogIn, LogOut, Mail, PenLine, Pencil, Trophy, Bell, Gauge, Settings, CalendarDays, X } from 'lucide-react'
 import { logoutAll } from '../../api/auth'
-import { updateUserProfile } from '../../api/user'
+import { updateUserProfile, uploadFile } from '../../api/user'
 import { useAuth } from '../../context/AuthContext'
 import { AiAssistPanel } from '../user/AiAssistPanel'
 import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
@@ -72,6 +72,8 @@ export function UserCenter() {
   const [nicknameDraft, setNicknameDraft] = useState(user.nickname)
   const [savingNickname, setSavingNickname] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarFileRef = useRef<HTMLInputElement>(null)
   const nicknameInputRef = useRef<HTMLInputElement>(null)
 
   const avatarSrc = avatarError ? null : resolveAssetUrl(user.avatar)
@@ -109,6 +111,23 @@ export function UserCenter() {
   const handleNicknameKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') saveNickname()
     if (e.key === 'Escape') cancelEditingNickname()
+  }
+
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      const { url } = await uploadFile(file)
+      await updateUserProfile({ avatar: url })
+      await refreshProfile()
+      setAvatarError(false)
+    } catch {
+      // silently fail, avatar stays as-is
+    } finally {
+      setAvatarUploading(false)
+      event.target.value = ''
+    }
   }
 
   const handleLogoutAll = async () => {
@@ -175,18 +194,37 @@ export function UserCenter() {
           {/* ── Profile card (always visible) ── */}
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-              {avatarSrc ? (
-                <img
-                  src={avatarSrc}
-                  alt={user.nickname}
-                  className="h-16 w-16 rounded-full object-cover"
-                  onError={() => setAvatarError(true)}
-                />
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white">
-                  {avatarLabel}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => avatarFileRef.current?.click()}
+                disabled={avatarUploading}
+                className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-lg font-semibold text-white"
+              >
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt={user.nickname}
+                    className="h-full w-full object-cover"
+                    onError={() => setAvatarError(true)}
+                  />
+                ) : (
+                  avatarLabel
+                )}
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  {avatarUploading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Camera size={16} />
+                  )}
+                </span>
+              </button>
+              <input
+                ref={avatarFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
               <div>
                 {editingNickname ? (
                   <div className="flex items-center gap-1.5">

@@ -103,7 +103,7 @@ export function WritingRecordsSearchBar({
                     isLast ? 'rounded-r-full' : ''
                   } ${
                     active
-                      ? 'border-neutral-400 bg-neutral-100 text-neutral-800 font-medium'
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-medium'
                       : 'border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50'
                   }`}
                 >

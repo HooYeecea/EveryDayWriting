@@ -62,18 +62,19 @@ export function ConfirmDialog({
           <X size={18} />
         </button>
 
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-full ${
-            isWarning ? 'bg-amber-50' : 'bg-neutral-100'
-          }`}
-        >
-          <Icon size={22} className={isWarning ? 'text-amber-600' : 'text-neutral-500'} />
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+              isWarning ? 'bg-amber-50' : 'bg-neutral-100'
+            }`}
+          >
+            <Icon size={18} className={isWarning ? 'text-amber-600' : 'text-neutral-500'} />
+          </div>
+          <h2 id="confirm-dialog-title" className="text-lg font-semibold text-neutral-900">
+            {title}
+          </h2>
         </div>
-
-        <h2 id="confirm-dialog-title" className="mt-4 text-lg font-semibold text-neutral-900">
-          {title}
-        </h2>
-        <div className="mt-2 text-sm leading-relaxed text-neutral-500">{message}</div>
+        <div className="mt-4 text-sm leading-relaxed text-neutral-500">{message}</div>
 
         <div className="mt-6 flex gap-2.5">
           <button

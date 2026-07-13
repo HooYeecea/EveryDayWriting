@@ -16,17 +16,46 @@ type GradingPreviewMap = Record<string, GradingPreview>
 
 /**
  * 尝试将 AI 返回的 content 解析为 JSON；解析失败则返回原始字符串（兼容旧版 markdown）。
+ * 支持：纯 JSON、markdown 代码块包裹的 JSON、文字中嵌入的 JSON。
  */
 export function parseAiProxyContent<T>(content: string): T | string {
-  try {
-    const trimmed = content.trim()
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+  const trimmed = content.trim()
+  if (!trimmed) return content
+
+  // 1) 直接尝试解析整个字符串
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
       return JSON.parse(trimmed) as T
+    } catch {
+      // 继续尝试其他方式
     }
-    return content
-  } catch {
-    return content
   }
+
+  // 2) 尝试提取 markdown 代码块中的 JSON
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (fenceMatch) {
+    const inner = fenceMatch[1].trim()
+    if (inner.startsWith('{') || inner.startsWith('[')) {
+      try {
+        return JSON.parse(inner) as T
+      } catch {
+        // 继续尝试
+      }
+    }
+  }
+
+  // 3) 尝试在文本中定位 JSON 对象
+  const objectMatch = trimmed.match(/\{[\s\S]*\}/)
+  if (objectMatch) {
+    try {
+      return JSON.parse(objectMatch[0]) as T
+    } catch {
+      // 继续尝试
+    }
+  }
+
+  // 都失败则返回原始字符串（旧版 markdown）
+  return content
 }
 
 function readAll(): GradingPreviewMap {

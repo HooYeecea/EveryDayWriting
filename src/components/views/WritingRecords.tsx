@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BarChart3, Check, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, BarChart3, Check, ClipboardList, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
 import {
   deleteDraft,
   deleteSubmit,
@@ -55,6 +55,24 @@ function formatTime(time: string) {
 /** 判断是否为结构化对象（非字符串） */
 function isStructured<T>(value: unknown): value is T {
   return value !== null && value !== undefined && typeof value !== 'string'
+}
+
+/** 兼容 AI 返回的逐段点评字段名差异 */
+function normalizeParagraphFb(raw: unknown): { index: number; text: string } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as Record<string, unknown>
+  const index =
+    Number(item.paragraphIndex ?? item.ParagraphIndex ?? item.index ?? item.Index ?? -1)
+  if (index < 0 || !Number.isFinite(index)) return null
+  const text =
+    (typeof item.feedback === 'string' && item.feedback) ||
+    (typeof item.Feedback === 'string' && item.Feedback) ||
+    (typeof item.comment === 'string' && item.comment) ||
+    (typeof item.Comment === 'string' && item.Comment) ||
+    (typeof item.text === 'string' && item.text) ||
+    ''
+  if (!text) return null
+  return { index: index + 1, text } // 后端 0-based → 显示 1-based
 }
 
 /** 从 grading preview 中提取 grammar 结构化数据 */
@@ -341,8 +359,10 @@ export function WritingRecords() {
         <div className={PANEL_HEADER_CLASS}>
           <div className={PANEL_HEADER_ROW_CLASS}>
             <div className="min-w-0">
-              <h2 className={PANEL_TITLE_CLASS}>写作记录</h2>
-              <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>草稿与提交记录</p>
+              <h2 className={`${PANEL_TITLE_CLASS} flex items-center gap-2`}>
+                <ClipboardList size={18} strokeWidth={2} className="shrink-0 text-neutral-800" />
+                写作记录
+              </h2>
             </div>
           </div>
         </div>
@@ -357,8 +377,8 @@ export function WritingRecords() {
             }}
             className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:text-xs ${
               tab === 'saves'
-                ? 'bg-neutral-100 font-medium text-neutral-900'
-                : 'text-neutral-500 hover:bg-neutral-50'
+                ? 'bg-neutral-900 font-medium text-white'
+                : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
             草稿
@@ -372,8 +392,8 @@ export function WritingRecords() {
             }}
             className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:text-xs ${
               tab === 'submits'
-                ? 'bg-neutral-100 font-medium text-neutral-900'
-                : 'text-neutral-500 hover:bg-neutral-50'
+                ? 'bg-neutral-900 font-medium text-white'
+                : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
             提交记录
@@ -387,7 +407,7 @@ export function WritingRecords() {
         <div className="flex-1 overflow-y-auto p-2">
           {loading && <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>}
           {!loading && list.length === 0 && (
-            <p className="px-3 py-4 text-sm text-neutral-400">
+            <p className="py-8 text-center text-sm text-neutral-400">
               {tab === 'saves' ? '暂无草稿' : '暂无提交记录'}
             </p>
           )}
@@ -514,7 +534,7 @@ export function WritingRecords() {
                       type="button"
                       onClick={() => void handleDelete()}
                       disabled={deleting}
-                      className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
                     >
                       {deleting ? '删除中…' : '删除草稿'}
                     </button>
@@ -552,6 +572,11 @@ export function WritingRecords() {
             const vocabPreview = extractVocabPreview(gradingPreview)
             const structurePreview = extractStructurePreview(gradingPreview)
 
+            if (import.meta.env.DEV) {
+              console.debug('[WritingRecords] gradingPreview keys:', gradingPreview ? Object.keys(gradingPreview) : 'null')
+              console.debug('[WritingRecords] structurePreview:', structurePreview ? '有数据' : 'null')
+            }
+
             // 旧版 markdown 兼容
             const grammarProse = extractProsePreview(gradingPreview, 'grammar')
             const vocabProse = extractProsePreview(gradingPreview, 'vocabulary')
@@ -577,10 +602,12 @@ export function WritingRecords() {
             const detailReady = submitDetail.id === selectedId
 
             const hasAnyAiResult =
+              !!grammarPreview ||
               mergedGrammarErrors.length > 0 ||
               !!grammarProse ||
               !!structurePreview ||
               !!evaluationProse ||
+              !!vocabPreview ||
               mergedVocabSuggestions.length > 0 ||
               !!vocabProse
 
@@ -636,7 +663,7 @@ export function WritingRecords() {
                       type="button"
                       onClick={() => void handleDelete()}
                       disabled={deleting}
-                      className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
                     >
                       {deleting ? '删除中…' : '删除记录'}
                     </button>
@@ -763,26 +790,32 @@ export function WritingRecords() {
                     )}
 
                     {/* 逐段点评 */}
-                    {structurePreview.paragraphFeedback.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs font-medium text-neutral-500">逐段点评</p>
-                        <div className="mt-2 space-y-2">
-                          {structurePreview.paragraphFeedback.map((fb) => (
-                            <div
-                              key={fb.paragraphIndex}
-                              className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2"
-                            >
-                              <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
-                                第 {fb.paragraphIndex} 段
-                              </span>
-                              <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
-                                {fb.feedback}
-                              </p>
-                            </div>
-                          ))}
+                    {(() => {
+                      const pbs = structurePreview.paragraphFeedback
+                        .map(normalizeParagraphFb)
+                        .filter((v): v is NonNullable<typeof v> => v !== null)
+                      if (pbs.length === 0) return null
+                      return (
+                        <div className="mt-4">
+                          <p className="text-xs font-medium text-neutral-500">逐段点评</p>
+                          <div className="mt-2 space-y-2">
+                            {pbs.map((fb) => (
+                              <div
+                                key={fb.index}
+                                className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2"
+                              >
+                                <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+                                  第 {fb.index} 段
+                                </span>
+                                <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
+                                  {fb.text}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )
+                    })()}
                   </div>
                 )}
 
@@ -798,7 +831,7 @@ export function WritingRecords() {
                 )}
 
                 {/* ── 语法检查 ── */}
-                {(mergedGrammarErrors.length > 0 || grammarProse) && (
+                {(grammarPreview || mergedGrammarErrors.length > 0 || grammarProse) && (
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Wand2 size={14} className="text-neutral-400" />
@@ -831,12 +864,14 @@ export function WritingRecords() {
                       </ul>
                     ) : grammarProse ? (
                       <AiMarkdownContent content={grammarProse} className="mt-2" />
-                    ) : null}
+                    ) : (
+                      <p className="mt-3 text-sm text-neutral-400">未发现语法错误，写得不错！</p>
+                    )}
                   </div>
                 )}
 
                 {/* ── 词汇提升建议 ── */}
-                {!structurePreview && (mergedVocabSuggestions.length > 0 || vocabProse) && (
+                {(vocabPreview || mergedVocabSuggestions.length > 0 || vocabProse) && (
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Lightbulb size={14} className="text-neutral-400" />
@@ -847,7 +882,7 @@ export function WritingRecords() {
                         </span>
                       )}
                     </div>
-                    {mergedVocabSuggestions.length > 0 && (
+                    {mergedVocabSuggestions.length > 0 ? (
                       <ul className="mt-3 space-y-2.5">
                         {mergedVocabSuggestions.map((item, idx) => (
                           <li
@@ -872,9 +907,10 @@ export function WritingRecords() {
                           </li>
                         ))}
                       </ul>
-                    )}
-                    {vocabProse && (
-                      <AiMarkdownContent content={vocabProse} className={mergedVocabSuggestions.length > 0 ? 'mt-3' : 'mt-2'} />
+                    ) : vocabProse ? (
+                      <AiMarkdownContent content={vocabProse} className="mt-2" />
+                    ) : (
+                      <p className="mt-3 text-sm text-neutral-400">未发现需优化的词汇，用词准确！</p>
                     )}
                   </div>
                 )}
