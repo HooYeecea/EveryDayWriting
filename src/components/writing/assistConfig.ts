@@ -14,7 +14,7 @@ export interface AssistFeature {
 export const ASSIST_FEATURES: AssistFeature[] = [
   {
     id: 'ai-assistant',
-    label: 'AI 助手',
+    label: 'AI 辅助开关',
     description: '提交后检查修改、提升建议，或边写边辅助',
     icon: Sparkles,
     available: true,

@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Calendar, LogIn, LogOut, Mail, PenLine, Trophy, Bell, Gauge, Settings, CalendarDays } from 'lucide-react'
+import { Calendar, Check, LogIn, LogOut, Mail, PenLine, Pencil, Trophy, Bell, Gauge, Settings, CalendarDays, X } from 'lucide-react'
 import { logoutAll } from '../../api/auth'
+import { updateUserProfile } from '../../api/user'
 import { useAuth } from '../../context/AuthContext'
+import { AiAssistPanel } from '../user/AiAssistPanel'
 import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
 import { PrivacySettingsPanel } from '../user/PrivacySettingsPanel'
 import { TokenUsagePanel } from '../user/TokenUsagePanel'
-import { UserProfileEditor } from '../user/UserProfileEditor'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
 import { resolveAssetUrl } from '../../utils/assetUrl'
 import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
@@ -21,7 +22,7 @@ const TABS: { key: UserTab; label: string; icon: typeof Bell }[] = [
 ]
 
 export function UserCenter() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, logout, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState<UserTab>('overview')
 
@@ -67,8 +68,47 @@ export function UserCenter() {
     { label: '词库词条', value: user.stats.vocabularyCount ?? 0, unit: '个', icon: Calendar },
   ]
 
+  const [editingNickname, setEditingNickname] = useState(false)
+  const [nicknameDraft, setNicknameDraft] = useState(user.nickname)
+  const [savingNickname, setSavingNickname] = useState(false)
+  const nicknameInputRef = useRef<HTMLInputElement>(null)
+
   const avatarSrc = resolveAssetUrl(user.avatar)
   const avatarLabel = getAvatarLabel(user)
+
+  const startEditingNickname = () => {
+    setNicknameDraft(user.nickname)
+    setEditingNickname(true)
+    setTimeout(() => nicknameInputRef.current?.focus(), 0)
+  }
+
+  const cancelEditingNickname = () => {
+    setEditingNickname(false)
+    setNicknameDraft(user.nickname)
+  }
+
+  const saveNickname = async () => {
+    const trimmed = nicknameDraft.trim()
+    if (!trimmed || trimmed === user.nickname) {
+      setEditingNickname(false)
+      return
+    }
+    setSavingNickname(true)
+    try {
+      await updateUserProfile({ nickname: trimmed })
+      await refreshProfile()
+    } catch {
+      // keep editing state on failure
+    } finally {
+      setSavingNickname(false)
+      setEditingNickname(false)
+    }
+  }
+
+  const handleNicknameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') saveNickname()
+    if (e.key === 'Escape') cancelEditingNickname()
+  }
 
   const handleLogoutAll = async () => {
     if (!window.confirm('确定退出所有设备？当前设备也需要重新登录。')) return
@@ -146,7 +186,47 @@ export function UserCenter() {
                 </div>
               )}
               <div>
-                <h3 className="text-lg font-medium text-neutral-900">{user.nickname}</h3>
+                {editingNickname ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      ref={nicknameInputRef}
+                      value={nicknameDraft}
+                      onChange={(e) => setNicknameDraft(e.target.value)}
+                      onKeyDown={handleNicknameKeyDown}
+                      maxLength={50}
+                      disabled={savingNickname}
+                      className="w-40 rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-lg font-medium text-neutral-900 outline-none focus:border-neutral-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveNickname}
+                      disabled={savingNickname}
+                      className="rounded-lg p-1 text-green-600 hover:bg-green-50"
+                    >
+                      <Check size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEditingNickname}
+                      disabled={savingNickname}
+                      className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-lg font-medium text-neutral-900">{user.nickname}</h3>
+                    <button
+                      type="button"
+                      onClick={startEditingNickname}
+                      className="rounded-lg p-1 text-neutral-300 hover:bg-neutral-100 hover:text-neutral-500"
+                      title="编辑昵称"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  </div>
+                )}
                 <div className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500">
                   <Mail size={14} />
                   {user.email}
@@ -184,7 +264,7 @@ export function UserCenter() {
             {tab === 'usage' && <TokenUsagePanel />}
             {tab === 'settings' && (
               <div className="space-y-5">
-                <UserProfileEditor />
+                <AiAssistPanel />
                 <PrivacySettingsPanel />
               </div>
             )}
