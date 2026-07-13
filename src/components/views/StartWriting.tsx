@@ -5,7 +5,7 @@ import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
 import { runPreSubmitGrading } from '../../api/aiGrading'
-import { saveGradingPreview } from '../../storage/gradingPreviewStorage'
+import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingPreviewStorage'
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
 import { isApiError } from '../../api/request'
 import { useAuth } from '../../context/AuthContext'
@@ -19,7 +19,6 @@ import {
   MAIN_CONTENT_X_CLASS,
   PANEL_FOOTER_CLASS,
   PANEL_FOOTER_INNER_CLASS,
-  PANEL_TITLE_CLASS,
   PANEL_TOPIC_HEADER_CLASS,
 } from '../layout/layoutConstants'
 import type { DraftConflictData, DraftSaveResult, WritingSavePayload, WritingTopic } from '../../types'
@@ -386,7 +385,7 @@ export function StartWriting() {
       let gradingSessionId: string | undefined
       let completedTasks: string[] = []
       let failedTasks: string[] = []
-      let stageContents: Partial<Record<'grammar' | 'evaluation' | 'vocabulary', string>> = {}
+      let stageContents: Partial<Record<GradingStageKey, unknown>> = {}
 
       if (hasAiTasks) {
         setSubmitPhase('grading')

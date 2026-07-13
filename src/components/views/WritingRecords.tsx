@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
+import { ArrowLeft, BarChart3, Check, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
 import {
   deleteDraft,
   deleteSubmit,
@@ -17,7 +17,12 @@ import { useAuth } from '../../context/AuthContext'
 import { loadGradingPreview } from '../../storage/gradingPreviewStorage'
 import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
 import type {
+  GrammarCheckResult,
+  GrammarErrorItem,
   IterationSibling,
+  StructureResult,
+  VocabSuggestionItem,
+  VocabularyCheckResult,
   WritingDraft,
   WritingDraftListItem,
   WritingSubmitDetail,
@@ -45,6 +50,39 @@ type RecordsLocationState = {
 
 function formatTime(time: string) {
   return new Date(time).toLocaleString()
+}
+
+/** 判断是否为结构化对象（非字符串） */
+function isStructured<T>(value: unknown): value is T {
+  return value !== null && value !== undefined && typeof value !== 'string'
+}
+
+/** 从 grading preview 中提取 grammar 结构化数据 */
+function extractGrammarPreview(preview: ReturnType<typeof loadGradingPreview>): GrammarCheckResult | null {
+  if (!preview?.grammar) return null
+  if (isStructured<GrammarCheckResult>(preview.grammar)) return preview.grammar
+  return null
+}
+
+/** 从 grading preview 中提取 vocabulary 结构化数据 */
+function extractVocabPreview(preview: ReturnType<typeof loadGradingPreview>): VocabularyCheckResult | null {
+  if (!preview?.vocabulary) return null
+  if (isStructured<VocabularyCheckResult>(preview.vocabulary)) return preview.vocabulary
+  return null
+}
+
+/** 从 grading preview 中提取 structure 结构化数据 */
+function extractStructurePreview(preview: ReturnType<typeof loadGradingPreview>): StructureResult | null {
+  if (!preview?.structure) return null
+  if (isStructured<StructureResult>(preview.structure)) return preview.structure
+  return null
+}
+
+/** 从 grading preview 中提取旧版 markdown 字符串（兼容） */
+function extractProsePreview(preview: ReturnType<typeof loadGradingPreview>, key: 'grammar' | 'structure' | 'vocabulary'): string | null {
+  const value = preview?.[key]
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  return null
 }
 
 function resolveVersionList(
@@ -128,7 +166,7 @@ export function WritingRecords() {
   const [submits, setSubmits] = useState<GroupedSubmitListItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(locationState?.selectedId ?? null)
   const [submitDetail, setSubmitDetail] = useState<WritingSubmitDetail | null>(null)
-  const [submitDetailLoading, setSubmitDetailLoading] = useState(false)
+  const [_submitDetailLoading, setSubmitDetailLoading] = useState(false)
   const [selectedDraft, setSelectedDraft] = useState<WritingDraftListItem | null>(null)
   const [draftDetail, setDraftDetail] = useState<WritingDraft | null>(null)
   const [draftDetailLoading, setDraftDetailLoading] = useState(false)
@@ -508,17 +546,43 @@ export function WritingRecords() {
             const gradingPreview = loadGradingPreview(selectedId)
             const grammarSuggestions = submitDetail.grammarSuggestions ?? []
             const vocabularySuggestions = submitDetail.vocabularySuggestions ?? []
-            const grammarProse = gradingPreview?.grammar?.trim()
+
+            // 新版结构化数据（grading preview 优先，兼容旧版 markdown）
+            const grammarPreview = extractGrammarPreview(gradingPreview)
+            const vocabPreview = extractVocabPreview(gradingPreview)
+            const structurePreview = extractStructurePreview(gradingPreview)
+
+            // 旧版 markdown 兼容
+            const grammarProse = extractProsePreview(gradingPreview, 'grammar')
+            const vocabProse = extractProsePreview(gradingPreview, 'vocabulary')
             const evaluationProse =
               submitDetail.aiEvaluation?.trim() ||
-              gradingPreview?.evaluation?.trim() ||
-              gradingPreview?.vocabulary?.trim()
+              extractProsePreview(gradingPreview, 'structure')
+
+            // 合并结构化 + 后端已解析的建议
+            const mergedGrammarErrors: GrammarErrorItem[] = [
+              ...(grammarPreview?.errors ?? []),
+              ...grammarSuggestions.map((s) => ({ id: s.id, original: s.original, correction: s.correction, reason: s.reason })),
+            ]
+            const mergedVocabSuggestions: VocabSuggestionItem[] = [
+              ...(vocabPreview?.suggestions ?? []),
+              ...vocabularySuggestions.map((s) => ({ id: s.id, original: s.original, suggestion: s.suggestion, context: s.context })),
+            ]
+
             const versions = resolveVersionList(submitDetail, selectedSubmitGroup)
             const latestVersionId =
               versions.length > 0 ? versions[versions.length - 1].id : submitDetail.id
             const isLatestVersion = selectedId === latestVersionId
 
             const detailReady = submitDetail.id === selectedId
+
+            const hasAnyAiResult =
+              mergedGrammarErrors.length > 0 ||
+              !!grammarProse ||
+              !!structurePreview ||
+              !!evaluationProse ||
+              mergedVocabSuggestions.length > 0 ||
+              !!vocabProse
 
             return (
             <div className="mx-auto max-w-3xl">
@@ -617,29 +681,145 @@ export function WritingRecords() {
                   <h4 className="text-sm font-medium text-neutral-700">AI 批改结果</h4>
                 </div>
 
-                {/* 语法检查 */}
-                {(grammarSuggestions.length > 0 || grammarProse) && (
+                {/* ── 结构与评分（新版 structure） ── */}
+                {structurePreview && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
+                      <BarChart3 size={14} className="text-neutral-400" />
+                      <h5 className="text-[13px] font-medium text-neutral-700">结构与评分</h5>
+                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
+                        IELTS 9分制
+                      </span>
+                    </div>
+
+                    {/* 总分 */}
+                    <div className="mt-4 flex items-center gap-4">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white">
+                        <span className="text-2xl font-bold">{structurePreview.score}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-neutral-400">综合评分</p>
+                        <p className="text-[11px] text-neutral-400">满分 9.0</p>
+                      </div>
+                    </div>
+
+                    {/* 四项子评分 */}
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      {([
+                        { key: 'taskResponse' as const, label: '任务回应' },
+                        { key: 'coherenceCohesion' as const, label: '连贯与衔接' },
+                        { key: 'lexicalResource' as const, label: '词汇资源' },
+                        { key: 'grammaticalRange' as const, label: '语法范围' },
+                      ]).map(({ key, label }) => (
+                        <div key={key} className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2">
+                          <p className="text-[10px] text-neutral-400">{label}</p>
+                          <p className="mt-0.5 text-lg font-semibold text-neutral-800">
+                            {structurePreview.subScores[key]}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 优势 & 不足 */}
+                    {structurePreview.overall.strengths.length > 0 && (
+                      <div className="mt-4">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+                          <Check size={12} /> 优势
+                        </p>
+                        <ul className="mt-1.5 space-y-1">
+                          {structurePreview.overall.strengths.map((item, i) => (
+                            <li key={`str-${i}`} className="flex items-start gap-1.5 text-sm text-neutral-700">
+                              <Check size={12} className="mt-0.5 shrink-0 text-green-500" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {structurePreview.overall.weaknesses.length > 0 && (
+                      <div className="mt-3">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                          <AlertTriangle size={12} /> 待改进
+                        </p>
+                        <ul className="mt-1.5 space-y-1">
+                          {structurePreview.overall.weaknesses.map((item, i) => (
+                            <li key={`wk-${i}`} className="flex items-start gap-1.5 text-sm text-neutral-700">
+                              <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-500" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 总评摘要 */}
+                    {structurePreview.overall.summary && (
+                      <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5">
+                        <p className="text-xs font-medium text-neutral-500">总体评价</p>
+                        <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
+                          {structurePreview.overall.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 逐段点评 */}
+                    {structurePreview.paragraphFeedback.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs font-medium text-neutral-500">逐段点评</p>
+                        <div className="mt-2 space-y-2">
+                          {structurePreview.paragraphFeedback.map((fb) => (
+                            <div
+                              key={fb.paragraphIndex}
+                              className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2"
+                            >
+                              <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+                                第 {fb.paragraphIndex} 段
+                              </span>
+                              <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
+                                {fb.feedback}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 兼容旧版 structure/evaluation prose */}
+                {!structurePreview && evaluationProse && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
+                      <Lightbulb size={14} className="text-neutral-400" />
+                      <h5 className="text-[13px] font-medium text-neutral-700">提升建议</h5>
+                    </div>
+                    <AiMarkdownContent content={evaluationProse} className="mt-2" />
+                  </div>
+                )}
+
+                {/* ── 语法检查 ── */}
+                {(mergedGrammarErrors.length > 0 || grammarProse) && (
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Wand2 size={14} className="text-neutral-400" />
                       <h5 className="text-[13px] font-medium text-neutral-700">检查与修改</h5>
-                      {grammarSuggestions.length > 0 && (
+                      {mergedGrammarErrors.length > 0 && (
                         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                          {grammarSuggestions.length} 条
+                          {mergedGrammarErrors.length} 条
                         </span>
                       )}
                     </div>
-                    {grammarSuggestions.length > 0 ? (
+                    {mergedGrammarErrors.length > 0 ? (
                       <ul className="mt-3 space-y-2.5">
-                        {grammarSuggestions.map((item) => (
-                          <li key={item.id} className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm">
+                        {mergedGrammarErrors.map((item, idx) => (
+                          <li key={item.id || `ge-${idx}`} className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm">
                             <p>
                               <span className="text-red-500 line-through">{item.original}</span>
                               {' → '}
                               <span className="font-medium text-green-600">{item.correction}</span>
                             </p>
                             <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
-                            {selectedId && (
+                            {selectedId && item.id && (
                               <SuggestionChatBox
                                 submitId={selectedId}
                                 suggestionId={item.id}
@@ -655,28 +835,25 @@ export function WritingRecords() {
                   </div>
                 )}
 
-                {/* 提升建议 */}
-                {(evaluationProse || vocabularySuggestions.length > 0) && (
+                {/* ── 词汇提升建议 ── */}
+                {!structurePreview && (mergedVocabSuggestions.length > 0 || vocabProse) && (
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Lightbulb size={14} className="text-neutral-400" />
                       <h5 className="text-[13px] font-medium text-neutral-700">提升建议</h5>
-                      {vocabularySuggestions.length > 0 && (
+                      {mergedVocabSuggestions.length > 0 && (
                         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                          {vocabularySuggestions.length} 条
+                          {mergedVocabSuggestions.length} 条
                         </span>
                       )}
                     </div>
-                    {evaluationProse && (
-                      <AiMarkdownContent content={evaluationProse} className="mt-2" />
-                    )}
-                    {vocabularySuggestions.length > 0 && (
-                      <ul className={`space-y-2.5 ${evaluationProse ? 'mt-3' : 'mt-3'}`}>
-                        {vocabularySuggestions.map((item) => (
+                    {mergedVocabSuggestions.length > 0 && (
+                      <ul className="mt-3 space-y-2.5">
+                        {mergedVocabSuggestions.map((item, idx) => (
                           <li
-                            key={item.id}
+                            key={item.id || `vs-${idx}`}
                             data-vocab-hint
-                            data-vocab-translation={item.reason || item.suggestion}
+                            data-vocab-translation={item.suggestion}
                             className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm"
                           >
                             <p>
@@ -685,10 +862,7 @@ export function WritingRecords() {
                             {item.context && (
                               <p className="mt-1 text-xs text-neutral-500">{item.context}</p>
                             )}
-                            {item.reason && (
-                              <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
-                            )}
-                            {selectedId && (
+                            {selectedId && item.id && (
                               <SuggestionChatBox
                                 submitId={selectedId}
                                 suggestionId={item.id}
@@ -699,13 +873,16 @@ export function WritingRecords() {
                         ))}
                       </ul>
                     )}
+                    {vocabProse && (
+                      <AiMarkdownContent content={vocabProse} className={mergedVocabSuggestions.length > 0 ? 'mt-3' : 'mt-2'} />
+                    )}
                   </div>
                 )}
 
                 {/* 无AI结果 */}
-                {!grammarSuggestions.length && !grammarProse && !evaluationProse && !vocabularySuggestions.length && (
+                {!hasAnyAiResult && (
                   <p className="mt-4 text-sm text-neutral-400">
-                    暂无 AI 批改内容。在写作页开启「AI 检查与修改」或「提升建议」后提交，结果会显示在这里。
+                    暂无 AI 批改内容。在写作页开启「AI 检查与修改」「结构与评分」或「提升建议」后提交，结果会显示在这里。
                   </p>
                 )}
               </div>

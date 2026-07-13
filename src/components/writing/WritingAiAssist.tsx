@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { FileCheck, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
+import { BarChart3, FileCheck, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
 import { loadAiAssistSettings, saveAiAssistSettings } from '../../storage/aiSettingsStorage'
 
 export function WritingAiAssist() {
   const [postSubmitReview, setPostSubmitReview] = useState(false)
+  const [postSubmitStructure, setPostSubmitStructure] = useState(false)
   const [postSubmitSuggestions, setPostSubmitSuggestions] = useState(false)
   const [realtimeAssist, setRealtimeAssist] = useState(false)
   const [hasApiKey, setHasApiKey] = useState(false)
@@ -13,6 +14,7 @@ export function WritingAiAssist() {
   useEffect(() => {
     const saved = loadAiAssistSettings()
     setPostSubmitReview(saved.postSubmitReview)
+    setPostSubmitStructure(saved.postSubmitStructure)
     setPostSubmitSuggestions(saved.postSubmitSuggestions)
     setRealtimeAssist(saved.realtimeAssist)
     setHasApiKey(Boolean(saved.encryptedKey && saved.providerId && saved.modelId))
@@ -24,6 +26,7 @@ export function WritingAiAssist() {
     saveAiAssistSettings({
       ...current,
       postSubmitReview,
+      postSubmitStructure,
       postSubmitSuggestions,
       realtimeAssist,
     })
@@ -67,6 +70,23 @@ export function WritingAiAssist() {
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
                   提交后自动检查语法、表达等问题，并给出修改版本供参考。
+                </p>
+              </div>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={postSubmitStructure}
+                onChange={(e) => setPostSubmitStructure(e.target.checked)}
+                className="mt-0.5 rounded border-neutral-300"
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <BarChart3 size={14} className="shrink-0 text-neutral-400" />
+                  <span className="text-xs font-medium text-neutral-800">结构与评分</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
+                  提交后进行 IELTS 9分制综合评分，分析文章结构、连贯性与逻辑，给出逐段点评。
                 </p>
               </div>
             </label>

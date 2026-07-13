@@ -141,6 +141,81 @@ export interface VocabularySuggestion {
   reason?: string
 }
 
+// ── AI 结构化响应类型（对应各 purpose 的 JSON 返回格式） ──
+
+/** grammar 目的：语法纠错 */
+export interface GrammarErrorItem {
+  id: string
+  original: string
+  correction: string
+  reason: string
+}
+
+export interface GrammarCheckResult {
+  errors: GrammarErrorItem[]
+}
+
+/** vocabulary 目的：词汇优化建议 */
+export interface VocabSuggestionItem {
+  id: string
+  original: string
+  suggestion: string
+  context: string
+}
+
+export interface VocabularyCheckResult {
+  suggestions: VocabSuggestionItem[]
+}
+
+/** structure 目的：IELTS 9分制综合评分 + 逐段点评 */
+export interface StructureSubScores {
+  taskResponse: number
+  coherenceCohesion: number
+  lexicalResource: number
+  grammaticalRange: number
+}
+
+export interface StructureOverall {
+  strengths: string[]
+  weaknesses: string[]
+  summary: string
+}
+
+export interface ParagraphFeedbackItem {
+  paragraphIndex: number
+  feedback: string
+}
+
+export interface StructureResult {
+  score: number
+  subScores: StructureSubScores
+  overall: StructureOverall
+  paragraphFeedback: ParagraphFeedbackItem[]
+}
+
+/** dictionary 目的：词典查询 */
+export interface DictionaryResult {
+  word: string
+  phonetic: string
+  partOfSpeech: string
+  definitions: string[]
+  synonyms: string[]
+  examples: string[]
+}
+
+/** translation 目的：中译英 */
+export interface TranslationResult {
+  primary: string
+  variants: string[]
+}
+
+/** brainstorm 目的：头脑风暴 */
+export interface BrainstormResult {
+  angles: string[]
+  vocabulary: string[]
+  outline: string[]
+}
+
 export interface WritingSubmitDetail {
   id: string
   topicId: number

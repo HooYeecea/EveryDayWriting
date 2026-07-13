@@ -5,6 +5,7 @@ export interface AiAssistSettings {
   modelId: string
   encryptedKey: string
   postSubmitReview: boolean
+  postSubmitStructure: boolean
   postSubmitSuggestions: boolean
   realtimeAssist: boolean
 }
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS: AiAssistSettings = {
   modelId: '',
   encryptedKey: '',
   postSubmitReview: false,
+  postSubmitStructure: false,
   postSubmitSuggestions: false,
   realtimeAssist: false,
 }

@@ -1,6 +1,10 @@
 import type {
   GrammarSuggestion,
   IterationSibling,
+  ParagraphFeedbackItem,
+  StructureOverall,
+  StructureResult,
+  StructureSubScores,
   VocabularySuggestion,
   WritingSubmitDetail,
   WritingSubmitListItem,
@@ -100,6 +104,58 @@ export function normalizeSubmitListItem(raw: unknown): WritingSubmitListItem {
 /**
  * 兼容后端 camelCase / PascalCase 字段，并保证建议列表始终为数组。
  */
+function normalizeStructureSubScores(raw: unknown): StructureSubScores {
+  const data = (raw ?? {}) as Record<string, unknown>
+  return {
+    taskResponse: Number(data.taskResponse ?? data.TaskResponse ?? 0),
+    coherenceCohesion: Number(data.coherenceCohesion ?? data.CoherenceCohesion ?? 0),
+    lexicalResource: Number(data.lexicalResource ?? data.LexicalResource ?? 0),
+    grammaticalRange: Number(data.grammaticalRange ?? data.GrammaticalRange ?? 0),
+  }
+}
+
+function normalizeStructureOverall(raw: unknown): StructureOverall {
+  const data = (raw ?? {}) as Record<string, unknown>
+  const arr = (key: string): string[] => {
+    const value = data[key]
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+  }
+  return {
+    strengths: arr('strengths'),
+    weaknesses: arr('weaknesses'),
+    summary: pickString(data, 'summary', 'Summary'),
+  }
+}
+
+function normalizeParagraphFeedback(raw: unknown): ParagraphFeedbackItem | null {
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as Record<string, unknown>
+  const index = Number(item.paragraphIndex ?? item.ParagraphIndex ?? -1)
+  if (index < 0) return null
+  const feedback = pickString(item, 'feedback', 'Feedback')
+  if (!feedback) return null
+  return { paragraphIndex: index, feedback }
+}
+
+export function normalizeStructureResult(raw: unknown): StructureResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const data = raw as Record<string, unknown>
+  const score = Number(data.score ?? data.Score ?? NaN)
+  if (isNaN(score)) return null
+  return {
+    score,
+    subScores: normalizeStructureSubScores(data.subScores ?? data.SubScores),
+    overall: normalizeStructureOverall(data.overall ?? data.Overall),
+    paragraphFeedback: (() => {
+      const rawFeedback = data.paragraphFeedback ?? data.ParagraphFeedback
+      if (!Array.isArray(rawFeedback)) return []
+      return (rawFeedback as unknown[])
+        .map((item) => normalizeParagraphFeedback(item))
+        .filter((item): item is ParagraphFeedbackItem => item !== null)
+    })(),
+  }
+}
+
 export function normalizeWritingSubmitDetail(raw: unknown): WritingSubmitDetail {
   const data = (raw ?? {}) as Record<string, unknown>
 

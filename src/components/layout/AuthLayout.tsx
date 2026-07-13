@@ -18,7 +18,7 @@ export function AuthLayout({
   brandHref = '/writing',
 }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-[#fafafa] px-4 py-10 sm:py-16">
+    <div className="flex min-h-full items-start justify-center bg-[#fafafa] px-4 pt-16 sm:pt-24 pb-10 sm:pb-16">
       <div className="w-full max-w-sm">
         {/* ── Brand ── */}
         <div className="mb-8 text-center">

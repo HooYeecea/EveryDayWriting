@@ -1,16 +1,33 @@
+import type { GrammarCheckResult, StructureResult, VocabularyCheckResult } from '../types'
+
 const GRADING_PREVIEW_KEY = 'ew_grading_preview'
 const MAX_ENTRIES = 50
 
-export type GradingStageKey = 'grammar' | 'evaluation' | 'vocabulary'
+export type GradingStageKey = 'grammar' | 'structure' | 'vocabulary'
 
 export interface GradingPreview {
-  grammar?: string
-  evaluation?: string
-  vocabulary?: string
+  grammar?: GrammarCheckResult | string // string = 旧版 markdown 兼容
+  structure?: StructureResult | string
+  vocabulary?: VocabularyCheckResult | string
   savedAt: string
 }
 
 type GradingPreviewMap = Record<string, GradingPreview>
+
+/**
+ * 尝试将 AI 返回的 content 解析为 JSON；解析失败则返回原始字符串（兼容旧版 markdown）。
+ */
+export function parseAiProxyContent<T>(content: string): T | string {
+  try {
+    const trimmed = content.trim()
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      return JSON.parse(trimmed) as T
+    }
+    return content
+  } catch {
+    return content
+  }
+}
 
 function readAll(): GradingPreviewMap {
   try {
@@ -32,11 +49,14 @@ function writeAll(map: GradingPreviewMap): void {
 
 export function saveGradingPreview(
   submitId: string,
-  contents: Partial<Record<GradingStageKey, string>>,
+  contents: Partial<Record<GradingStageKey, unknown>>,
 ): void {
-  const filtered = Object.fromEntries(
-    Object.entries(contents).filter(([, value]) => typeof value === 'string' && value.trim()),
-  ) as Partial<Record<GradingStageKey, string>>
+  const filtered: Partial<Record<GradingStageKey, unknown>> = {}
+  for (const [key, value] of Object.entries(contents)) {
+    if (value !== undefined && value !== null) {
+      filtered[key as GradingStageKey] = value
+    }
+  }
 
   if (Object.keys(filtered).length === 0) return
 
@@ -45,7 +65,7 @@ export function saveGradingPreview(
     ...map[submitId],
     ...filtered,
     savedAt: new Date().toISOString(),
-  }
+  } as GradingPreview
   writeAll(map)
 }
 
