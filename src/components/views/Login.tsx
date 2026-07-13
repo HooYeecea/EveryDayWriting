@@ -1,14 +1,21 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import {
+  fetchGraphCaptcha,
+  getGraphCaptchaCooldownRemaining,
+  refreshGraphCaptcha,
+} from '../../api/graphCaptchaApi'
 import { isApiError } from '../../api/request'
-import { sendEmailCode } from '../../api/auth'
 import type { LoginErrorData } from '../../types'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
-import { useEmailCodeCooldown } from '../../hooks/useEmailCodeCooldown'
-import { emailCodeCooldownLabel } from '../../storage/emailCodeCooldown'
+import { buildGraphCaptchaImageSrc } from '../../utils/graphCaptchaImage'
+
+function isCaptchaExpiredMessage(message: string): boolean {
+  return /过期|失效|无效/.test(message) && message.includes('验证码')
+}
 
 export function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
@@ -16,17 +23,64 @@ export function Login() {
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
+  const [captchaCode, setCaptchaCode] = useState('')
+  const [captchaId, setCaptchaId] = useState('')
+  const [captchaImageSrc, setCaptchaImageSrc] = useState('')
   const [requireCaptcha, setRequireCaptcha] = useState(false)
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [privacyWarning, setPrivacyWarning] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [sendingCode, setSendingCode] = useState(false)
-  const { cooldown, startCooldown } = useEmailCodeCooldown('login_captcha', email)
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+  const [captchaCooldown, setCaptchaCooldown] = useState(0)
+  const captchaRequestedRef = useRef(false)
 
   const from =
     (location.state as { from?: string } | null)?.from ?? '/writing'
+
+  const applyCaptcha = useCallback((data: { captchaId: string; imageBase64: string }, resetInput: boolean) => {
+    setCaptchaId(data.captchaId)
+    setCaptchaImageSrc(buildGraphCaptchaImageSrc(data.imageBase64))
+    if (resetInput) {
+      setCaptchaCode('')
+    }
+    setCaptchaCooldown(getGraphCaptchaCooldownRemaining())
+  }, [])
+
+  const loadGraphCaptcha = useCallback(
+    async (mode: 'initial' | 'refresh' = 'initial') => {
+      setLoadingCaptcha(true)
+      try {
+        const data =
+          mode === 'refresh' ? await refreshGraphCaptcha() : await fetchGraphCaptcha()
+        applyCaptcha(data, mode === 'refresh')
+      } catch (err) {
+        setCaptchaCooldown(getGraphCaptchaCooldownRemaining())
+        setError(err instanceof Error ? err.message : '图形验证码加载失败')
+      } finally {
+        setLoadingCaptcha(false)
+      }
+    },
+    [applyCaptcha],
+  )
+
+  useEffect(() => {
+    if (!requireCaptcha) {
+      captchaRequestedRef.current = false
+      return
+    }
+    if (captchaRequestedRef.current) return
+    captchaRequestedRef.current = true
+    void loadGraphCaptcha('initial')
+  }, [requireCaptcha, loadGraphCaptcha])
+
+  useEffect(() => {
+    if (!requireCaptcha || captchaCooldown <= 0) return
+    const timer = window.setInterval(() => {
+      setCaptchaCooldown(getGraphCaptchaCooldownRemaining())
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [requireCaptcha, captchaCooldown])
 
   if (isLoading) {
     return (
@@ -40,26 +94,6 @@ export function Login() {
     return <Navigate to={from} replace />
   }
 
-  const handleSendCaptcha = async () => {
-    if (!email.trim()) {
-      setError('请先输入邮箱')
-      return
-    }
-    setSendingCode(true)
-    setError('')
-    try {
-      await sendEmailCode(email.trim(), 'login_captcha')
-      startCooldown()
-    } catch (err) {
-      if (isApiError(err) && err.isRateLimited) {
-        startCooldown()
-      }
-      setError(err instanceof Error ? err.message : '验证码发送失败')
-    } finally {
-      setSendingCode(false)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -69,17 +103,36 @@ export function Login() {
       return
     }
 
+    if (requireCaptcha) {
+      if (!captchaId) {
+        setError('图形验证码加载中，请稍候')
+        return
+      }
+      if (!captchaCode.trim()) {
+        setError('请输入图形验证码')
+        return
+      }
+    }
+
     setPrivacyWarning(false)
     setSubmitting(true)
     try {
-      const result = await login(email.trim(), password, requireCaptcha ? code : undefined)
-      navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
+      await login(
+        email.trim(),
+        password,
+        requireCaptcha ? { captchaId, graphCode: captchaCode.trim() } : undefined,
+      )
+      navigate(from, { replace: true })
     } catch (err) {
       if (isApiError(err)) {
         const data = err.data as LoginErrorData | null
         const message = err.message
         if (data?.requireCaptcha || message.includes('验证码')) {
           setRequireCaptcha(true)
+        }
+        if (isCaptchaExpiredMessage(message)) {
+          captchaRequestedRef.current = false
+          void loadGraphCaptcha('refresh')
         }
       }
       setError(err instanceof Error ? err.message : '登录失败')
@@ -94,6 +147,9 @@ export function Login() {
       setPrivacyWarning(false)
     }
   }
+
+  const refreshLabel =
+    loadingCaptcha ? '加载中…' : captchaCooldown > 0 ? `${captchaCooldown}s` : '换一张'
 
   return (
     <AuthLayout
@@ -147,26 +203,45 @@ export function Login() {
         </div>
         {requireCaptcha && (
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-700">邮箱验证码</label>
-            <div className="flex gap-2">
+            <label className="mb-1.5 block text-sm font-medium text-neutral-700">图形验证码</label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 px-1">
+                  {captchaImageSrc ? (
+                    <img
+                      src={captchaImageSrc}
+                      alt="图形验证码"
+                      className="h-10 w-auto max-w-[140px] object-contain"
+                    />
+                  ) : (
+                    <span className="px-3 text-xs text-neutral-400">
+                      {loadingCaptcha ? '加载中…' : '暂无'}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void loadGraphCaptcha('refresh')}
+                  disabled={loadingCaptcha || captchaCooldown > 0}
+                  className="shrink-0 rounded-lg border border-neutral-200 px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                >
+                  {refreshLabel}
+                </button>
+              </div>
               <input
                 type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="6 位验证码"
+                value={captchaCode}
+                onChange={(e) => setCaptchaCode(e.target.value.replace(/\s/g, '').slice(0, 8))}
+                placeholder="请输入图中字符"
                 required
-                maxLength={6}
+                maxLength={8}
+                autoComplete="off"
                 className="min-w-0 flex-1 rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
               />
-              <button
-                type="button"
-                onClick={handleSendCaptcha}
-                disabled={sendingCode || cooldown > 0}
-                className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-              >
-                {emailCodeCooldownLabel(cooldown, sendingCode)}
-              </button>
             </div>
+            <p className="mt-1.5 text-xs text-neutral-400">
+              密码错误次数过多，请输入图形验证码（60 秒内仅可刷新一次）
+            </p>
           </div>
         )}
         <button

@@ -13,6 +13,7 @@ import {
 import type {
   AuthSession,
   AuthUserBrief,
+  LoginGraphCaptcha,
   SendCodePurpose,
   UserProfile,
 } from '../types'
@@ -57,17 +58,20 @@ export async function sendEmailCode(
   await post(API_PATHS.auth.sendCode, { email: email.trim(), purpose }, { skipAuth: true })
 }
 
+export { fetchGraphCaptcha, refreshGraphCaptcha } from './graphCaptchaApi'
+
 export async function login(
   email: string,
   password: string,
-  code?: string,
+  captcha?: LoginGraphCaptcha,
 ): Promise<AuthSession> {
   const body: Record<string, string> = {
     email: email.trim(),
     password,
   }
-  if (code?.trim()) {
-    body.code = code.trim()
+  if (captcha?.captchaId && captcha.graphCode.trim()) {
+    body.captchaId = captcha.captchaId
+    body.graphCode = captcha.graphCode.trim()
   }
 
   const data = await post<LoginResponseData>(API_PATHS.auth.login, body, { skipAuth: true })
