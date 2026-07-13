@@ -284,7 +284,7 @@ export function UserCenter() {
               {stats.map(({ label, value, unit, icon: Icon }) => (
                 <div
                   key={label}
-                  className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-center"
+                  className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-center transition-transform duration-200 hover:-translate-y-1 hover:shadow-sm"
                 >
                   <Icon size={16} className="mx-auto text-neutral-400" strokeWidth={1.5} />
                   <p className="mt-2 text-lg font-semibold text-neutral-900 sm:text-xl">

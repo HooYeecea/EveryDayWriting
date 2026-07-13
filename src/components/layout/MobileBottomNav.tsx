@@ -15,7 +15,7 @@ export function MobileBottomNav() {
         <NavLink
           to={isAuthenticated ? '/user-center' : '/login'}
           className={({ isActive }) =>
-            `flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] transition-colors sm:text-xs ${
+            `flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] transition-all duration-200 active:scale-95 sm:text-xs ${
               isActive ? 'font-medium text-neutral-900' : 'text-neutral-500'
             }`
           }
@@ -39,7 +39,7 @@ export function MobileBottomNav() {
               key={item.key}
               to={item.path}
               className={({ isActive }) =>
-                `flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] transition-colors sm:text-xs ${
+                `flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] transition-all duration-200 active:scale-95 sm:text-xs ${
                   isActive ? 'font-medium text-neutral-900' : 'text-neutral-500'
                 }`
               }

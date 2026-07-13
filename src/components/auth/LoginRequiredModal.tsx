@@ -17,7 +17,7 @@ export function LoginRequiredModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <div className="animate-scale-in relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
         <button
           type="button"
           onClick={onClose}

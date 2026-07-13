@@ -5,12 +5,13 @@ import { StartWriting } from '../components/views/StartWriting'
 import { WritingRecords } from '../components/views/WritingRecords'
 import { PersonalVocabulary } from '../components/views/PersonalVocabulary'
 import { PersonalAssessment } from '../components/views/PersonalAssessment'
+import { UsageGuide } from '../components/views/UsageGuide'
 
 export interface AppRoute {
   key: MenuKey
   path: string
   label: string
-  icon: 'user' | 'pen' | 'clipboard' | 'book' | 'chart'
+  icon: 'user' | 'pen' | 'clipboard' | 'book' | 'chart' | 'help'
   element: ReactNode
 }
 
@@ -51,6 +52,13 @@ export const APP_ROUTES: AppRoute[] = [
     label: '个人测评',
     icon: 'chart',
     element: <PersonalAssessment />,
+  },
+  {
+    key: 'usage-guide',
+    path: '/guide',
+    label: '使用指南',
+    icon: 'help',
+    element: <UsageGuide />,
   },
 ]
 

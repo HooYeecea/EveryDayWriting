@@ -40,7 +40,7 @@ export function AuthLayout({
         </div>
 
         {/* ── Card ── */}
-        <div className="rounded-xl border border-neutral-200 bg-white px-6 py-8 shadow-sm">
+        <div className="animate-fade-in-up rounded-xl border border-neutral-200 bg-white px-6 py-8 shadow-sm">
           {/* ── TS-style 4px top accent ── */}
           <div className="-mx-6 -mt-8 mb-8 border-t-4 border-neutral-900" />
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, RotateCcw } from 'lucide-react'
+import { RefreshCw, RotateCcw, Wand2 } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
@@ -11,6 +11,7 @@ import { isApiError } from '../../api/request'
 import { useAuth } from '../../context/AuthContext'
 import { getMockRandomTopic } from '../../data/mockTopics'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
+import { isTypingAnimationEnabled, setTypingAnimationEnabled } from '../../storage/typingAnimationStorage'
 import { NotionEditor } from '../editor/NotionEditor'
 import { TopicPromptBox } from '../writing/TopicPromptBox'
 import { TopicTypeSelect } from '../writing/TopicTypeSelect'
@@ -76,6 +77,7 @@ export function StartWriting() {
   const [iterateBaselineSnapshot, setIterateBaselineSnapshot] = useState<string | null>(null)
   const submitLockRef = useRef(false)
   const preserveWritingSessionRef = useRef(false)
+  const [typingAnimOn, setTypingAnimOn] = useState(() => isTypingAnimationEnabled())
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
 
   const currentSubmitSnapshot = buildSubmitSnapshot(title, content)
@@ -198,6 +200,14 @@ export function StartWriting() {
     if (isAuthenticated && user) return true
     setShowLoginModal(true)
     return false
+  }
+
+  const handleToggleTypingAnim = () => {
+    setTypingAnimOn((prev) => {
+      const next = !prev
+      setTypingAnimationEnabled(next)
+      return next
+    })
   }
 
   const handleChangeTopic = async () => {
@@ -511,7 +521,7 @@ export function StartWriting() {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900'
+    'flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -549,7 +559,20 @@ export function StartWriting() {
 
           <div className={PANEL_FOOTER_CLASS}>
             <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl -translate-x-1 lg:-translate-x-2 flex-col lg:flex-row`}>
-              <div className="w-full text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
+              <div className="flex w-full flex-wrap items-center gap-3 text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
+                <button
+                  type="button"
+                  onClick={handleToggleTypingAnim}
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95 ${
+                    typingAnimOn
+                      ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
+                      : 'border-neutral-200 bg-white text-neutral-400'
+                  }`}
+                  title={typingAnimOn ? '打字动效已开启，点击关闭' : '打字动效已关闭，点击开启'}
+                >
+                  <Wand2 size={13} strokeWidth={typingAnimOn ? 2 : 1.5} />
+                  打字动效
+                </button>
                 {feedback ? (
                   <div className={feedbackToneClass}>
                     <p>{feedback.message}</p>
@@ -572,7 +595,7 @@ export function StartWriting() {
                   type="button"
                   onClick={handleRewrite}
                   disabled={isSaving || isSubmitting}
-                  className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 lg:flex-none lg:px-4"
+                  className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-4"
                   title="清空标题和正文，下次保存创建新草稿"
                 >
                   <RotateCcw size={14} />
@@ -582,7 +605,7 @@ export function StartWriting() {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 lg:flex-none lg:px-6"
+                  className="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
                 >
                   {isSaving ? '保存中…' : '保存'}
                 </button>
@@ -597,7 +620,7 @@ export function StartWriting() {
                         ? '内容相对最新版没有变化，请先修改后再提交'
                         : undefined
                   }
-                  className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 lg:flex-none lg:px-6"
+                  className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
                 >
                   {isSubmitting
                     ? submitPhase === 'grading'

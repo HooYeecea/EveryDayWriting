@@ -420,7 +420,7 @@ export function WritingRecords() {
                   setSelectedId(record.id)
                   setMobileShowDetail(true)
                 }}
-                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors ${
+                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
                   selectedId === record.id
                     ? 'border-l-neutral-900 bg-neutral-100'
                     : 'border-l-transparent hover:bg-neutral-50'
@@ -444,7 +444,7 @@ export function WritingRecords() {
                   setSelectedId(record.id)
                   setMobileShowDetail(true)
                 }}
-                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors ${
+                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
                   selectedSubmitGroup?.id === record.id ||
                   record.allVersionIds.includes(selectedId ?? '')
                     ? 'border-l-neutral-900 bg-neutral-100'

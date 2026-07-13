@@ -199,7 +199,7 @@ function MobileDraggableAssistFab({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className="fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md active:cursor-grabbing"
+      className={`fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md transition-transform duration-200 active:scale-95 active:cursor-grabbing ${timerRunning ? 'animate-pulse-soft' : ''}`}
       aria-label="打开写作辅助，按住可拖动"
       title="点击打开，按住拖动"
     >

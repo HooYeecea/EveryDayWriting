@@ -2,6 +2,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useEffect } from 'react'
+import { TypingAnimation } from './typingAnimation'
 
 interface NotionEditorProps {
   content?: string
@@ -20,6 +21,7 @@ export function NotionEditor({
         heading: { levels: [1, 2, 3] },
       }),
       Placeholder.configure({ placeholder }),
+      TypingAnimation,
     ],
     content,
     editorProps: {

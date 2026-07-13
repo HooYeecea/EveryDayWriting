@@ -4,6 +4,7 @@ import {
   PenLine,
   User,
   BarChart3,
+  HelpCircle,
 } from 'lucide-react'
 
 export const NAV_ICON_MAP = {
@@ -12,4 +13,5 @@ export const NAV_ICON_MAP = {
   clipboard: ClipboardList,
   book: BookOpen,
   chart: BarChart3,
+  help: HelpCircle,
 } as const

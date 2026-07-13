@@ -30,12 +30,12 @@ export function Sidebar({
   const { isAuthenticated } = useAuth()
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+    `flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
       collapsed ? 'lg:justify-center lg:gap-0 lg:px-2' : ''
     } ${
       isActive
         ? 'bg-neutral-100 font-medium text-neutral-900'
-        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]'
     }`
 
   const sidebarContent = (
