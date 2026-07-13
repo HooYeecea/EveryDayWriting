@@ -1,7 +1,9 @@
 import { API_PATHS } from './config'
 import { del, get, isApiError, post, put } from './request'
+import { normalizeSubmitListItem, normalizeWritingSubmitDetail } from '../utils/submitDetailNormalizer'
 import type {
   DraftSaveResult,
+  IterationResult,
   PaginatedResult,
   SubmitResult,
   WritingDraft,
@@ -16,13 +18,8 @@ export async function loadLatestDraft(): Promise<WritingDraft | null> {
   return get<WritingDraft | null>(API_PATHS.writings.draftsLatest)
 }
 
-/** 后端暂无 GET /drafts/{id}，仅当该 id 为 latest 时可加载 */
 export async function loadDraftById(id: string): Promise<WritingDraft> {
-  const latest = await loadLatestDraft()
-  if (latest?.id === id) {
-    return latest
-  }
-  throw new Error('当前仅支持编辑最新一条草稿，请从写作页自动恢复或打开最新草稿')
+  return get<WritingDraft>(API_PATHS.writings.draftById(id))
 }
 
 export async function getDrafts(
@@ -90,15 +87,27 @@ export interface SubmitListQuery {
 export async function getSubmittedWritings(
   query: SubmitListQuery = {},
 ): Promise<PaginatedResult<WritingSubmitListItem>> {
-  return get<PaginatedResult<WritingSubmitListItem>>(API_PATHS.writings.submits, {
+  const result = await get<PaginatedResult<unknown>>(API_PATHS.writings.submits, {
     params: query as Record<string, string | number | boolean | null | undefined>,
   })
+  return {
+    ...result,
+    items: result.items.map(normalizeSubmitListItem),
+  }
 }
 
 export async function getSubmittedWritingById(id: string): Promise<WritingSubmitDetail> {
-  return get<WritingSubmitDetail>(API_PATHS.writings.submitById(id))
+  const raw = await get<unknown>(API_PATHS.writings.submitById(id))
+  return normalizeWritingSubmitDetail(raw)
 }
 
 export async function deleteSubmit(id: string): Promise<void> {
   await del(API_PATHS.writings.submitById(id))
+}
+
+export async function iterateSubmit(
+  id: string,
+  payload: { content: string; title?: string; gradingSessionId?: string },
+): Promise<IterationResult> {
+  return post<IterationResult>(API_PATHS.writings.submitIterate(id), payload)
 }

@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import type { AuthLoginResult } from '../../types'
 import { isApiError } from '../../api/request'
 import { sendEmailCode } from '../../api/auth'
+import { acceptAgreement } from '../../api/agreements'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
@@ -22,6 +24,7 @@ export function Register() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [code, setCode] = useState('')
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [privacyAgreementId, setPrivacyAgreementId] = useState<string | undefined>()
   const [privacyWarning, setPrivacyWarning] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -63,7 +66,7 @@ export function Register() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -91,7 +94,14 @@ export function Register() {
     setPrivacyWarning(false)
     setSubmitting(true)
     try {
-      const result = await register(email.trim(), password, code.trim())
+      const result: AuthLoginResult = await register(email.trim(), password, code.trim())
+      if (privacyAgreementId) {
+        try {
+          await acceptAgreement(privacyAgreementId)
+        } catch (acceptErr) {
+          console.warn('[Register] 协议接受记录失败', acceptErr)
+        }
+      }
       navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败')
@@ -104,6 +114,8 @@ export function Register() {
     setPrivacyAgreed(checked)
     if (checked) {
       setPrivacyWarning(false)
+    } else {
+      setPrivacyAgreementId(undefined)
     }
   }
 
@@ -186,6 +198,7 @@ export function Register() {
         <PrivacyAgreementField
           checked={privacyAgreed}
           onChange={handlePrivacyChange}
+          onAgreementIdChange={setPrivacyAgreementId}
           highlight={privacyWarning}
         />
         <button

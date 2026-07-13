@@ -230,6 +230,51 @@ body {
   }
 }
 
+/* 写作记录：版本切换翻页动效 */
+.version-page-viewport {
+  overflow: hidden;
+  touch-action: pan-y;
+  perspective: 1200px;
+}
+
+.version-page-panel {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-origin: center center;
+}
+
+.version-page-enter-next {
+  animation: version-page-enter-next 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.version-page-enter-prev {
+  animation: version-page-enter-prev 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes version-page-enter-next {
+  from {
+    opacity: 0.35;
+    transform: translate3d(40px, 0, 0) rotateY(-5deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0deg);
+  }
+}
+
+@keyframes version-page-enter-prev {
+  from {
+    opacity: 0.35;
+    transform: translate3d(-40px, 0, 0) rotateY(5deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .checkin-calendar-layer {
     transition: none;
@@ -241,6 +286,11 @@ body {
 
   .checkin-slide-enter-next,
   .checkin-slide-enter-prev {
+    animation: none;
+  }
+
+  .version-page-enter-next,
+  .version-page-enter-prev {
     animation: none;
   }
 }

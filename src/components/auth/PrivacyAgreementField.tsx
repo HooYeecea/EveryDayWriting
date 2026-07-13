@@ -4,6 +4,7 @@ import { PrivacyAgreementModal } from './PrivacyAgreementModal'
 interface PrivacyAgreementFieldProps {
   checked: boolean
   onChange: (checked: boolean) => void
+  onAgreementIdChange?: (agreementId?: string) => void
   /** 未勾选时高亮提醒 */
   highlight?: boolean
 }
@@ -11,13 +12,15 @@ interface PrivacyAgreementFieldProps {
 export function PrivacyAgreementField({
   checked,
   onChange,
+  onAgreementIdChange,
   highlight = false,
 }: PrivacyAgreementFieldProps) {
   const [showModal, setShowModal] = useState(false)
   const showWarning = highlight && !checked
 
-  const handleAgreeFromModal = () => {
+  const handleAgreeFromModal = (agreementId?: string) => {
     onChange(true)
+    onAgreementIdChange?.(agreementId)
   }
 
   return (

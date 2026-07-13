@@ -1,15 +1,50 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
-import { TOPIC_TYPE_FILTER_OPTIONS, type ApiTopicType } from '../../api/topics'
+import { getTopicTypes, TOPIC_TYPE_FILTER_OPTIONS, type TopicTypeItem } from '../../api/topics'
+
+interface TopicTypeOption {
+  value: string
+  label: string
+}
 
 interface TopicTypeSelectProps {
-  value?: ApiTopicType
-  onChange: (value: ApiTopicType | undefined) => void
+  value?: string
+  onChange: (value: string | undefined) => void
+}
+
+function buildOptions(types: TopicTypeItem[]): TopicTypeOption[] {
+  return [
+    { value: 'all', label: '全部' },
+    ...types.map((item) => ({ value: item.name, label: item.name })),
+  ]
 }
 
 export function TopicTypeSelect({ value, onChange }: TopicTypeSelectProps) {
   const [open, setOpen] = useState(false)
+  const [options, setOptions] = useState<TopicTypeOption[]>(
+    TOPIC_TYPE_FILTER_OPTIONS.map((option) => ({
+      value: option.value,
+      label: option.label,
+    })),
+  )
   const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    getTopicTypes()
+      .then((types) => {
+        if (cancelled || types.length === 0) return
+        setOptions(buildOptions(types))
+      })
+      .catch((err) => {
+        console.warn('[TopicTypeSelect] 拉取题目类型失败，使用本地兜底选项', err)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -59,7 +94,7 @@ export function TopicTypeSelect({ value, onChange }: TopicTypeSelectProps) {
           role="listbox"
           className="absolute right-0 z-20 mt-1.5 min-w-[120px] overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg"
         >
-          {TOPIC_TYPE_FILTER_OPTIONS.map((option) => {
+          {options.map((option) => {
             const selected = option.value === 'all' ? !value : value === option.value
 
             return (

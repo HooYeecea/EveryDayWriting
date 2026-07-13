@@ -54,10 +54,11 @@ function buildUrl(path: string, params?: RequestOptions['params']): string {
   return query ? `${resolved}?${query}` : resolved
 }
 
-function buildHeaders(options: RequestOptions): Headers {
+function buildHeaders(options: RequestOptions, rawBody?: unknown): Headers {
   const headers = new Headers(options.fetchOptions?.headers)
 
-  if (!headers.has('Content-Type') && options.body !== undefined) {
+  const isFormData = rawBody instanceof FormData
+  if (!isFormData && !headers.has('Content-Type') && rawBody !== undefined) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -168,6 +169,8 @@ export async function request<T>(
   const { params, body, skipAuth = false, fetchOptions } = options
 
   const url = buildUrl(path, params)
+  const requestBody =
+    body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined
 
   if (import.meta.env.DEV && path.includes('/topics/random')) {
     console.debug('[api:topics/random]', method, url, {
@@ -180,8 +183,8 @@ export async function request<T>(
   const response = await fetch(url, {
     ...fetchOptions,
     method,
-    headers: buildHeaders({ ...options, skipAuth }),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: buildHeaders({ ...options, skipAuth }, body),
+    body: requestBody,
   })
 
   if (
@@ -235,6 +238,14 @@ export function put<T>(
 
 export function del<T>(path: string, options?: Omit<RequestOptions, 'body'>): Promise<T> {
   return request<T>(path, 'DELETE', options)
+}
+
+export function uploadForm<T>(
+  path: string,
+  formData: FormData,
+  options?: Omit<RequestOptions, 'body'>,
+): Promise<T> {
+  return request<T>(path, 'POST', { ...options, body: formData })
 }
 
 export function isApiError(error: unknown): error is ApiError {

@@ -1,16 +1,89 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
+import { getLatestAgreement } from '../../api/agreements'
 import { PRIVACY_POLICY_SECTIONS, PRIVACY_POLICY_UPDATED_AT } from '../../data/privacyPolicy'
 
 interface PrivacyAgreementModalProps {
   open: boolean
   onClose: () => void
-  onAgree: () => void
+  onAgree: (agreementId?: string) => void
+}
+
+function formatAgreementDate(value?: string): string {
+  if (!value) return PRIVACY_POLICY_UPDATED_AT
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return PRIVACY_POLICY_UPDATED_AT
+  return date.toLocaleDateString('zh-CN')
+}
+
+function renderAgreementContent(content: string) {
+  const paragraphs = content
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  if (paragraphs.length <= 1) {
+    return <p>{content.trim()}</p>
+  }
+
+  return paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)
 }
 
 export function PrivacyAgreementModal({ open, onClose, onAgree }: PrivacyAgreementModalProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canAgree, setCanAgree] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [title, setTitle] = useState('隐私协议')
+  const [updatedAt, setUpdatedAt] = useState(PRIVACY_POLICY_UPDATED_AT)
+  const [agreementId, setAgreementId] = useState<string | undefined>()
+  const [sections, setSections] = useState<Array<{ title: string; content: string }>>(
+    PRIVACY_POLICY_SECTIONS.map((section) => ({
+      title: section.title,
+      content: section.content,
+    })),
+  )
+
+  useEffect(() => {
+    if (!open) {
+      setCanAgree(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    setError('')
+
+    getLatestAgreement('PrivacyPolicy')
+      .then((agreement) => {
+        if (cancelled || !agreement) return
+
+        setAgreementId(agreement.id)
+        setTitle(agreement.title || '隐私协议')
+        setUpdatedAt(formatAgreementDate(agreement.effectiveAt || agreement.publishedAt))
+        setSections([{ title: agreement.title || '隐私协议', content: agreement.content }])
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : '协议加载失败，已展示本地版本')
+        setAgreementId(undefined)
+        setTitle('隐私协议')
+        setUpdatedAt(PRIVACY_POLICY_UPDATED_AT)
+        setSections(
+          PRIVACY_POLICY_SECTIONS.map((section) => ({
+            title: section.title,
+            content: section.content,
+          })),
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) {
@@ -34,12 +107,12 @@ export function PrivacyAgreementModal({ open, onClose, onAgree }: PrivacyAgreeme
       el.removeEventListener('scroll', checkScroll)
       window.removeEventListener('resize', checkScroll)
     }
-  }, [open])
+  }, [open, sections, loading])
 
   if (!open) return null
 
   const handleAgree = () => {
-    onAgree()
+    onAgree(agreementId)
     onClose()
   }
 
@@ -48,8 +121,8 @@ export function PrivacyAgreementModal({ open, onClose, onAgree }: PrivacyAgreeme
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl">
         <div className="flex shrink-0 items-center justify-between border-b border-neutral-200 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">隐私协议</h2>
-            <p className="mt-0.5 text-xs text-neutral-400">更新日期：{PRIVACY_POLICY_UPDATED_AT}</p>
+            <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
+            <p className="mt-0.5 text-xs text-neutral-400">更新日期：{updatedAt}</p>
           </div>
           <button
             type="button"
@@ -62,18 +135,20 @@ export function PrivacyAgreementModal({ open, onClose, onAgree }: PrivacyAgreeme
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5">
+          {loading && <p className="text-sm text-neutral-400">加载协议中…</p>}
+          {error && <p className="mb-4 text-sm text-amber-600">{error}</p>}
           <div className="space-y-5 text-sm leading-relaxed text-neutral-700">
-            {PRIVACY_POLICY_SECTIONS.map((section) => (
+            {sections.map((section) => (
               <section key={section.title}>
-                <h3 className="mb-2 font-medium text-neutral-900">{section.title}</h3>
-                <p>{section.content}</p>
+                {sections.length > 1 && (
+                  <h3 className="mb-2 font-medium text-neutral-900">{section.title}</h3>
+                )}
+                {renderAgreementContent(section.content)}
               </section>
             ))}
           </div>
-          {!canAgree && (
-            <p className="mt-6 text-center text-xs text-neutral-400">
-              请滑动阅读至底部
-            </p>
+          {!canAgree && !loading && (
+            <p className="mt-6 text-center text-xs text-neutral-400">请滑动阅读至底部</p>
           )}
         </div>
 
@@ -81,7 +156,7 @@ export function PrivacyAgreementModal({ open, onClose, onAgree }: PrivacyAgreeme
           <button
             type="button"
             onClick={handleAgree}
-            disabled={!canAgree}
+            disabled={!canAgree || loading}
             className="w-full rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             我同意

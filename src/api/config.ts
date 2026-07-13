@@ -28,16 +28,40 @@ export const API_PATHS = {
     resetPassword: '/auth/reset-password',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
+    logoutAll: '/auth/logout-all',
   },
   user: {
     profile: '/user/profile',
     password: '/user/password',
   },
+  files: {
+    upload: '/files/upload',
+  },
+  announcements: {
+    list: '/announcements',
+    read: (id: string) => `/announcements/${id}/read`,
+  },
+  usage: {
+    summary: '/usage/summary',
+    details: '/usage/details',
+    budget: '/usage/budget',
+  },
+  privacy: {
+    aiMemory: '/privacy/ai-memory',
+  },
   topics: {
     random: '/topics/random',
+    types: '/topics/types',
+  },
+  agreements: {
+    latest: '/agreements/latest',
+    accept: (id: string) => `/agreements/${id}/accept`,
+    status: '/agreements/status',
+    history: '/agreements/history',
   },
   ai: {
     config: '/ai/config',
+    key: '/ai/key',
     proxy: (purpose: string) => `/ai/proxy/${purpose}`,
   },
   writings: {
@@ -46,6 +70,9 @@ export const API_PATHS = {
     draftById: (id: string) => `/writings/drafts/${id}`,
     submits: '/writings/submits',
     submitById: (id: string) => `/writings/submits/${id}`,
+    submitIterate: (id: string) => `/writings/submits/${id}/iterate`,
+    suggestionChat: (submitId: string, suggestionId: string) =>
+      `/writings/submits/${submitId}/suggestions/${suggestionId}/chat`,
   },
   checkin: {
     status: '/checkin/status',

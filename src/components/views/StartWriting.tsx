@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, RotateCcw } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
-import { loadLatestDraft, saveWritingDraft, submitWriting } from '../../api/writing'
-import { getRandomTopic, topicToPrompt, type ApiTopicType } from '../../api/topics'
+import { loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
+import { runPreSubmitGrading } from '../../api/aiGrading'
+import { saveGradingPreview } from '../../storage/gradingPreviewStorage'
+import { getRandomTopic, topicToPrompt } from '../../api/topics'
 import { isApiError } from '../../api/request'
 import { useAuth } from '../../context/AuthContext'
 import { getMockRandomTopic } from '../../data/mockTopics'
+import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
 import { NotionEditor } from '../editor/NotionEditor'
 import { TopicPromptBox } from '../writing/TopicPromptBox'
 import { TopicTypeSelect } from '../writing/TopicTypeSelect'
@@ -27,11 +30,16 @@ interface ActionFeedback {
   tone: 'success' | 'error' | 'info'
   message: string
   recordsTab?: RecordsTab
+  submitId?: string
 }
 
 function isEditorEmpty(html: string): boolean {
   const text = html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
   return text.length === 0
+}
+
+function buildSubmitSnapshot(title: string, content: string) {
+  return `${title.trim()}|||${content}`
 }
 
 function draftToTopic(draft: { topicId: number | null; topic: string }): WritingTopic {
@@ -48,21 +56,35 @@ export function StartWriting() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const draftIdParam = searchParams.get('draftId')
+  const iterateFromParam = searchParams.get('iterateFrom')
 
   const [topic, setTopic] = useState<WritingTopic>(() => getMockRandomTopic())
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [draftId, setDraftId] = useState<string | undefined>()
+  const [iterateFromId, setIterateFromId] = useState<string | undefined>()
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | undefined>()
   const [wordCount, setWordCount] = useState<number | undefined>()
   const [wordLimit, setWordLimit] = useState<number | undefined>()
   const [editorKey, setEditorKey] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitPhase, setSubmitPhase] = useState<'idle' | 'grading' | 'submitting'>('idle')
   const [isSaving, setIsSaving] = useState(false)
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [topicTypeFilter, setTopicTypeFilter] = useState<ApiTopicType | undefined>(undefined)
+  const [topicTypeFilter, setTopicTypeFilter] = useState<string | undefined>(undefined)
+  const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null)
+  const [iterateBaselineSnapshot, setIterateBaselineSnapshot] = useState<string | null>(null)
+  const submitLockRef = useRef(false)
+  const preserveWritingSessionRef = useRef(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
+
+  const currentSubmitSnapshot = buildSubmitSnapshot(title, content)
+  const isContentAlreadySubmitted = submittedSnapshot === currentSubmitSnapshot
+  const isIterateUnchanged =
+    Boolean(iterateFromId) &&
+    iterateBaselineSnapshot !== null &&
+    iterateBaselineSnapshot === currentSubmitSnapshot
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -70,28 +92,79 @@ export function StartWriting() {
     let cancelled = false
 
     async function initWritingPage() {
+      if (preserveWritingSessionRef.current && !draftIdParam && !iterateFromParam) {
+        return
+      }
+
       try {
+        if (iterateFromParam) {
+          try {
+            const submit = await getSubmittedWritingById(iterateFromParam)
+            if (cancelled) return
+
+            preserveWritingSessionRef.current = true
+            setIterateFromId(submit.id)
+            setDraftId(undefined)
+            setDraftUpdatedAt(undefined)
+            setTopic({
+              id: submit.topicId,
+              type: submit.topicType,
+              title: submit.topic,
+              description: submit.topic,
+            })
+            setTitle(submit.title)
+            setContent(submit.content)
+            setSubmittedSnapshot(null)
+            setIterateBaselineSnapshot(buildSubmitSnapshot(submit.title, submit.content))
+            setEditorKey((key) => key + 1)
+            setFeedback({
+              tone: 'info',
+              message: `正在基于第 ${submit.iterationNumber ?? 1} 版提交进行迭代改进`,
+            })
+            return
+          } catch (err) {
+            if (cancelled) return
+            setFeedback({
+              tone: 'error',
+              message: err instanceof Error ? err.message : '加载原提交失败',
+            })
+          }
+        }
+
+        if (draftIdParam) {
+          try {
+            const draft = await loadDraftById(draftIdParam)
+            if (cancelled) return
+
+            setDraftId(draft.id)
+            setDraftUpdatedAt(draft.updatedAt)
+            setTopic(draftToTopic(draft))
+            setTitle(draft.title)
+            setContent(draft.content)
+            setSubmittedSnapshot(null)
+            setEditorKey((key) => key + 1)
+            return
+          } catch (err) {
+            if (cancelled) return
+            setFeedback({
+              tone: 'info',
+              message: err instanceof Error ? err.message : '未找到指定草稿，已尝试加载最新草稿',
+            })
+          }
+        }
+
         const draft = await loadLatestDraft()
         if (cancelled) return
 
         if (draft) {
-          if (draftIdParam && draft.id !== draftIdParam) {
-            setFeedback({
-              tone: 'info',
-              message: '当前仅支持编辑最新草稿，已为您加载最新内容',
-            })
-          }
           setDraftId(draft.id)
           setDraftUpdatedAt(draft.updatedAt)
           setTopic(draftToTopic(draft))
           setTitle(draft.title)
           setContent(draft.content)
+          setSubmittedSnapshot(null)
           setEditorKey((key) => key + 1)
           return
-        }
-
-        if (draftIdParam) {
-          setFeedback({ tone: 'info', message: '未找到指定草稿，已开始新写作' })
         }
 
         try {
@@ -120,7 +193,7 @@ export function StartWriting() {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, draftIdParam])
+  }, [isAuthenticated, draftIdParam, iterateFromParam])
 
   const promptLogin = (): boolean => {
     if (isAuthenticated && user) return true
@@ -129,6 +202,7 @@ export function StartWriting() {
   }
 
   const handleChangeTopic = async () => {
+    setSubmittedSnapshot(null)
     if (isAuthenticated) {
       try {
         const next = await getRandomTopic(topicTypeFilter)
@@ -141,7 +215,7 @@ export function StartWriting() {
     setTopic(getMockRandomTopic(topic.id))
   }
 
-  const handleTopicTypeFilterChange = (value: ApiTopicType | undefined) => {
+  const handleTopicTypeFilterChange = (value: string | undefined) => {
     setTopicTypeFilter(value)
   }
 
@@ -171,16 +245,20 @@ export function StartWriting() {
   }
 
   const performRewrite = () => {
+    preserveWritingSessionRef.current = false
     setTitle('')
     setContent('')
     setDraftId(undefined)
     setDraftUpdatedAt(undefined)
+    setIterateFromId(undefined)
+    setSubmittedSnapshot(null)
+    setIterateBaselineSnapshot(null)
     setWordCount(undefined)
     setWordLimit(undefined)
     setEditorKey((key) => key + 1)
     setFeedback({ tone: 'info', message: '已开始新写作，保存时将创建新草稿' })
 
-    if (draftIdParam) {
+    if (draftIdParam || iterateFromParam) {
       navigate('/writing', { replace: true })
     }
   }
@@ -276,45 +354,137 @@ export function StartWriting() {
 
   const handleSubmit = async () => {
     if (!promptLogin()) return
+    if (submitLockRef.current || isSubmitting) return
 
     if (isEditorEmpty(content)) {
       setFeedback({ tone: 'error', message: '请先输入正文再提交' })
       return
     }
 
+    if (isContentAlreadySubmitted) {
+      setFeedback({ tone: 'info', message: '当前内容已提交，修改后再提交' })
+      return
+    }
+
+    if (isIterateUnchanged) {
+      setFeedback({ tone: 'info', message: '内容相对最新版没有变化，请先修改后再提交' })
+      return
+    }
+
+    submitLockRef.current = true
     setIsSubmitting(true)
+    setSubmitPhase('idle')
     setFeedback(null)
     try {
+      const settings = loadAiAssistSettings()
+      const hasAiTasks =
+        settings.encryptedKey &&
+        settings.providerId &&
+        settings.modelId &&
+        (settings.postSubmitReview || settings.postSubmitSuggestions)
+
+      let gradingSessionId: string | undefined
+      let completedTasks: string[] = []
+      let failedTasks: string[] = []
+      let stageContents: Partial<Record<'grammar' | 'evaluation' | 'vocabulary', string>> = {}
+
+      if (hasAiTasks) {
+        setSubmitPhase('grading')
+        const grading = await runPreSubmitGrading(content)
+        gradingSessionId = grading.gradingSessionId
+        completedTasks = grading.completedTasks
+        failedTasks = grading.failedTasks
+        stageContents = grading.stageContents
+      }
+
+      setSubmitPhase('submitting')
+
+      if (iterateFromId) {
+        const result = await iterateSubmit(iterateFromId, {
+          title: title.trim(),
+          content,
+          gradingSessionId,
+        })
+
+        if (result.id && Object.keys(stageContents).length > 0) {
+          saveGradingPreview(result.id, stageContents)
+        }
+
+        const aiSuccess =
+          completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
+        const aiFailed =
+          failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
+        const aiViewHint =
+          completedTasks.length > 0 && gradingSessionId
+            ? ' 可前往写作记录查看 AI 批改结果。'
+            : ''
+        const stats =
+          result.wordCount !== undefined && result.wordLimit !== undefined
+            ? `（${result.wordCount} / ${result.wordLimit} 词）`
+            : ''
+
+        setIterateFromId(result.id)
+        preserveWritingSessionRef.current = true
+        navigate('/writing', { replace: true })
+
+        setFeedback({
+          tone: failedTasks.length > 0 && completedTasks.length === 0 ? 'info' : 'success',
+          message: `迭代提交成功，当前为第 ${result.iterationNumber} 版${stats}${aiSuccess}${aiFailed}${aiViewHint}`,
+          recordsTab: 'submits',
+          submitId: result.id,
+        })
+        setSubmittedSnapshot(currentSubmitSnapshot)
+        setIterateBaselineSnapshot(currentSubmitSnapshot)
+        return
+      }
+
       const result = await submitWriting({
         topicId: topic.id,
         topic: topicToPrompt(topic),
         title: title.trim(),
         content,
         draftId,
+        gradingSessionId,
       })
+      if (result.id && Object.keys(stageContents).length > 0) {
+        saveGradingPreview(result.id, stageContents)
+      }
       setDraftId(undefined)
       setDraftUpdatedAt(undefined)
       setWordCount(undefined)
       setWordLimit(undefined)
 
+      const aiSuccess =
+        completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
+      const aiFailed =
+        failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
+      const aiViewHint =
+        completedTasks.length > 0 && gradingSessionId
+          ? ' 可前往写作记录查看 AI 批改结果。'
+          : ''
+
       const scorePart =
-        result.aiScore !== null ? ` AI 评分 ${result.aiScore} 分。` : ' AI 评分暂不可用。'
+        result.aiScore !== null ? ` AI 评分 ${result.aiScore} 分。` : ''
       const stats =
         result.wordCount !== undefined && result.wordLimit !== undefined
           ? `（${result.wordCount} / ${result.wordLimit} 词）`
           : ''
       setFeedback({
-        tone: 'success',
-        message: `提交成功${stats}${scorePart}可前往写作记录查看提交记录`,
+        tone: failedTasks.length > 0 && completedTasks.length === 0 ? 'info' : 'success',
+        message: `提交成功${stats}${scorePart}${aiSuccess}${aiFailed}${aiViewHint}`,
         recordsTab: 'submits',
+        submitId: result.id,
       })
+      setSubmittedSnapshot(currentSubmitSnapshot)
     } catch (err) {
       setFeedback({
         tone: 'error',
         message: err instanceof Error ? err.message : '提交失败',
       })
     } finally {
+      submitLockRef.current = false
       setIsSubmitting(false)
+      setSubmitPhase('idle')
     }
   }
 
@@ -323,6 +493,10 @@ export function StartWriting() {
     if (wordCount !== undefined && wordLimit !== undefined) {
       const mode = draftId ? '编辑中' : '新写作'
       return `${wordCount} / ${wordLimit} 词 · ${mode}`
+    }
+    if (iterateFromId) {
+      if (isIterateUnchanged) return '相对最新版无变化 · 修改后可提交'
+      return '迭代改进中 · 提交将创建新版本'
     }
     if (draftId) return '编辑中 · 保存将更新当前草稿'
     return '新写作 · 保存将创建草稿'
@@ -383,7 +557,7 @@ export function StartWriting() {
                     {feedback.tone === 'success' && feedback.recordsTab && (
                       <Link
                         to="/records"
-                        state={{ tab: feedback.recordsTab }}
+                        state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
                         className="mt-1 inline-block font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
                       >
                         前往写作记录
@@ -416,10 +590,25 @@ export function StartWriting() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isContentAlreadySubmitted || isIterateUnchanged}
+                  title={
+                    isContentAlreadySubmitted
+                      ? '当前内容已提交，修改后可再次提交'
+                      : isIterateUnchanged
+                        ? '内容相对最新版没有变化，请先修改后再提交'
+                        : undefined
+                  }
                   className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 lg:flex-none lg:px-6"
                 >
-                  {isSubmitting ? '提交中…' : '提交'}
+                  {isSubmitting
+                    ? submitPhase === 'grading'
+                      ? 'AI 批改中…'
+                      : '提交中…'
+                    : isContentAlreadySubmitted
+                      ? '已提交'
+                      : isIterateUnchanged
+                        ? '无变化'
+                        : '提交'}
                 </button>
               </div>
             </div>

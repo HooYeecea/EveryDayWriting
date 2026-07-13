@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, FileText, LogIn, PenLine, Sparkles } from 'lucide-react'
+import { ArrowLeft, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
 import {
   deleteDraft,
   deleteSubmit,
   getDrafts,
   getSubmittedWritingById,
   getSubmittedWritings,
+  loadDraftById,
 } from '../../api/writing'
+import { SuggestionChatBox } from '../writing/SuggestionChatBox'
+import { AiMarkdownContent } from '../writing/AiMarkdownContent'
+import { SubmitVersionNav } from '../writing/SubmitVersionNav'
+import { VocabularySelectionAdd } from '../vocabulary/VocabularySelectionAdd'
 import { useAuth } from '../../context/AuthContext'
-import type { WritingDraftListItem, WritingSubmitDetail, WritingSubmitListItem } from '../../types'
+import { loadGradingPreview } from '../../storage/gradingPreviewStorage'
+import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
+import type {
+  IterationSibling,
+  WritingDraft,
+  WritingDraftListItem,
+  WritingSubmitDetail,
+} from '../../types'
 import {
   MAIN_CONTENT_X_CLASS,
   PANEL_HEADER_CLASS,
@@ -26,21 +38,100 @@ import {
 
 type RecordTab = 'saves' | 'submits'
 
+type RecordsLocationState = {
+  tab?: RecordTab
+  selectedId?: string
+}
+
 function formatTime(time: string) {
   return new Date(time).toLocaleString()
+}
+
+function resolveVersionList(
+  detail: WritingSubmitDetail | null,
+  group: GroupedSubmitListItem | undefined,
+): IterationSibling[] {
+  const apiVersions =
+    detail?.iterations && detail.iterations.length > 0
+      ? [...detail.iterations].sort((a, b) => a.iterationNumber - b.iterationNumber)
+      : []
+  const apiById = new Map(apiVersions.map((item) => [item.id, item]))
+
+  const enrichVersion = (version: IterationSibling): IterationSibling => {
+    const fromApi = apiById.get(version.id)
+    if (fromApi) return fromApi
+    if (detail && version.id === detail.id) {
+      return {
+        id: detail.id,
+        iterationNumber: detail.iterationNumber ?? version.iterationNumber,
+        aiScore: detail.aiScore,
+        submittedAt: detail.submittedAt,
+      }
+    }
+    return version
+  }
+
+  // 列表侧版本链通常比详情 iterations 更完整，优先采用
+  if (group && group.versionCount > 1) {
+    const baseVersions =
+      group.allVersions.length > 0
+        ? group.allVersions
+        : group.allVersionIds.map((id, index) => ({
+            id,
+            iterationNumber: index + 1,
+            aiScore: id === group.id ? group.aiScore : null,
+            submittedAt: group.submittedAt,
+          }))
+
+    const merged = baseVersions.map(enrichVersion)
+    if (detail && !merged.some((item) => item.id === detail.id)) {
+      merged.push({
+        id: detail.id,
+        iterationNumber: detail.iterationNumber ?? merged.length + 1,
+        aiScore: detail.aiScore,
+        submittedAt: detail.submittedAt,
+      })
+      merged.sort((a, b) => a.iterationNumber - b.iterationNumber)
+    }
+    return merged
+  }
+
+  if (apiVersions.length > 1) {
+    return apiVersions
+  }
+
+  if (apiVersions.length === 1) {
+    return apiVersions
+  }
+
+  if (detail) {
+    return [
+      {
+        id: detail.id,
+        iterationNumber: detail.iterationNumber ?? 1,
+        aiScore: detail.aiScore,
+        submittedAt: detail.submittedAt,
+      },
+    ]
+  }
+
+  return []
 }
 
 export function WritingRecords() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const initialTab = (location.state as { tab?: RecordTab } | null)?.tab
-  const [tab, setTab] = useState<RecordTab>(initialTab ?? 'saves')
+  const locationState = (location.state as RecordsLocationState | null) ?? null
+  const [tab, setTab] = useState<RecordTab>(locationState?.tab ?? 'saves')
   const [saves, setSaves] = useState<WritingDraftListItem[]>([])
-  const [submits, setSubmits] = useState<WritingSubmitListItem[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [submits, setSubmits] = useState<GroupedSubmitListItem[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(locationState?.selectedId ?? null)
   const [submitDetail, setSubmitDetail] = useState<WritingSubmitDetail | null>(null)
+  const [submitDetailLoading, setSubmitDetailLoading] = useState(false)
   const [selectedDraft, setSelectedDraft] = useState<WritingDraftListItem | null>(null)
+  const [draftDetail, setDraftDetail] = useState<WritingDraft | null>(null)
+  const [draftDetailLoading, setDraftDetailLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [mobileShowDetail, setMobileShowDetail] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -51,8 +142,21 @@ export function WritingRecords() {
 
   const [deleting, setDeleting] = useState(false)
 
-  const latestDraftId = saves[0]?.id
   const list = tab === 'saves' ? saves : submits
+
+  const selectedSubmitGroup = submits.find(
+    (item) => item.id === selectedId || item.allVersionIds.includes(selectedId ?? ''),
+  )
+
+  useEffect(() => {
+    const state = location.state as RecordsLocationState | null
+    if (!state?.selectedId) return
+    setSelectedId(state.selectedId)
+    setMobileShowDetail(true)
+    if (state.tab) {
+      setTab(state.tab)
+    }
+  }, [location.state])
 
   const handleDelete = async () => {
     if (!selectedId || deleting) return
@@ -66,7 +170,12 @@ export function WritingRecords() {
         setSaves((prev) => prev.filter((item) => item.id !== selectedId))
       } else {
         await deleteSubmit(selectedId)
-        setSubmits((prev) => prev.filter((item) => item.id !== selectedId))
+        const result = await getSubmittedWritings({
+          keyword: activeKeyword || undefined,
+          page: 1,
+          pageSize: 100,
+        })
+        setSubmits(groupSubmitListItems(result.items))
       }
       setSelectedId(null)
       setMobileShowDetail(false)
@@ -124,27 +233,43 @@ export function WritingRecords() {
       page: 1,
       pageSize: 100,
     })
-      .then((result) => setSubmits(result.items))
+      .then((result) => setSubmits(groupSubmitListItems(result.items)))
       .finally(() => setLoading(false))
-  }, [isAuthenticated, tab, activeKeyword])
+  }, [isAuthenticated, tab, activeKeyword, location.key])
 
   useEffect(() => {
     if (!selectedId) {
       setSubmitDetail(null)
+      setSubmitDetailLoading(false)
       setSelectedDraft(null)
+      setDraftDetail(null)
       return
     }
 
     if (tab === 'saves') {
       setSubmitDetail(null)
-      setSelectedDraft(saves.find((item) => item.id === selectedId) ?? null)
+      const draft = saves.find((item) => item.id === selectedId) ?? null
+      setSelectedDraft(draft)
+      if (!draft) {
+        setDraftDetail(null)
+        return
+      }
+
+      setDraftDetailLoading(true)
+      loadDraftById(draft.id)
+        .then(setDraftDetail)
+        .catch(() => setDraftDetail(null))
+        .finally(() => setDraftDetailLoading(false))
       return
     }
 
     setSelectedDraft(null)
+    setDraftDetail(null)
+    setSubmitDetailLoading(true)
     getSubmittedWritingById(selectedId)
       .then(setSubmitDetail)
       .catch(() => setSubmitDetail(null))
+      .finally(() => setSubmitDetailLoading(false))
   }, [selectedId, tab, saves])
 
   if (!isAuthenticated || !user) {
@@ -253,14 +378,17 @@ export function WritingRecords() {
           {tab === 'submits' &&
             submits.map((record) => (
               <button
-                key={record.id}
+                key={record.iterationGroupId ?? record.id}
                 type="button"
                 onClick={() => {
                   setSelectedId(record.id)
                   setMobileShowDetail(true)
                 }}
                 className={`mb-1 w-full rounded-lg px-3 py-3 text-left transition-colors ${
-                  selectedId === record.id ? 'bg-neutral-100' : 'hover:bg-neutral-50'
+                  selectedSubmitGroup?.id === record.id ||
+                  record.allVersionIds.includes(selectedId ?? '')
+                    ? 'bg-neutral-100'
+                    : 'hover:bg-neutral-50'
                 }`}
               >
                 <p className="truncate text-sm font-medium text-neutral-900">
@@ -272,9 +400,19 @@ export function WritingRecords() {
                     <Clock size={12} />
                     {formatTime(record.submittedAt)}
                   </span>
-                  {record.aiScore !== null && (
-                    <span className="font-medium text-neutral-600">{record.aiScore} 分</span>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {record.versionCount > 1 && (
+                      <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
+                        共 {record.versionCount} 版
+                      </span>
+                    )}
+                    {record.iterationNumber != null && (
+                      <span className="font-medium text-neutral-500">v{record.iterationNumber}</span>
+                    )}
+                    {record.aiScore !== null && (
+                      <span className="font-medium text-neutral-600">{record.aiScore} 分</span>
+                    )}
+                  </span>
                 </div>
               </button>
             ))}
@@ -325,14 +463,7 @@ export function WritingRecords() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (selectedDraft.id !== latestDraftId) {
-                          alert('当前仅支持编辑最新一条草稿，将为您打开最新草稿。')
-                        }
-                        navigate(
-                          selectedDraft.id === latestDraftId
-                            ? `/writing?draftId=${selectedDraft.id}`
-                            : '/writing',
-                        )
+                        navigate(`/writing?draftId=${selectedDraft.id}`)
                       }}
                       className="flex items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
                     >
@@ -355,15 +486,55 @@ export function WritingRecords() {
                     <dd className="mt-0.5 text-neutral-700">{formatTime(selectedDraft.updatedAt)}</dd>
                   </div>
                 </dl>
-                <p className="mt-4 text-sm text-neutral-500">
-                  草稿正文请在编辑器中继续编辑查看。
-                </p>
+                {draftDetailLoading && (
+                  <p className="mt-4 text-sm text-neutral-400">加载草稿内容…</p>
+                )}
+                {draftDetail && (
+                  <div className="mt-4 rounded-xl border border-neutral-100 bg-neutral-50 p-4">
+                    <h4 className="text-sm font-medium text-neutral-500">正文预览</h4>
+                    <div
+                      className="notion-editor mt-3 text-sm text-neutral-800"
+                      dangerouslySetInnerHTML={{ __html: draftDetail.content || '<p></p>' }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {tab === 'submits' && submitDetail && (
+          {tab === 'submits' && submitDetail && selectedId && (() => {
+            const gradingPreview = loadGradingPreview(selectedId)
+            const grammarSuggestions = submitDetail.grammarSuggestions ?? []
+            const vocabularySuggestions = submitDetail.vocabularySuggestions ?? []
+            const grammarProse = gradingPreview?.grammar?.trim()
+            const evaluationProse =
+              submitDetail.aiEvaluation?.trim() ||
+              gradingPreview?.evaluation?.trim() ||
+              gradingPreview?.vocabulary?.trim()
+            const versions = resolveVersionList(submitDetail, selectedSubmitGroup)
+            const latestVersionId =
+              versions.length > 0 ? versions[versions.length - 1].id : submitDetail.id
+            const isLatestVersion = selectedId === latestVersionId
+
+            const detailReady = submitDetail.id === selectedId
+
+            return (
             <div className="mx-auto max-w-3xl">
+              <SubmitVersionNav
+                versions={versions}
+                currentId={selectedId}
+                onChange={(id) => {
+                  if (id === selectedId) return
+                  setSelectedId(id)
+                  setMobileShowDetail(true)
+                }}
+              >
+              <VocabularySelectionAdd>
+              <div
+                className={`transition-opacity duration-500 ease-out ${
+                  detailReady ? 'opacity-100' : 'pointer-events-none opacity-40'
+                }`}
+              >
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="min-w-0">
                   <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
@@ -376,16 +547,34 @@ export function WritingRecords() {
                     <p className="mt-2 flex items-center gap-1.5 text-sm text-neutral-600">
                       <Sparkles size={14} />
                       AI 评分：{submitDetail.aiScore}
+                      {submitDetail.iterationNumber != null && (
+                        <span className="text-neutral-400">· 第 {submitDetail.iterationNumber} 版</span>
+                      )}
                     </p>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete()}
-                    disabled={deleting}
-                    className="mt-3 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {deleting ? '删除中…' : '删除记录'}
-                  </button>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/writing?iterateFrom=${latestVersionId}`)}
+                      disabled={!isLatestVersion}
+                      title={!isLatestVersion ? '请基于最新版继续修改' : undefined}
+                      className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <RotateCcw size={14} />
+                      基于此稿继续写（生成新版本）
+                    </button>
+                    {!isLatestVersion && (
+                      <span className="text-xs text-neutral-400">请基于最新版继续修改</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete()}
+                      disabled={deleting}
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deleting ? '删除中…' : '删除记录'}
+                    </button>
+                  </div>
                 </div>
 
                 <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-5 text-sm">
@@ -420,43 +609,110 @@ export function WritingRecords() {
                 />
               </div>
 
-              {submitDetail.grammarSuggestions.length > 0 && (
-                <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                  <h4 className="text-sm font-medium text-neutral-500">语法建议</h4>
-                  <ul className="mt-3 space-y-3">
-                    {submitDetail.grammarSuggestions.map((item) => (
-                      <li key={item.id} className="rounded-lg bg-neutral-50 px-3 py-2 text-sm">
-                        <p>
-                          <span className="text-red-600 line-through">{item.original}</span>
-                          {' → '}
-                          <span className="font-medium text-green-700">{item.correction}</span>
-                        </p>
-                        <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
-                      </li>
-                    ))}
-                  </ul>
+              <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-neutral-400" />
+                  <h4 className="text-sm font-medium text-neutral-700">AI 批改结果</h4>
                 </div>
-              )}
+                <p className="mt-1 text-xs text-neutral-400">
+                  在开始写作页开启「AI 检查与修改」「提升建议」后，提交时生成的建议会显示在这里。
+                </p>
 
-              {submitDetail.vocabularySuggestions.length > 0 && (
-                <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                  <h4 className="text-sm font-medium text-neutral-500">词汇建议</h4>
-                  <ul className="mt-3 space-y-3">
-                    {submitDetail.vocabularySuggestions.map((item) => (
-                      <li key={item.id} className="rounded-lg bg-neutral-50 px-3 py-2 text-sm">
-                        <p>
-                          {item.original} → <span className="font-medium">{item.suggestion}</span>
-                        </p>
-                        {item.context && (
-                          <p className="mt-1 text-xs text-neutral-500">{item.context}</p>
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
+                    <div className="flex items-center gap-1.5">
+                      <Wand2 size={14} className="text-neutral-400" />
+                      <h5 className="text-xs font-medium text-neutral-700">
+                        AI 检查与修改
+                        {grammarSuggestions.length > 0 && (
+                          <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] text-neutral-600">
+                            {grammarSuggestions.length} 条
+                          </span>
                         )}
-                      </li>
-                    ))}
-                  </ul>
+                      </h5>
+                    </div>
+                    {grammarSuggestions.length > 0 ? (
+                      <ul className="mt-3 space-y-3">
+                        {grammarSuggestions.map((item) => (
+                          <li key={item.id} className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm">
+                            <p>
+                              <span className="text-red-600 line-through">{item.original}</span>
+                              {' → '}
+                              <span className="font-medium text-green-700">{item.correction}</span>
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
+                            {selectedId && (
+                              <SuggestionChatBox
+                                submitId={selectedId}
+                                suggestionId={item.id}
+                                label={item.original}
+                              />
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : grammarProse ? (
+                      <AiMarkdownContent content={grammarProse} className="mt-2" />
+                    ) : (
+                      <p className="mt-2 text-xs text-neutral-400">本次提交暂无语法检查内容。</p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
+                    <div className="flex items-center gap-1.5">
+                      <Lightbulb size={14} className="text-neutral-400" />
+                      <h5 className="text-xs font-medium text-neutral-700">
+                        提升建议
+                        {vocabularySuggestions.length > 0 && (
+                          <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] text-neutral-600">
+                            {vocabularySuggestions.length} 条用词建议
+                          </span>
+                        )}
+                      </h5>
+                    </div>
+                    {evaluationProse ? (
+                      <AiMarkdownContent content={evaluationProse} className="mt-2" />
+                    ) : vocabularySuggestions.length > 0 ? null : (
+                      <p className="mt-2 text-xs text-neutral-400">本次提交暂无提升建议。</p>
+                    )}
+                    {vocabularySuggestions.length > 0 && (
+                      <ul className={`space-y-3 ${evaluationProse ? 'mt-4' : 'mt-3'}`}>
+                        {vocabularySuggestions.map((item) => (
+                          <li
+                            key={item.id}
+                            data-vocab-hint
+                            data-vocab-translation={item.reason || item.suggestion}
+                            className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm"
+                          >
+                            <p>
+                              {item.original} → <span className="font-medium">{item.suggestion}</span>
+                            </p>
+                            {item.context && (
+                              <p className="mt-1 text-xs text-neutral-500">{item.context}</p>
+                            )}
+                            {item.reason && (
+                              <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
+                            )}
+                            {selectedId && (
+                              <SuggestionChatBox
+                                submitId={selectedId}
+                                suggestionId={item.id}
+                                label={item.original}
+                              />
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
+              </div>
+              </VocabularySelectionAdd>
+              </SubmitVersionNav>
             </div>
-          )}
+            )
+          })()}
         </div>
       </div>
     </div>

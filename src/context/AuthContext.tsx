@@ -7,29 +7,38 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { LoginGraphCaptcha, UserProfile } from '../types'
+import type { AuthLoginResult, LoginGraphCaptcha, UserProfile } from '../types'
 import * as authApi from '../api/auth'
 import { setUnauthorizedHandler } from '../api/request'
+import {
+  clearMustChangePassword,
+  getMustChangePassword,
+} from '../storage/mustChangePasswordStorage'
 import { getToken } from '../storage/tokenStorage'
 
 interface AuthContextValue {
   user: UserProfile | null
   isAuthenticated: boolean
+  mustChangePassword: boolean
   isLoading: boolean
-  login: (email: string, password: string, captcha?: LoginGraphCaptcha) => Promise<void>
-  register: (email: string, password: string, code: string) => Promise<void>
+  login: (email: string, password: string, captcha?: LoginGraphCaptcha) => Promise<AuthLoginResult>
+  register: (email: string, password: string, code: string) => Promise<AuthLoginResult>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
+  completeForcedPasswordChange: (oldPassword: string, newPassword: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
+  const [mustChangePassword, setMustChangePasswordState] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  const clearUser = useCallback(() => {
+  const clearSession = useCallback(() => {
     setUser(null)
+    setMustChangePasswordState(false)
+    clearMustChangePassword()
   }, [])
 
   const refreshProfile = useCallback(async () => {
@@ -37,13 +46,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile)
   }, [])
 
+  const finishAuthSession = useCallback(async (sessionMustChange: boolean): Promise<AuthLoginResult> => {
+    if (sessionMustChange) {
+      setMustChangePasswordState(true)
+      setUser(null)
+      return { mustChangePassword: true }
+    }
+
+    setMustChangePasswordState(false)
+    clearMustChangePassword()
+    const profile = await authApi.fetchUserProfile()
+    setUser(profile)
+    return { mustChangePassword: false }
+  }, [])
+
   useEffect(() => {
-    setUnauthorizedHandler(clearUser)
+    setUnauthorizedHandler(clearSession)
     return () => setUnauthorizedHandler(null)
-  }, [clearUser])
+  }, [clearSession])
 
   useEffect(() => {
     if (!getToken()) {
+      setIsLoading(false)
+      return
+    }
+
+    if (getMustChangePassword()) {
+      setMustChangePasswordState(true)
       setIsLoading(false)
       return
     }
@@ -54,34 +83,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
-  const login = useCallback(async (email: string, password: string, captcha?: LoginGraphCaptcha) => {
-    await authApi.login(email, password, captcha)
-    const profile = await authApi.fetchUserProfile()
-    setUser(profile)
-  }, [])
+  const login = useCallback(
+    async (email: string, password: string, captcha?: LoginGraphCaptcha): Promise<AuthLoginResult> => {
+      const session = await authApi.login(email, password, captcha)
+      return finishAuthSession(Boolean(session.user.mustChangePassword))
+    },
+    [finishAuthSession],
+  )
 
-  const register = useCallback(async (email: string, password: string, code: string) => {
-    await authApi.register(email, password, code)
-    const profile = await authApi.fetchUserProfile()
-    setUser(profile)
-  }, [])
+  const register = useCallback(
+    async (email: string, password: string, code: string): Promise<AuthLoginResult> => {
+      const session = await authApi.register(email, password, code)
+      return finishAuthSession(Boolean(session.user.mustChangePassword))
+    },
+    [finishAuthSession],
+  )
+
+  const completeForcedPasswordChange = useCallback(
+    async (oldPassword: string, newPassword: string) => {
+      await authApi.changePassword(oldPassword, newPassword)
+      setMustChangePasswordState(false)
+      const profile = await authApi.fetchUserProfile()
+      setUser(profile)
+    },
+    [],
+  )
 
   const logout = useCallback(async () => {
     await authApi.logout()
-    setUser(null)
-  }, [])
+    clearSession()
+  }, [clearSession])
 
   const value = useMemo(
     () => ({
       user,
-      isAuthenticated: user !== null,
+      mustChangePassword,
+      isAuthenticated: user !== null && !mustChangePassword,
       isLoading,
       login,
       register,
       logout,
       refreshProfile,
+      completeForcedPasswordChange,
     }),
-    [user, isLoading, login, register, logout, refreshProfile],
+    [
+      user,
+      mustChangePassword,
+      isLoading,
+      login,
+      register,
+      logout,
+      refreshProfile,
+      completeForcedPasswordChange,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

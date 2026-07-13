@@ -114,6 +114,15 @@ export interface WritingSubmitListItem {
   title: string
   aiScore: number | null
   wordCount: number
+  iterationGroupId?: string
+  iterationNumber?: number
+  submittedAt: string
+}
+
+export interface IterationSibling {
+  id: string
+  iterationNumber: number
+  aiScore: number | null
   submittedAt: string
 }
 
@@ -129,6 +138,7 @@ export interface VocabularySuggestion {
   original: string
   suggestion: string
   context: string
+  reason?: string
 }
 
 export interface WritingSubmitDetail {
@@ -143,7 +153,101 @@ export interface WritingSubmitDetail {
   aiEvaluation: string | null
   grammarSuggestions: GrammarSuggestion[]
   vocabularySuggestions: VocabularySuggestion[]
+  iterationGroupId?: string
+  iterationNumber?: number
+  iterations?: IterationSibling[]
   submittedAt: string
+}
+
+export interface IterationResult {
+  id: string
+  iterationGroupId: string
+  iterationNumber: number
+  wordCount: number
+  wordLimit: number
+  submittedAt: string
+}
+
+export interface ChatMessage {
+  role: string
+  content: string
+}
+
+export interface SuggestionChatHistory {
+  suggestionId: string
+  messages: ChatMessage[]
+  updatedAt: string
+}
+
+export interface AnnouncementItem {
+  id: string
+  title: string
+  content: string
+  priority: string
+  publishedAt: string
+  expiresAt: string | null
+  hasRead: boolean
+}
+
+export interface TokenUsageSummary {
+  consumedThisMonth: number
+  totalConsumed: number
+  totalCalls: number
+  monthlyBudget: number | null
+  budgetStatus: string
+}
+
+export interface TokenBudgetStatus {
+  consumedThisMonth: number
+  budgetLimit: number | null
+  status: string
+  consumedPercent: number
+}
+
+export interface TokenUsageDetailItem {
+  id: string
+  providerId: string
+  modelId: string
+  purpose: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  createdAt: string
+}
+
+export interface AiModelBrief {
+  id: string
+  name: string
+  isDefault: boolean
+  capabilities: string[]
+  maxTokens: number
+}
+
+export interface AiProviderBrief {
+  id: string
+  name: string
+  models: AiModelBrief[]
+}
+
+export interface AiFeatureFlags {
+  dictionary: boolean
+  translation: boolean
+  brainstorm: boolean
+  typingSound: boolean
+}
+
+export interface AiConfig {
+  vipLevel: number
+  providers: AiProviderBrief[]
+  features: AiFeatureFlags
+}
+
+export interface AgreementStatusItem {
+  id: string
+  type: string
+  title: string
+  version: number
+  accepted: boolean
 }
 
 export interface WritingSavePayload {
@@ -159,6 +263,16 @@ export interface WritingSubmitPayload {
   title: string
   content: string
   draftId?: string
+  gradingSessionId?: string
+}
+
+export interface AiProxyResult {
+  content: string
+  gradingSessionId?: string
+  suggestionIds?: {
+    grammarSuggestions?: string[]
+    vocabularySuggestions?: string[]
+  }
 }
 
 /** 打卡状态 GET /checkin/status */
@@ -257,6 +371,11 @@ export interface CheckInCalendar {
   streakStart: number | null
   streakEnd: number | null
   totalDays: number
+}
+
+/** 登录/注册成功后返回给页面的会话结果 */
+export interface AuthLoginResult {
+  mustChangePassword: boolean
 }
 
 export type SendCodePurpose = 'register' | 'reset' | 'login_captcha'

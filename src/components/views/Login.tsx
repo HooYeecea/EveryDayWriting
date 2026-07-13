@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { acceptAgreement } from '../../api/agreements'
 import {
   fetchGraphCaptcha,
   getGraphCaptchaCooldownRemaining,
   refreshGraphCaptcha,
 } from '../../api/graphCaptchaApi'
 import { isApiError } from '../../api/request'
-import type { LoginErrorData } from '../../types'
+import type { AuthLoginResult, LoginErrorData } from '../../types'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
 import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
@@ -28,6 +29,7 @@ export function Login() {
   const [captchaImageSrc, setCaptchaImageSrc] = useState('')
   const [requireCaptcha, setRequireCaptcha] = useState(false)
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [privacyAgreementId, setPrivacyAgreementId] = useState<string | undefined>()
   const [privacyWarning, setPrivacyWarning] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -94,7 +96,7 @@ export function Login() {
     return <Navigate to={from} replace />
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -117,12 +119,22 @@ export function Login() {
     setPrivacyWarning(false)
     setSubmitting(true)
     try {
-      await login(
+      // @ts-ignore
+      const result: AuthLoginResult = await login(
         email.trim(),
         password,
         requireCaptcha ? { captchaId, graphCode: captchaCode.trim() } : undefined,
       )
-      navigate(from, { replace: true })
+
+      if (!result.mustChangePassword && privacyAgreementId) {
+        try {
+          await acceptAgreement(privacyAgreementId)
+        } catch (acceptErr) {
+          console.warn('[Login] 协议接受记录失败', acceptErr)
+        }
+      }
+
+      navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
     } catch (err) {
       if (isApiError(err)) {
         const data = err.data as LoginErrorData | null
@@ -145,6 +157,8 @@ export function Login() {
     setPrivacyAgreed(checked)
     if (checked) {
       setPrivacyWarning(false)
+    } else {
+      setPrivacyAgreementId(undefined)
     }
   }
 
@@ -254,6 +268,7 @@ export function Login() {
         <PrivacyAgreementField
           checked={privacyAgreed}
           onChange={handlePrivacyChange}
+          onAgreementIdChange={setPrivacyAgreementId}
           highlight={privacyWarning}
         />
       </form>

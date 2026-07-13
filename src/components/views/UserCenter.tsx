@@ -1,11 +1,18 @@
-import { Link } from 'react-router-dom'
-import { Calendar, LogIn, Mail, PenLine, Trophy } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Calendar, LogIn, LogOut, Mail, PenLine, Trophy } from 'lucide-react'
+import { logoutAll } from '../../api/auth'
 import { useAuth } from '../../context/AuthContext'
+import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
+import { PrivacySettingsPanel } from '../user/PrivacySettingsPanel'
+import { TokenUsagePanel } from '../user/TokenUsagePanel'
+import { UserProfileEditor } from '../user/UserProfileEditor'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
+import { resolveAssetUrl } from '../../utils/assetUrl'
 import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
 
 export function UserCenter() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const navigate = useNavigate()
 
   if (isLoading) {
     return (
@@ -54,7 +61,14 @@ export function UserCenter() {
     },
   ]
 
+  const avatarSrc = resolveAssetUrl(user.avatar)
   const avatarLabel = getAvatarLabel(user)
+
+  const handleLogoutAll = async () => {
+    if (!window.confirm('确定退出所有设备？当前设备也需要重新登录。')) return
+    await logoutAll()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="flex-1 overflow-y-auto overflow-anchor-none px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
@@ -64,20 +78,30 @@ export function UserCenter() {
             <h2 className="text-xl font-semibold text-neutral-900">用户中心</h2>
             <p className="mt-1 text-sm text-neutral-400">个人信息与学习概览</p>
           </div>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="w-full rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50 sm:w-auto"
-          >
-            退出登录
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="w-full rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50 sm:w-auto"
+            >
+              退出登录
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLogoutAll()}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50 sm:w-auto"
+            >
+              <LogOut size={14} />
+              退出所有设备
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-8 sm:p-6">
           <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-            {user.avatar?.startsWith('http') ? (
+            {avatarSrc ? (
               <img
-                src={user.avatar}
+                src={avatarSrc}
                 alt={user.nickname}
                 className="h-16 w-16 rounded-full object-cover"
               />
@@ -121,6 +145,10 @@ export function UserCenter() {
           ))}
         </div>
 
+        <UserProfileEditor />
+        <AnnouncementsPanel />
+        <TokenUsagePanel />
+        <PrivacySettingsPanel />
         <WritingCheckInPanel />
       </div>
     </div>

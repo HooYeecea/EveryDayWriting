@@ -3,9 +3,16 @@ import { get, isApiError } from './request'
 import { getToken } from '../storage/tokenStorage'
 import type { WritingTopic } from '../types'
 
-/** 后端 /topics/random 支持的 type 可选值 */
+/** 后端 /topics/random 支持的 type 可选值（兜底，优先使用 /topics/types） */
 export const API_TOPIC_TYPES = ['CET4', 'CET6', 'IELTS', 'TOEFL', '考研'] as const
 export type ApiTopicType = (typeof API_TOPIC_TYPES)[number]
+
+export interface TopicTypeItem {
+  id: number
+  name: string
+  description: string
+  sortOrder: number
+}
 
 export const TOPIC_TYPE_FILTER_OPTIONS: Array<{ value: ApiTopicType | 'all'; label: string }> = [
   { value: 'all', label: '全部' },
@@ -18,18 +25,23 @@ export const TOPIC_TYPE_FILTER_OPTIONS: Array<{ value: ApiTopicType | 'all'; lab
 
 const LOG_PREFIX = '[topics/random]'
 
-export function resolveTopicTypeParam(type?: string): ApiTopicType | undefined {
+export function resolveTopicTypeParam(type?: string): string | undefined {
   if (!type) return undefined
-  return API_TOPIC_TYPES.includes(type as ApiTopicType) ? (type as ApiTopicType) : undefined
+  return type.trim() || undefined
 }
 
-function buildRandomTopicUrl(type?: ApiTopicType): string {
+export async function getTopicTypes(): Promise<TopicTypeItem[]> {
+  const data = await get<{ items: TopicTypeItem[]; totalCount: number }>(API_PATHS.topics.types)
+  return data.items
+}
+
+function buildRandomTopicUrl(type?: string): string {
   const path = `${API_PREFIX}${API_PATHS.topics.random}`
   if (!type) return path
   return `${path}?type=${encodeURIComponent(type)}`
 }
 
-function logRandomTopicRequest(type?: ApiTopicType): void {
+function logRandomTopicRequest(type?: string): void {
   if (!import.meta.env.DEV) return
 
   console.groupCollapsed(`${LOG_PREFIX} 请求`)
@@ -49,7 +61,7 @@ function logRandomTopicSuccess(topic: WritingTopic): void {
   console.groupEnd()
 }
 
-function logRandomTopicFailure(type: ApiTopicType | undefined, error: unknown): void {
+function logRandomTopicFailure(type: string | undefined, error: unknown): void {
   if (!import.meta.env.DEV) return
 
   console.group(`${LOG_PREFIX} 失败`)

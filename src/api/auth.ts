@@ -121,6 +121,19 @@ export async function fetchUserProfile(): Promise<UserProfile> {
   return get<UserProfile>(API_PATHS.user.profile)
 }
 
+export async function logoutAll(): Promise<void> {
+  try {
+    if (getToken()) {
+      await post(API_PATHS.auth.logoutAll)
+    }
+  } catch {
+    // 本地仍清除凭证
+  } finally {
+    clearAuthTokens()
+    clearMustChangePassword()
+  }
+}
+
 export async function logout(): Promise<void> {
   try {
     if (getToken()) {

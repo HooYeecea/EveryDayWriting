@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { BookOpen, Plus, Search, Trash2 } from 'lucide-react'
 import {
   createVocabularyItem,
   deleteVocabularyItem,
   getVocabularyList,
+  searchVocabulary,
 } from '../../api/vocabulary'
 import type { CreateVocabularyPayload, VocabularyItem, VocabularyType } from '../../types'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
@@ -25,21 +26,27 @@ export function PersonalVocabulary() {
     translation: '',
     type: 'NewWord',
   })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeQuery, setActiveQuery] = useState('')
 
   const loadItems = () => {
     setLoading(true)
     setError('')
-    getVocabularyList({ page: 1, pageSize: 100 })
-      .then((result) => setItems(result.items))
+    const request = activeQuery.trim()
+      ? searchVocabulary(activeQuery.trim()).then((result) => result.items)
+      : getVocabularyList({ page: 1, pageSize: 100 }).then((result) => result.items)
+
+    request
+      .then(setItems)
       .catch((err) => setError(err instanceof Error ? err.message : '加载失败'))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     loadItems()
-  }, [])
+  }, [activeQuery])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!form.word.trim() || !form.translation.trim()) return
 
@@ -91,6 +98,42 @@ export function PersonalVocabulary() {
       </div>
 
       <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            setActiveQuery(searchQuery.trim())
+          }}
+          className="mb-4 flex gap-2"
+        >
+          <div className="relative min-w-0 flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索单词…"
+              className="w-full rounded-lg border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-neutral-400"
+            />
+          </div>
+          <button
+            type="submit"
+            className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            搜索
+          </button>
+          {activeQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('')
+                setActiveQuery('')
+              }}
+              className="shrink-0 rounded-lg px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50"
+            >
+              清除
+            </button>
+          )}
+        </form>
+
         {showForm && (
           <form
             onSubmit={handleSubmit}
