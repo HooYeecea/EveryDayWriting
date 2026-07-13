@@ -29,27 +29,9 @@ export function PersonalAssessment() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className={PANEL_HEADER_CLASS}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 size={18} className="text-neutral-500" />
-            <h1 className={PANEL_TITLE_CLASS}>个人测评</h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {PERIOD_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPeriod(option.value)}
-                className={`rounded-lg px-3 py-1.5 text-sm ${
-                  period === option.value
-                    ? 'bg-neutral-900 text-white'
-                    : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2">
+          <BarChart3 size={18} className="text-neutral-500" />
+          <h1 className={PANEL_TITLE_CLASS}>个人测评</h1>
         </div>
       </div>
 
@@ -59,6 +41,23 @@ export function PersonalAssessment() {
 
         {stats && !loading && (
           <div className="space-y-6">
+            <div className="flex flex-wrap gap-2">
+              {PERIOD_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setPeriod(option.value)}
+                  className={`rounded-lg px-3 py-1.5 text-sm ${
+                    period === option.value
+                      ? 'bg-neutral-900 text-white'
+                      : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { label: '提交篇数', value: stats.summary.totalWritings },
