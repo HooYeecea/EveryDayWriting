@@ -4,6 +4,8 @@ import { getApiBaseUrl } from '../api/config'
 export function resolveAssetUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null
   const trimmed = url.trim()
+  // 过滤无效值（如后端返回字面量 "null"）
+  if (trimmed === 'null' || trimmed === 'undefined') return null
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
     return trimmed
   }

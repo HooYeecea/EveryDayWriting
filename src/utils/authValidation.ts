@@ -15,13 +15,18 @@ export function validatePassword(password: string): string | null {
 }
 
 export function getAvatarLabel(profile: { nickname: string; avatar: string | null }): string {
-  if (profile.avatar && profile.avatar.startsWith('http')) {
-    return profile.nickname.slice(0, 2).toUpperCase()
+  const name = profile.nickname?.trim()
+  const initials = name ? name.slice(0, 2).toUpperCase() : 'U'
+
+  // 有真实头像 URL 时返回首字母作为后备（img 加载失败时显示）
+  if (profile.avatar && (profile.avatar.startsWith('http') || profile.avatar.startsWith('/'))) {
+    return initials
   }
+  // 短字符串 avatar（可能是 emoji 或缩写）
   if (profile.avatar && profile.avatar.length <= 3) {
     return profile.avatar
   }
-  return profile.nickname.slice(0, 2).toUpperCase() || 'U'
+  return initials
 }
 
 export function getVipLabel(vipLevel: number): string {

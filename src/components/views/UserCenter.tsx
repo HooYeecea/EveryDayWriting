@@ -71,10 +71,11 @@ export function UserCenter() {
   const [editingNickname, setEditingNickname] = useState(false)
   const [nicknameDraft, setNicknameDraft] = useState(user.nickname)
   const [savingNickname, setSavingNickname] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const nicknameInputRef = useRef<HTMLInputElement>(null)
 
-  const avatarSrc = resolveAssetUrl(user.avatar)
-  const avatarLabel = getAvatarLabel(user)
+  const avatarSrc = avatarError ? null : resolveAssetUrl(user.avatar)
+  const avatarLabel = getAvatarLabel({ nickname: user.nickname, avatar: user.avatar })
 
   const startEditingNickname = () => {
     setNicknameDraft(user.nickname)
@@ -179,6 +180,7 @@ export function UserCenter() {
                   src={avatarSrc}
                   alt={user.nickname}
                   className="h-16 w-16 rounded-full object-cover"
+                  onError={() => setAvatarError(true)}
                 />
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-900 text-lg font-semibold text-white">

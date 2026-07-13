@@ -10,6 +10,7 @@ export function UserProfileEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar ?? '')
+  const [avatarError, setAvatarError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
@@ -17,8 +18,8 @@ export function UserProfileEditor() {
 
   if (!user) return null
 
-  const displayAvatar = resolveAssetUrl(avatarUrl)
-  const avatarLabel = getAvatarLabel({ ...user, nickname: nickname || user.nickname })
+  const displayAvatar = avatarError ? null : resolveAssetUrl(avatarUrl)
+  const avatarLabel = getAvatarLabel({ nickname: nickname || user.nickname, avatar: avatarUrl || null })
 
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -30,6 +31,7 @@ export function UserProfileEditor() {
     try {
       const { url } = await uploadFile(file)
       setAvatarUrl(url)
+      setAvatarError(false)
       setMessage('头像已上传，点击保存资料生效')
     } catch (err) {
       setError(err instanceof Error ? err.message : '头像上传失败')
@@ -77,7 +79,12 @@ export function UserProfileEditor() {
             className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-lg font-semibold text-white"
           >
             {displayAvatar ? (
-              <img src={displayAvatar} alt={nickname} className="h-full w-full object-cover" />
+              <img
+                src={displayAvatar}
+                alt={nickname}
+                className="h-full w-full object-cover"
+                onError={() => setAvatarError(true)}
+              />
             ) : (
               avatarLabel
             )}
