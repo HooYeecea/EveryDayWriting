@@ -190,44 +190,37 @@ export function SubmitVersionNav({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+      <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2">
         <button
           type="button"
           onClick={goPrev}
           disabled={!canGoPrev}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="上一版"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
 
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-sm font-medium text-neutral-900">
-            第 {current.iterationNumber} 版
-            <span className="text-neutral-400"> / 共 {versions.length} 版</span>
-          </p>
-          <p className="mt-0.5 text-xs text-neutral-400">
-            {safeIndex <= 0
-              ? '左滑或点右侧查看下一版 →'
-              : safeIndex >= versions.length - 1
-                ? '← 右滑或点左侧查看上一版'
-                : '左右滑动或点击圆点切换版本'}
-          </p>
-          <div className="mt-2 flex justify-center gap-1.5">
-            {versions.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => navigateTo(item.id)}
-                className={`h-1.5 rounded-full transition-all ${
-                  item.id === currentId
-                    ? 'w-5 bg-neutral-900'
-                    : 'w-1.5 bg-neutral-300 hover:bg-neutral-400'
-                }`}
-                aria-label={`第 ${item.iterationNumber} 版`}
-                title={`v${item.iterationNumber}${item.aiScore != null ? ` · ${item.aiScore}分` : ''}`}
-              />
-            ))}
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[13px] font-medium text-neutral-800">
+              v{current.iterationNumber} / {versions.length}
+            </span>
+            <div className="flex gap-1">
+              {versions.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigateTo(item.id)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    item.id === currentId
+                      ? 'w-4 bg-neutral-800'
+                      : 'w-1.5 bg-neutral-300 hover:bg-neutral-400'
+                  }`}
+                  aria-label={`第 ${item.iterationNumber} 版`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -235,7 +228,7 @@ export function SubmitVersionNav({
           type="button"
           onClick={goNext}
           disabled={!canGoNext}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="下一版"
         >
           <ChevronRight size={18} />

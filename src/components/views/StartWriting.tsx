@@ -517,8 +517,8 @@ export function StartWriting() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className={`shrink-0 ${PANEL_TOPIC_HEADER_CLASS}`}>
-        <div className="flex w-full items-center gap-3 sm:gap-4">
-          <p className={`${PANEL_TITLE_CLASS} shrink-0`}>题目</p>
+        <div className="mx-auto w-full max-w-5xl relative left-[-65px] flex items-center gap-3 sm:gap-4">
+          <p className="shrink-0 text-base font-semibold uppercase tracking-[0.1em] text-neutral-600">题目</p>
           <TopicPromptBox prompt={topicPrompt} type={topic.type} />
           <div className="flex shrink-0 items-center gap-2">
             <TopicTypeSelect value={topicTypeFilter} onChange={handleTopicTypeFilterChange} />
@@ -532,7 +532,7 @@ export function StartWriting() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className={`mx-auto w-full max-w-3xl flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+          <div className={`mx-auto w-full max-w-5xl -translate-x-1 lg:-translate-x-2 flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
             <div className="mb-6">
               <input
                 type="text"
@@ -549,7 +549,7 @@ export function StartWriting() {
           </div>
 
           <div className={PANEL_FOOTER_CLASS}>
-            <div className={`${PANEL_FOOTER_INNER_CLASS} flex-col lg:flex-row`}>
+            <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl -translate-x-1 lg:-translate-x-2 flex-col lg:flex-row`}>
               <div className="w-full text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
                 {feedback ? (
                   <div className={feedbackToneClass}>

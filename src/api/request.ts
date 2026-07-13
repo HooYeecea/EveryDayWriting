@@ -87,7 +87,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
     if (response.status === 403) {
       throw new ApiError(403, '无权访问，请先完成必要操作', 403)
     }
-    throw new ApiError(response.status, '响应解析失败', response.status)
+    if (response.status >= 500) {
+      throw new ApiError(response.status, `服务器内部错误 (${response.status})，请稍后重试`, response.status)
+    }
+    throw new ApiError(response.status, `请求失败 (${response.status})`, response.status)
   }
 
   const businessCode = json.code ?? response.status

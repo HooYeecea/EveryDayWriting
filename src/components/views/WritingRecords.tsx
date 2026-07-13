@@ -309,7 +309,7 @@ export function WritingRecords() {
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-neutral-200 p-2 max-md:flex-row md:flex-col md:gap-0.5">
+        <div className="flex gap-1 border-b border-neutral-200 p-2">
           <button
             type="button"
             onClick={() => {
@@ -317,7 +317,7 @@ export function WritingRecords() {
               setSelectedId(null)
               setMobileShowDetail(false)
             }}
-            className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:flex-none md:px-2 md:text-xs ${
+            className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:text-xs ${
               tab === 'saves'
                 ? 'bg-neutral-100 font-medium text-neutral-900'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -332,7 +332,7 @@ export function WritingRecords() {
               setSelectedId(null)
               setMobileShowDetail(false)
             }}
-            className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:flex-none md:px-2 md:text-xs ${
+            className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:text-xs ${
               tab === 'submits'
                 ? 'bg-neutral-100 font-medium text-neutral-900'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -343,7 +343,7 @@ export function WritingRecords() {
         </div>
 
         <div className="shrink-0 lg:hidden">
-          <WritingRecordsSearchBar {...searchBarProps} compact />
+          {tab === 'submits' && <WritingRecordsSearchBar {...searchBarProps} compact />}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
@@ -362,15 +362,17 @@ export function WritingRecords() {
                   setSelectedId(record.id)
                   setMobileShowDetail(true)
                 }}
-                className={`mb-1 w-full rounded-lg px-3 py-3 text-left transition-colors ${
-                  selectedId === record.id ? 'bg-neutral-100' : 'hover:bg-neutral-50'
+                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors ${
+                  selectedId === record.id
+                    ? 'border-l-neutral-900 bg-neutral-100'
+                    : 'border-l-transparent hover:bg-neutral-50'
                 }`}
               >
                 <p className="truncate text-sm font-medium text-neutral-900">
                   {record.title || '无标题'}
                 </p>
-                <div className="mt-2 flex items-center gap-1 text-xs text-neutral-400">
-                  <Clock size={12} />
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
+                  <Clock size={11} />
                   {formatTime(record.updatedAt)}
                 </div>
               </button>
@@ -384,35 +386,35 @@ export function WritingRecords() {
                   setSelectedId(record.id)
                   setMobileShowDetail(true)
                 }}
-                className={`mb-1 w-full rounded-lg px-3 py-3 text-left transition-colors ${
+                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors ${
                   selectedSubmitGroup?.id === record.id ||
                   record.allVersionIds.includes(selectedId ?? '')
-                    ? 'bg-neutral-100'
-                    : 'hover:bg-neutral-50'
+                    ? 'border-l-neutral-900 bg-neutral-100'
+                    : 'border-l-transparent hover:bg-neutral-50'
                 }`}
               >
                 <p className="truncate text-sm font-medium text-neutral-900">
                   {record.title || '无标题'}
                 </p>
-                <p className="mt-1 truncate text-xs text-neutral-400">{record.topicType}</p>
-                <div className="mt-2 flex items-center justify-between gap-2 text-xs text-neutral-400">
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} />
-                    {formatTime(record.submittedAt)}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {record.versionCount > 1 && (
-                      <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
-                        共 {record.versionCount} 版
-                      </span>
-                    )}
-                    {record.iterationNumber != null && (
-                      <span className="font-medium text-neutral-500">v{record.iterationNumber}</span>
-                    )}
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="truncate text-[11px] text-neutral-400">{record.topicType}</span>
+                  <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
                     {record.aiScore !== null && (
                       <span className="font-medium text-neutral-600">{record.aiScore} 分</span>
                     )}
+                    {record.versionCount > 1 && (
+                      <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+                        {record.versionCount} 版
+                      </span>
+                    )}
+                    {record.iterationNumber != null && record.versionCount <= 1 && (
+                      <span className="text-neutral-400">v{record.iterationNumber}</span>
+                    )}
                   </span>
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
+                  <Clock size={11} />
+                  {formatTime(record.submittedAt)}
                 </div>
               </button>
             ))}
@@ -425,7 +427,7 @@ export function WritingRecords() {
         }`}
       >
         <div className="hidden shrink-0 lg:block">
-          <WritingRecordsSearchBar {...searchBarProps} />
+          {tab === 'submits' && <WritingRecordsSearchBar {...searchBarProps} />}
         </div>
 
         <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
@@ -561,7 +563,7 @@ export function WritingRecords() {
                       className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <RotateCcw size={14} />
-                      基于此稿继续写（生成新版本）
+                      继续修改
                     </button>
                     {!isLatestVersion && (
                       <span className="text-xs text-neutral-400">请基于最新版继续修改</span>
@@ -614,31 +616,27 @@ export function WritingRecords() {
                   <Sparkles size={16} className="text-neutral-400" />
                   <h4 className="text-sm font-medium text-neutral-700">AI 批改结果</h4>
                 </div>
-                <p className="mt-1 text-xs text-neutral-400">
-                  在开始写作页开启「AI 检查与修改」「提升建议」后，提交时生成的建议会显示在这里。
-                </p>
 
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
-                    <div className="flex items-center gap-1.5">
+                {/* 语法检查 */}
+                {(grammarSuggestions.length > 0 || grammarProse) && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Wand2 size={14} className="text-neutral-400" />
-                      <h5 className="text-xs font-medium text-neutral-700">
-                        AI 检查与修改
-                        {grammarSuggestions.length > 0 && (
-                          <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] text-neutral-600">
-                            {grammarSuggestions.length} 条
-                          </span>
-                        )}
-                      </h5>
+                      <h5 className="text-[13px] font-medium text-neutral-700">检查与修改</h5>
+                      {grammarSuggestions.length > 0 && (
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
+                          {grammarSuggestions.length} 条
+                        </span>
+                      )}
                     </div>
                     {grammarSuggestions.length > 0 ? (
-                      <ul className="mt-3 space-y-3">
+                      <ul className="mt-3 space-y-2.5">
                         {grammarSuggestions.map((item) => (
-                          <li key={item.id} className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm">
+                          <li key={item.id} className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm">
                             <p>
-                              <span className="text-red-600 line-through">{item.original}</span>
+                              <span className="text-red-500 line-through">{item.original}</span>
                               {' → '}
-                              <span className="font-medium text-green-700">{item.correction}</span>
+                              <span className="font-medium text-green-600">{item.correction}</span>
                             </p>
                             <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
                             {selectedId && (
@@ -653,36 +651,33 @@ export function WritingRecords() {
                       </ul>
                     ) : grammarProse ? (
                       <AiMarkdownContent content={grammarProse} className="mt-2" />
-                    ) : (
-                      <p className="mt-2 text-xs text-neutral-400">本次提交暂无语法检查内容。</p>
-                    )}
+                    ) : null}
                   </div>
+                )}
 
-                  <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
-                    <div className="flex items-center gap-1.5">
+                {/* 提升建议 */}
+                {(evaluationProse || vocabularySuggestions.length > 0) && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Lightbulb size={14} className="text-neutral-400" />
-                      <h5 className="text-xs font-medium text-neutral-700">
-                        提升建议
-                        {vocabularySuggestions.length > 0 && (
-                          <span className="ml-2 rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] text-neutral-600">
-                            {vocabularySuggestions.length} 条用词建议
-                          </span>
-                        )}
-                      </h5>
+                      <h5 className="text-[13px] font-medium text-neutral-700">提升建议</h5>
+                      {vocabularySuggestions.length > 0 && (
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
+                          {vocabularySuggestions.length} 条
+                        </span>
+                      )}
                     </div>
-                    {evaluationProse ? (
+                    {evaluationProse && (
                       <AiMarkdownContent content={evaluationProse} className="mt-2" />
-                    ) : vocabularySuggestions.length > 0 ? null : (
-                      <p className="mt-2 text-xs text-neutral-400">本次提交暂无提升建议。</p>
                     )}
                     {vocabularySuggestions.length > 0 && (
-                      <ul className={`space-y-3 ${evaluationProse ? 'mt-4' : 'mt-3'}`}>
+                      <ul className={`space-y-2.5 ${evaluationProse ? 'mt-3' : 'mt-3'}`}>
                         {vocabularySuggestions.map((item) => (
                           <li
                             key={item.id}
                             data-vocab-hint
                             data-vocab-translation={item.reason || item.suggestion}
-                            className="rounded-lg bg-white px-3 py-2.5 text-sm shadow-sm"
+                            className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm"
                           >
                             <p>
                               {item.original} → <span className="font-medium">{item.suggestion}</span>
@@ -705,7 +700,14 @@ export function WritingRecords() {
                       </ul>
                     )}
                   </div>
-                </div>
+                )}
+
+                {/* 无AI结果 */}
+                {!grammarSuggestions.length && !grammarProse && !evaluationProse && !vocabularySuggestions.length && (
+                  <p className="mt-4 text-sm text-neutral-400">
+                    暂无 AI 批改内容。在写作页开启「AI 检查与修改」或「提升建议」后提交，结果会显示在这里。
+                  </p>
+                )}
               </div>
               </div>
               </VocabularySelectionAdd>
