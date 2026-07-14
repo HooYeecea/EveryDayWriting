@@ -36,7 +36,7 @@ function getInsertedRanges(tr: Transaction): Array<{ from: number; to: number }>
     // 映射 from 位置：先经过前 i 个步骤
     let pos = step.from
     for (let j = 0; j < i; j++) {
-      pos = tr.steps[j].getMap().mapPos(pos)
+      pos = tr.steps[j].getMap().map(pos)
     }
 
     // 现在 pos 是插入点在 post-step-(i-1) 文档中的位置
@@ -47,8 +47,8 @@ function getInsertedRanges(tr: Transaction): Array<{ from: number; to: number }>
     // 经过当前步骤之后的剩余步骤映射到最终文档
     // 注意：不能包含 step i 自身，因为 [rangeFrom, rangeTo) 已经是 post-step-i 的坐标
     for (let j = i + 1; j < tr.steps.length; j++) {
-      rangeFrom = tr.steps[j].getMap().mapPos(rangeFrom)
-      rangeTo = tr.steps[j].getMap().mapPos(rangeTo)
+      rangeFrom = tr.steps[j].getMap().map(rangeFrom)
+      rangeTo = tr.steps[j].getMap().map(rangeTo)
     }
 
     if (rangeFrom < rangeTo && rangeFrom < tr.doc.content.size) {
