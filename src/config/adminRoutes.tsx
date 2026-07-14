@@ -58,7 +58,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
   {
     key: 'dashboard',
     path: '/admin',
-    label: '概览',
+    label: '数据中心',
     icon: LayoutDashboard,
     element: <AdminDashboardPage />,
     permission: null,
