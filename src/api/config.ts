@@ -119,6 +119,8 @@ export const API_PATHS = {
     announcementById: (id: string) => `/admin/announcements/${id}`,
     agreements: '/admin/agreements',
     agreementById: (id: string) => `/admin/agreements/${id}`,
+    dashboardOverview: '/admin/dashboard/overview',
+    systemInfo: '/admin/system/info',
   },
 } as const
 

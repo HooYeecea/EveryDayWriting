@@ -28,6 +28,7 @@ import { TokenUsagePanel } from '../user/TokenUsagePanel'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
 import { resolveAssetUrl } from '../../utils/assetUrl'
 import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
+import { getFirstAllowedAdminPath } from '../../config/adminRoutes'
 import { canAccessAdmin, hasUserRole } from '../../utils/roles'
 
 type UserTab = 'overview' | 'checkin' | 'usage' | 'settings'
@@ -241,7 +242,7 @@ export function UserCenter() {
               {showAdminEntry && (
                 <button
                   type="button"
-                  onClick={() => navigate('/admin')}
+                  onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
                   className="flex items-center gap-1 rounded-lg border border-neutral-900 bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
                 >
                   <Shield size={12} />
@@ -458,7 +459,7 @@ export function UserCenter() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => navigate('/admin')}
+                        onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
                         className="shrink-0 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
                       >
                         进入后台

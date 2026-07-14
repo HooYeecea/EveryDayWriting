@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
+  Activity,
   Bell,
   FileText,
   Gauge,
@@ -15,6 +16,7 @@ import {
   Cpu,
 } from 'lucide-react'
 import { AdminDashboardPage } from '../components/admin/pages/AdminDashboardPage'
+import { AdminSystemPage } from '../components/admin/pages/AdminSystemPage'
 import { AdminUsersPage } from '../components/admin/pages/AdminUsersPage'
 import { AdminAnnouncementsPage } from '../components/admin/pages/AdminAnnouncementsPage'
 import { AdminConfigsPage } from '../components/admin/pages/AdminConfigsPage'
@@ -30,6 +32,7 @@ import { hasPermission } from '../utils/roles'
 
 export type AdminMenuKey =
   | 'dashboard'
+  | 'system'
   | 'users'
   | 'announcements'
   | 'configs'
@@ -61,7 +64,15 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     label: '数据中心',
     icon: LayoutDashboard,
     element: <AdminDashboardPage />,
-    permission: null,
+    permission: 'dashboard:view',
+  },
+  {
+    key: 'system',
+    path: '/admin/system',
+    label: '系统监控',
+    icon: Activity,
+    element: <AdminSystemPage />,
+    permission: 'monitor:view',
   },
   {
     key: 'users',
