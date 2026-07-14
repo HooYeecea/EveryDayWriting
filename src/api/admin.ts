@@ -529,3 +529,110 @@ export async function updateAdminAgreement(
 export async function deleteAdminAgreement(id: string): Promise<void> {
   await del(API_PATHS.admin.agreementById(id))
 }
+
+// ── Dashboard / System ──
+
+export type DashboardPeriod = '7d' | '30d' | '90d' | 'all'
+
+export interface AdminDashboardOverview {
+  period: DashboardPeriod
+  generatedAt: string
+  users: {
+    total: number
+    todayNew: number
+    periodNew: number
+    banned: number
+    vipDistribution: Array<{ vipLevel: number; count: number }>
+  }
+  activity: {
+    todayLogins: number
+    todayDau: number
+    activeSessions: number
+  }
+  writing: {
+    totalWritings: number
+    todayWritings: number
+    periodWritings: number
+    totalWords: number
+    averageScore: number
+    scoreDistribution: Record<string, number>
+    topicDistribution: Array<{ type: string; count: number }>
+  }
+  vocabulary: {
+    total: number
+    periodAdded: number
+  }
+  checkIn: {
+    todayCheckIns: number
+  }
+  tokenUsage: {
+    monthTokens: number
+    periodTokens: number
+    byPurpose: Array<{ purpose: string; tokens: number; calls: number }>
+    byProvider: Array<{ providerId: string; tokens: number; calls: number }>
+  }
+  trends: {
+    registration: Array<{ date: string; count: number }>
+    submits: Array<{ date: string; count: number }>
+    checkIns: Array<{ date: string; count: number }>
+    dau: Array<{ date: string; count: number }>
+    tokens: Array<{ date: string; tokens: number }>
+  }
+}
+
+export interface AdminSystemInfo {
+  generatedAt: string
+  process: {
+    name: string
+    pid: number
+    startTimeUtc: string | null
+    uptimeSeconds: number
+    threadCount: number
+  }
+  memory: {
+    workingSetMb: number
+    privateMemoryMb: number
+    managedMemoryMb: number
+    gc: {
+      gen0Collections: number
+      gen1Collections: number
+      gen2Collections: number
+      isServerGC: boolean
+    }
+  }
+  cpu: {
+    logicalCores: number
+    processUsagePercent: number
+  }
+  disks: Array<{
+    name: string
+    driveType: string
+    format: string
+    totalGb: number
+    freeGb: number
+    usedGb: number
+    usedPercent: number
+  }>
+  runtime: {
+    osDescription: string
+    osArchitecture: string
+    processArchitecture: string
+    frameworkDescription: string
+    machineName: string
+    systemUtcNow: string
+  }
+  health: {
+    database: string
+  }
+}
+
+export async function getAdminDashboardOverview(
+  period: DashboardPeriod = '7d',
+): Promise<AdminDashboardOverview> {
+  return get(API_PATHS.admin.dashboardOverview, { params: { period } })
+}
+
+export async function getAdminSystemInfo(): Promise<AdminSystemInfo> {
+  return get(API_PATHS.admin.systemInfo)
+}
+
