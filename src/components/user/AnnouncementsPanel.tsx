@@ -43,7 +43,7 @@ export function AnnouncementsPanel() {
   }
 
   return (
-    <section id="announcements" className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+    <section id="announcements" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Bell size={18} className="text-neutral-500" />

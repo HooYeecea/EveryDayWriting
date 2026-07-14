@@ -249,13 +249,41 @@ code, kbd, pre, samp {
   to   { opacity: 1;    transform: translate3d(0, 0, 0) rotateY(0deg); }
 }
 
+/* User center: always reserve scrollbar gutter so short→long doesn't shove layout */
+.user-center-scroll {
+  scrollbar-gutter: stable;
+}
+
+/* User center tab switch — 2D slide only; height snaps (no height transition during slide) */
+.user-tab-viewport {
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.user-tab-panel {
+  will-change: transform, opacity;
+  transform-origin: center center;
+}
+.user-tab-enter-next { animation: user-tab-enter-next 0.85s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.user-tab-enter-prev { animation: user-tab-enter-prev 0.85s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes user-tab-enter-next {
+  from { opacity: 0.45; transform: translate3d(22px, 0, 0); }
+  to   { opacity: 1;    transform: translate3d(0, 0, 0); }
+}
+@keyframes user-tab-enter-prev {
+  from { opacity: 0.45; transform: translate3d(-22px, 0, 0); }
+  to   { opacity: 1;    transform: translate3d(0, 0, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .checkin-calendar-layer,
   .checkin-calendar-shell { transition: none; }
   .checkin-slide-enter-next,
   .checkin-slide-enter-prev,
   .version-page-enter-next,
-  .version-page-enter-prev { animation: none; }
+  .version-page-enter-prev,
+  .user-tab-enter-next,
+  .user-tab-enter-prev { animation: none; }
 
   .animate-fade-in-up,
   .animate-scale-in,

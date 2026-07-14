@@ -35,7 +35,7 @@ export function PrivacySettingsPanel() {
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+    <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center gap-2">
         <Shield size={18} className="text-neutral-500" />
         <h3 className="text-sm font-medium text-neutral-900">隐私与数据</h3>

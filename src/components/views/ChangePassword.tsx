@@ -6,16 +6,19 @@ import { AuthLayout } from '../layout/AuthLayout'
 import { useAuth } from '../../context/AuthContext'
 import { getToken } from '../../storage/tokenStorage'
 import { validatePassword } from '../../utils/authValidation'
+import { getDefaultHomePath } from '../../utils/roles'
 import { DEFAULT_PATH } from '../../config/routes'
 
 export function ChangePassword() {
   const navigate = useNavigate()
-  const { mustChangePassword, isLoading, logout, completeForcedPasswordChange } = useAuth()
+  const { mustChangePassword, isLoading, logout, completeForcedPasswordChange, roles, permissions } =
+    useAuth()
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const homePath = getDefaultHomePath(roles, permissions)
 
   if (isLoading) {
     return (
@@ -35,7 +38,7 @@ export function ChangePassword() {
   }
 
   if (!mustChangePassword) {
-    return <Navigate to={DEFAULT_PATH} replace />
+    return <Navigate to={homePath} replace />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,12 +67,12 @@ export function ChangePassword() {
     setSubmitting(true)
     try {
       await completeForcedPasswordChange(oldPassword, newPassword)
-      navigate(DEFAULT_PATH, { replace: true })
+      navigate(homePath, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '修改密码失败')
       if (isApiError(err) && err.isUnauthorized) {
         await logout()
-        navigate('/login', { replace: true })
+        navigate(DEFAULT_PATH, { replace: true })
       }
     } finally {
       setSubmitting(false)
@@ -78,7 +81,7 @@ export function ChangePassword() {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login', { replace: true })
+    navigate(DEFAULT_PATH, { replace: true })
   }
 
   return (

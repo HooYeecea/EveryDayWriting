@@ -13,13 +13,14 @@ import { AuthFormAlert } from '../auth/AuthFormAlert'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
 import { buildGraphCaptchaImageSrc } from '../../utils/graphCaptchaImage'
+import { getDefaultHomePath } from '../../utils/roles'
 
 function isCaptchaExpiredMessage(message: string): boolean {
   return /过期|失效|无效/.test(message) && message.includes('验证码')
 }
 
 export function Login() {
-  const { login, isAuthenticated, isLoading } = useAuth()
+  const { login, isAuthenticated, isLoading, roles, permissions } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
@@ -37,8 +38,8 @@ export function Login() {
   const [captchaCooldown, setCaptchaCooldown] = useState(0)
   const captchaRequestedRef = useRef(false)
 
-  const from =
-    (location.state as { from?: string } | null)?.from ?? '/writing'
+  const from = (location.state as { from?: string } | null)?.from
+  const authenticatedHome = getDefaultHomePath(roles, permissions)
 
   const applyCaptcha = useCallback((data: { captchaId: string; imageBase64: string }, resetInput: boolean) => {
     setCaptchaId(data.captchaId)
@@ -93,7 +94,7 @@ export function Login() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={from} replace />
+    return <Navigate to={authenticatedHome} replace />
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -119,7 +120,6 @@ export function Login() {
     setPrivacyWarning(false)
     setSubmitting(true)
     try {
-      // @ts-ignore
       const result: AuthLoginResult = await login(
         email.trim(),
         password,
@@ -134,7 +134,14 @@ export function Login() {
         }
       }
 
-      navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
+      const nextPath = result.mustChangePassword
+        ? '/change-password'
+        : result.redirectTo === '/admin'
+          ? '/admin'
+          : from && from !== '/login' && !from.startsWith('/admin')
+            ? from
+            : result.redirectTo
+      navigate(nextPath, { replace: true })
     } catch (err) {
       if (isApiError(err)) {
         const data = err.data as LoginErrorData | null

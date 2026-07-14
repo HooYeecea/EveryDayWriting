@@ -21,7 +21,13 @@ export interface WritingTopic {
   wordLimit?: string
 }
 
-/** 登录响应中的精简用户 */
+/** 登录响应角色项（$.data.user.roles[].name） */
+export interface AuthRole {
+  id?: string
+  name: string
+}
+
+/** 登录响应中的精简用户（含 roles / permissions） */
 export interface AuthUserBrief {
   id: string
   email: string
@@ -30,12 +36,18 @@ export interface AuthUserBrief {
   vipLevel?: number
   needAcceptAgreement?: boolean
   mustChangePassword?: boolean
+  roles?: AuthRole[]
+  /** 当前用户权限码列表（$.data.user.permissions） */
+  permissions?: string[]
 }
 
 export interface UserProfileStats {
+  /** 正式提交篇数 */
   totalWritings: number
+  /** 累计字数 */
   totalWords: number
-  vocabularyCount?: number
+  /** 词库条数 */
+  vocabularyCount: number
   tokenUsage?: {
     consumedThisMonth: number
     totalCalls: number
@@ -53,6 +65,10 @@ export interface UserProfile {
   stats: UserProfileStats
   locationText?: string | null
   createdAt: string
+  /** profile 当前不返回 roles，权限以 permissions 为准 */
+  roles?: AuthRole[]
+  /** $.data.permissions — 当前用户权限码（去重） */
+  permissions?: string[]
 }
 
 export interface AuthSession {
@@ -60,6 +76,7 @@ export interface AuthSession {
   refreshToken: string
   expiresAt: string
   user: AuthUserBrief
+  permissions: string[]
 }
 
 export interface PaginatedResult<T> {
@@ -452,6 +469,8 @@ export interface CheckInCalendar {
 /** 登录/注册成功后返回给页面的会话结果 */
 export interface AuthLoginResult {
   mustChangePassword: boolean
+  /** 按角色决定的默认落地路径 */
+  redirectTo: string
 }
 
 export type SendCodePurpose = 'register' | 'reset' | 'login_captcha'

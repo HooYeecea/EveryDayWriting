@@ -10,7 +10,14 @@ import {
   getMustChangePassword,
   setMustChangePassword,
 } from '../storage/mustChangePasswordStorage'
+import { clearStoredRoles, setStoredRoles } from '../storage/rolesStorage'
+import {
+  clearStoredPermissions,
+  setStoredPermissions,
+} from '../storage/permissionsStorage'
+import { parseAuthPermissions, parseAuthRoles } from '../utils/roles'
 import type {
+  AuthRole,
   AuthSession,
   AuthUserBrief,
   LoginGraphCaptcha,
@@ -22,14 +29,25 @@ interface LoginResponseData {
   token: string
   refreshToken: string
   expiresAt: string
-  user: AuthUserBrief
+  user: AuthUserBrief & {
+    roles?: unknown
+    permissions?: unknown
+  }
+  /** 兼容旧字段（若后端仍放在 data 根级） */
+  roles?: unknown
+  permissions?: unknown
 }
 
 interface RegisterResponseData {
   token: string
   refreshToken?: string
   expiresAt?: string
-  user: AuthUserBrief
+  user: AuthUserBrief & {
+    roles?: unknown
+    permissions?: unknown
+  }
+  roles?: unknown
+  permissions?: unknown
 }
 
 interface ChangePasswordResponseData {
@@ -38,17 +56,48 @@ interface ChangePasswordResponseData {
   expiresAt: string
 }
 
+/** 登录：优先 $.data.user.roles，兼容根级 roles */
+function extractRoles(data: LoginResponseData): AuthRole[] {
+  if (data.user?.roles !== undefined) {
+    return parseAuthRoles(data.user.roles)
+  }
+  return parseAuthRoles(data.roles)
+}
+
+/** 登录：优先 $.data.user.permissions，兼容根级 permissions */
+function extractPermissions(data: LoginResponseData): string[] {
+  if (data.user?.permissions !== undefined) {
+    return parseAuthPermissions(data.user.permissions)
+  }
+  return parseAuthPermissions(data.permissions)
+}
+
 function normalizeSession(data: LoginResponseData): AuthSession {
+  const roles = extractRoles(data)
+  const permissions = extractPermissions(data)
   return {
     token: data.token,
     refreshToken: data.refreshToken,
     expiresAt: data.expiresAt,
-    user: data.user,
+    user: {
+      ...data.user,
+      roles,
+    },
+    permissions,
   }
 }
 
 function storeSession(session: AuthSession): void {
   persistAuthSession(session.token, session.refreshToken, session.expiresAt)
+  setStoredRoles(session.user.roles ?? [])
+  setStoredPermissions(session.permissions)
+}
+
+function clearLocalAuth(): void {
+  clearAuthTokens()
+  clearMustChangePassword()
+  clearStoredRoles()
+  clearStoredPermissions()
 }
 
 export async function sendEmailCode(
@@ -92,7 +141,6 @@ export async function register(
     { skipAuth: true },
   )
 
-  // 后端注册仅返回 access token，自动登录以获取 refresh token
   return login(email, password)
 }
 
@@ -118,7 +166,26 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 }
 
 export async function fetchUserProfile(): Promise<UserProfile> {
-  return get<UserProfile>(API_PATHS.user.profile)
+  const data = await get<UserProfile>(API_PATHS.user.profile)
+  return normalizeUserProfile(data)
+}
+
+function normalizeUserProfile(data: UserProfile): UserProfile {
+  const stats = data.stats ?? ({} as UserProfile['stats'])
+  return {
+    ...data,
+    stats: {
+      totalWritings: Number(stats.totalWritings) || 0,
+      totalWords: Number(stats.totalWords) || 0,
+      vocabularyCount: Number(stats.vocabularyCount) || 0,
+      tokenUsage: stats.tokenUsage
+        ? {
+            consumedThisMonth: Number(stats.tokenUsage.consumedThisMonth) || 0,
+            totalCalls: Number(stats.tokenUsage.totalCalls) || 0,
+          }
+        : undefined,
+    },
+  }
 }
 
 export async function logoutAll(): Promise<void> {
@@ -129,8 +196,7 @@ export async function logoutAll(): Promise<void> {
   } catch {
     // 本地仍清除凭证
   } finally {
-    clearAuthTokens()
-    clearMustChangePassword()
+    clearLocalAuth()
   }
 }
 
@@ -142,8 +208,7 @@ export async function logout(): Promise<void> {
   } catch {
     // 本地仍清除凭证
   } finally {
-    clearAuthTokens()
-    clearMustChangePassword()
+    clearLocalAuth()
   }
 }
 
@@ -157,8 +222,7 @@ export async function restoreSession(): Promise<UserProfile | null> {
   try {
     return await fetchUserProfile()
   } catch {
-    clearAuthTokens()
-    clearMustChangePassword()
+    clearLocalAuth()
     return null
   }
 }

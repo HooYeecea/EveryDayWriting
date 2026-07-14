@@ -102,7 +102,10 @@ export function Register() {
           console.warn('[Register] 协议接受记录失败', acceptErr)
         }
       }
-      navigate(result.mustChangePassword ? '/change-password' : from, { replace: true })
+      navigate(
+        result.mustChangePassword ? '/change-password' : result.redirectTo || from,
+        { replace: true },
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败')
     } finally {

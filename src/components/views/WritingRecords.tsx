@@ -37,6 +37,8 @@ import {
 } from '../layout/layoutConstants'
 import {
   DEFAULT_RECORD_SEARCH_FIELDS,
+  filterSubmitsBySearchFields,
+  needsServerKeyword,
   type RecordSearchField,
   WritingRecordsSearchBar,
 } from '../writing/WritingRecordsSearchBar'
@@ -227,11 +229,18 @@ export function WritingRecords() {
       } else {
         await deleteSubmit(selectedId)
         const result = await getSubmittedWritings({
-          keyword: activeKeyword || undefined,
+          keyword: needsServerKeyword(activeKeyword, searchFields)
+            ? activeKeyword
+            : undefined,
           page: 1,
           pageSize: 100,
         })
-        setSubmits(groupSubmitListItems(result.items))
+        const filtered = filterSubmitsBySearchFields(
+          result.items,
+          activeKeyword,
+          searchFields,
+        )
+        setSubmits(groupSubmitListItems(filtered))
       }
       setSelectedId(null)
       setMobileShowDetail(false)
@@ -243,9 +252,13 @@ export function WritingRecords() {
   }
 
   const toggleSearchField = (field: RecordSearchField) => {
-    setSearchFields((prev) =>
-      prev.includes(field) ? prev.filter((item) => item !== field) : [...prev, field],
-    )
+    setSearchFields((prev) => {
+      if (prev.includes(field)) {
+        if (prev.length <= 1) return prev
+        return prev.filter((item) => item !== field)
+      }
+      return [...prev, field]
+    })
   }
 
   const searchBarProps = {
@@ -285,13 +298,22 @@ export function WritingRecords() {
     }
 
     getSubmittedWritings({
-      keyword: activeKeyword || undefined,
+      keyword: needsServerKeyword(activeKeyword, searchFields)
+        ? activeKeyword
+        : undefined,
       page: 1,
       pageSize: 100,
     })
-      .then((result) => setSubmits(groupSubmitListItems(result.items)))
+      .then((result) => {
+        const filtered = filterSubmitsBySearchFields(
+          result.items,
+          activeKeyword,
+          searchFields,
+        )
+        setSubmits(groupSubmitListItems(filtered))
+      })
       .finally(() => setLoading(false))
-  }, [isAuthenticated, tab, activeKeyword, location.key])
+  }, [isAuthenticated, tab, activeKeyword, searchFields, location.key])
 
   useEffect(() => {
     if (!selectedId) {

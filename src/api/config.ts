@@ -86,6 +86,40 @@ export const API_PATHS = {
   assessment: {
     stats: '/assessment/stats',
   },
+  admin: {
+    users: '/admin/users',
+    userById: (id: string) => `/admin/users/${id}`,
+    banUser: (id: string) => `/admin/users/${id}/ban`,
+    unbanUser: (id: string) => `/admin/users/${id}/unban`,
+    vipUser: (id: string) => `/admin/users/${id}/vip`,
+    userRoles: (id: string) => `/admin/users/${id}/roles`,
+    auditLogs: '/admin/audit-logs',
+    providers: '/admin/providers',
+    providerById: (id: string) => `/admin/providers/${id}`,
+    toggleProvider: (id: string) => `/admin/providers/${id}/toggle`,
+    providerModels: (providerId: string) => `/admin/providers/${providerId}/models`,
+    toggleModel: (providerId: string, modelId: string) =>
+      `/admin/providers/${providerId}/models/${modelId}/toggle`,
+    deleteModel: (providerId: string, modelId: string) =>
+      `/admin/providers/${providerId}/models/${modelId}`,
+    roles: '/admin/roles',
+    roleById: (id: string) => `/admin/roles/${id}`,
+    permissions: '/admin/permissions',
+    configs: '/admin/configs',
+    configByKey: (key: string) => `/admin/configs/${key}`,
+    quotes: '/admin/quotes',
+    quoteById: (id: string) => `/admin/quotes/${id}`,
+    checkinTiers: '/admin/checkin-tiers',
+    checkinTierById: (id: string) => `/admin/checkin-tiers/${id}`,
+    reorderTiers: '/admin/checkin-tiers/reorder',
+    topicTypes: '/admin/topic-types',
+    topicTypeById: (id: number | string) => `/admin/topic-types/${id}`,
+    tokenUsage: '/admin/token-usage',
+    announcements: '/admin/announcements',
+    announcementById: (id: string) => `/admin/announcements/${id}`,
+    agreements: '/admin/agreements',
+    agreementById: (id: string) => `/admin/agreements/${id}`,
+  },
 } as const
 
 export const SUCCESS_CODES = new Set([200, 201])

@@ -1,20 +1,52 @@
 import { Search, X } from 'lucide-react'
+import type { WritingSubmitListItem } from '../../types'
 
-export type RecordSearchField = 'topic' | 'title' | 'content' | 'time'
+export type RecordSearchField = 'topic' | 'title' | 'content'
 
 export const DEFAULT_RECORD_SEARCH_FIELDS: RecordSearchField[] = [
   'topic',
   'title',
   'content',
-  'time',
 ]
 
 const SEARCH_FIELD_OPTIONS: { id: RecordSearchField; label: string }[] = [
   { id: 'topic', label: '题目' },
   { id: 'title', label: '标题' },
   { id: 'content', label: '内容' },
-  { id: 'time', label: '时间' },
 ]
+
+/** 勾选标题/内容时才走服务端 keyword（全文为标题+正文） */
+export function needsServerKeyword(
+  keyword: string,
+  fields: RecordSearchField[],
+): boolean {
+  const q = keyword.trim()
+  if (!q) return false
+  return fields.includes('title') || fields.includes('content')
+}
+
+/**
+ * 按检索范围二次过滤。
+ * - 内容：正文不在列表字段中，保留服务端全文结果
+ * - 标题：匹配 title
+ * - 题目：列表仅有题型 topicType，按题型字符串匹配
+ */
+export function filterSubmitsBySearchFields(
+  items: WritingSubmitListItem[],
+  keyword: string,
+  fields: RecordSearchField[],
+): WritingSubmitListItem[] {
+  const q = keyword.trim().toLowerCase()
+  if (!q || fields.length === 0) return items
+
+  if (fields.includes('content')) return items
+
+  return items.filter((item) => {
+    if (fields.includes('title') && item.title.toLowerCase().includes(q)) return true
+    if (fields.includes('topic') && item.topicType.toLowerCase().includes(q)) return true
+    return false
+  })
+}
 
 interface WritingRecordsSearchBarProps {
   tab: 'saves' | 'submits'
@@ -57,7 +89,7 @@ export function WritingRecordsSearchBar({
                 onSearch?.()
               }
             }}
-            placeholder="搜索标题或正文…"
+            placeholder="按检索范围搜索…"
             disabled={!searchEnabled}
             className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-8 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:bg-white disabled:cursor-not-allowed disabled:opacity-50"
           />

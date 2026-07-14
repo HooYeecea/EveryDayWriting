@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { createVocabularyItem } from '../../api/vocabulary'
 import type { CreateVocabularyPayload, VocabularyType } from '../../types'
+import { DEFAULT_PART_OF_SPEECH, PART_OF_SPEECH_OPTIONS } from '../../data/partOfSpeech'
+import { MenuSelect } from '../common/MenuSelect'
 
 export interface VocabularyQuickAddInitial {
   word: string
@@ -24,6 +26,16 @@ const TYPE_LABELS: Record<VocabularyType, string> = {
   WrongWord: '错词',
 }
 
+const VOCABULARY_TYPE_OPTIONS = [
+  { value: 'NewWord', label: TYPE_LABELS.NewWord },
+  { value: 'WrongWord', label: TYPE_LABELS.WrongWord },
+]
+
+const POS_OPTIONS = PART_OF_SPEECH_OPTIONS.map((item) => ({
+  value: item.value,
+  label: item.label,
+}))
+
 export function VocabularyQuickAddDialog({
   open,
   initial,
@@ -32,7 +44,7 @@ export function VocabularyQuickAddDialog({
 }: VocabularyQuickAddDialogProps) {
   const [form, setForm] = useState<CreateVocabularyPayload>({
     word: '',
-    partOfSpeech: 'n.',
+    partOfSpeech: DEFAULT_PART_OF_SPEECH,
     translation: '',
     type: 'NewWord',
     contextSentence: '',
@@ -45,7 +57,7 @@ export function VocabularyQuickAddDialog({
     if (!open || !initial) return
     setForm({
       word: initial.word,
-      partOfSpeech: 'n.',
+      partOfSpeech: DEFAULT_PART_OF_SPEECH,
       translation: initial.translation ?? '',
       type: initial.type ?? 'NewWord',
       contextSentence: initial.contextSentence ?? '',
@@ -73,7 +85,7 @@ export function VocabularyQuickAddDialog({
     try {
       await createVocabularyItem({
         word: form.word.trim(),
-        partOfSpeech: form.partOfSpeech.trim() || 'n.',
+        partOfSpeech: form.partOfSpeech.trim() || DEFAULT_PART_OF_SPEECH,
         translation: form.translation.trim(),
         type: form.type,
         contextSentence: form.contextSentence?.trim() || undefined,
@@ -153,12 +165,11 @@ export function VocabularyQuickAddDialog({
                 required
                 className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
               />
-              <input
+              <MenuSelect
                 value={form.partOfSpeech}
-                onChange={(event) => setForm({ ...form, partOfSpeech: event.target.value })}
-                placeholder="词性，如 n."
-                required
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+                onChange={(partOfSpeech) => setForm({ ...form, partOfSpeech })}
+                options={POS_OPTIONS}
+                ariaLabel="词性"
               />
               <input
                 value={form.translation}
@@ -168,16 +179,12 @@ export function VocabularyQuickAddDialog({
                 autoFocus
                 className="sm:col-span-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
               />
-              <select
+              <MenuSelect
                 value={form.type}
-                onChange={(event) =>
-                  setForm({ ...form, type: event.target.value as VocabularyType })
-                }
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
-              >
-                <option value="NewWord">{TYPE_LABELS.NewWord}</option>
-                <option value="WrongWord">{TYPE_LABELS.WrongWord}</option>
-              </select>
+                onChange={(type) => setForm({ ...form, type: type as VocabularyType })}
+                options={VOCABULARY_TYPE_OPTIONS}
+                ariaLabel="词条类型"
+              />
             </div>
             {form.contextSentence && (
               <div>

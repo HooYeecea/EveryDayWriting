@@ -727,7 +727,7 @@ export function WritingCheckInPanel() {
   const handleSlideAnimationEnd = () => setSlideDirection(null)
 
   return (
-    <section className="checkin-calendar-panel mt-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-8 sm:p-6">
+    <section className="checkin-calendar-panel rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center gap-2">
         <CalendarDays size={18} className="text-neutral-500" strokeWidth={1.75} />
         <h3 className="text-base font-semibold text-neutral-900">坚持写作打卡</h3>

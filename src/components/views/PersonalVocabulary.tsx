@@ -7,12 +7,24 @@ import {
   searchVocabulary,
 } from '../../api/vocabulary'
 import type { CreateVocabularyPayload, VocabularyItem, VocabularyType } from '../../types'
+import { DEFAULT_PART_OF_SPEECH, PART_OF_SPEECH_OPTIONS } from '../../data/partOfSpeech'
+import { MenuSelect } from '../common/MenuSelect'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
 const TYPE_LABELS: Record<VocabularyType, string> = {
   NewWord: '生词',
   WrongWord: '错词',
 }
+
+const VOCABULARY_TYPE_OPTIONS = [
+  { value: 'NewWord', label: TYPE_LABELS.NewWord },
+  { value: 'WrongWord', label: TYPE_LABELS.WrongWord },
+]
+
+const POS_OPTIONS = PART_OF_SPEECH_OPTIONS.map((item) => ({
+  value: item.value,
+  label: item.label,
+}))
 
 export function PersonalVocabulary() {
   const [items, setItems] = useState<VocabularyItem[]>([])
@@ -22,7 +34,7 @@ export function PersonalVocabulary() {
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<CreateVocabularyPayload>({
     word: '',
-    partOfSpeech: 'n.',
+    partOfSpeech: DEFAULT_PART_OF_SPEECH,
     translation: '',
     type: 'NewWord',
   })
@@ -58,7 +70,7 @@ export function PersonalVocabulary() {
         word: form.word.trim(),
         translation: form.translation.trim(),
       })
-      setForm({ word: '', partOfSpeech: 'n.', translation: '', type: 'NewWord' })
+      setForm({ word: '', partOfSpeech: DEFAULT_PART_OF_SPEECH, translation: '', type: 'NewWord' })
       setShowForm(false)
       loadItems()
     } catch (err) {
@@ -146,12 +158,11 @@ export function PersonalVocabulary() {
                 required
                 className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
               />
-              <input
+              <MenuSelect
                 value={form.partOfSpeech}
-                onChange={(e) => setForm({ ...form, partOfSpeech: e.target.value })}
-                placeholder="词性，如 n."
-                required
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
+                onChange={(partOfSpeech) => setForm({ ...form, partOfSpeech })}
+                options={POS_OPTIONS}
+                ariaLabel="词性"
               />
               <input
                 value={form.translation}
@@ -160,14 +171,12 @@ export function PersonalVocabulary() {
                 required
                 className="sm:col-span-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
               />
-              <select
+              <MenuSelect
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as VocabularyType })}
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
-              >
-                <option value="NewWord">生词</option>
-                <option value="WrongWord">错词</option>
-              </select>
+                onChange={(type) => setForm({ ...form, type: type as VocabularyType })}
+                options={VOCABULARY_TYPE_OPTIONS}
+                ariaLabel="词条类型"
+              />
             </div>
             <div className="mt-4 flex gap-2">
               <button
