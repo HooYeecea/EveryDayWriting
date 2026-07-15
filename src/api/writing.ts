@@ -69,6 +69,15 @@ export async function deleteDraft(id: string): Promise<void> {
   await del(API_PATHS.writings.draftById(id))
 }
 
+export async function autoSaveDraft(payload: {
+  topicId: number | null
+  topic?: string
+  title?: string
+  content?: string
+}): Promise<{ id: string; updatedAt: string }> {
+  return post(API_PATHS.writings.draftsAutosave, payload)
+}
+
 export async function submitWriting(payload: WritingSubmitPayload): Promise<SubmitResult> {
   return post<SubmitResult>(API_PATHS.writings.submits, payload)
 }

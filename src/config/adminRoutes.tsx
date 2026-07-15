@@ -7,6 +7,7 @@ import {
   Gauge,
   LayoutDashboard,
   ListOrdered,
+  MessageSquare,
   Quote,
   ScrollText,
   Settings,
@@ -28,6 +29,8 @@ import { AdminAuditLogsPage } from '../components/admin/pages/AdminAuditLogsPage
 import { AdminProvidersPage } from '../components/admin/pages/AdminProvidersPage'
 import { AdminRolesPage } from '../components/admin/pages/AdminRolesPage'
 import { AdminAgreementsPage } from '../components/admin/pages/AdminAgreementsPage'
+import { AdminPromptsPage } from '../components/admin/pages/AdminPromptsPage'
+import { AdminQuestionsPage } from '../components/admin/pages/AdminQuestionsPage'
 import { hasPermission } from '../utils/roles'
 
 export type AdminMenuKey =
@@ -44,6 +47,8 @@ export type AdminMenuKey =
   | 'providers'
   | 'roles'
   | 'agreements'
+  | 'prompts'
+  | 'questions'
 
 export interface AdminRoute {
   key: AdminMenuKey
@@ -161,6 +166,22 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     icon: ScrollText,
     element: <AdminAuditLogsPage />,
     permission: 'audit:view',
+  },
+  {
+    key: 'prompts',
+    path: '/admin/prompts',
+    label: 'Prompt 模板',
+    icon: MessageSquare,
+    element: <AdminPromptsPage />,
+    permission: 'prompt:manage',
+  },
+  {
+    key: 'questions',
+    path: '/admin/questions',
+    label: '题库管理',
+    icon: ListOrdered,
+    element: <AdminQuestionsPage />,
+    permission: 'test_question:manage',
   },
 ]
 

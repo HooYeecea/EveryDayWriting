@@ -636,3 +636,209 @@ export async function getAdminSystemInfo(): Promise<AdminSystemInfo> {
   return get(API_PATHS.admin.systemInfo)
 }
 
+// ── Prompt Templates ──
+
+export interface AdminPromptListItem {
+  id: string
+  purpose: string
+  vipLevel: number
+  name: string
+  description: string | null
+  version: number
+  isEnabled: boolean
+  updatedAt: string
+  updatedBy: { id: string; email: string } | null
+}
+
+export interface AdminPromptDetail {
+  id: string
+  purpose: string
+  vipLevel: number
+  name: string
+  content: string
+  description: string | null
+  version: number
+  isEnabled: boolean
+  createdAt: string
+  updatedAt: string
+  updatedBy: { id: string; email: string } | null
+}
+
+export interface AdminPromptHistoryItem {
+  version: number
+  content: string
+  changeNote: string | null
+  createdAt: string
+  createdBy: { id: string; email: string } | null
+}
+
+export interface AdminPromptTestResult {
+  aiResponse: string
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number }
+  latencyMs: number
+}
+
+export async function listAdminPrompts(params?: {
+  purpose?: string
+  vipLevel?: number
+  isEnabled?: boolean
+}): Promise<{ items: AdminPromptListItem[]; totalCount: number }> {
+  return get(API_PATHS.admin.prompts, { params })
+}
+
+export async function getAdminPrompt(id: string): Promise<AdminPromptDetail> {
+  return get(API_PATHS.admin.promptById(id))
+}
+
+export async function updateAdminPrompt(
+  id: string,
+  body: { name?: string; content?: string; description?: string; isEnabled?: boolean; changeNote?: string },
+): Promise<{ id: string; version: number; updatedAt: string }> {
+  return put(API_PATHS.admin.promptById(id), body)
+}
+
+export async function getAdminPromptHistory(id: string): Promise<{
+  items: AdminPromptHistoryItem[]
+  totalCount: number
+}> {
+  return get(API_PATHS.admin.promptHistory(id))
+}
+
+export async function testAdminPrompt(
+  id: string,
+  body: { testContent: string; providerId?: string; modelId?: string },
+): Promise<AdminPromptTestResult> {
+  return post(API_PATHS.admin.promptTest(id), body)
+}
+
+export async function rollbackAdminPrompt(
+  id: string,
+  targetVersion: number,
+): Promise<{ id: string; version: number; updatedAt: string }> {
+  return post(API_PATHS.admin.promptRollback(id), { targetVersion })
+}
+
+// ── Question Bank ──
+
+export interface AdminQuestionListItem {
+  id: string
+  stepNumber: number
+  questionType: string
+  examType: string
+  difficulty: number
+  content: unknown
+  isEnabled: boolean
+  usageCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminQuestionExportResult {
+  exportedAt: string
+  filters: Record<string, unknown>
+  totalCount: number
+  questions: Array<{
+    stepNumber: number
+    questionType: string
+    examType: string
+    difficulty: number
+    content: unknown
+    answer: unknown
+  }>
+}
+
+export async function listAdminQuestions(params?: {
+  page?: number
+  pageSize?: number
+  stepNumber?: number
+  questionType?: string
+  examType?: string
+  difficulty?: number
+  isEnabled?: boolean
+}): Promise<{
+  items: AdminQuestionListItem[]
+  page: number; pageSize: number; totalCount: number; totalPages: number
+}> {
+  return get(API_PATHS.admin.questions, { params })
+}
+
+export async function createAdminQuestion(body: {
+  stepNumber: number
+  questionType: string
+  examType?: string
+  difficulty: number
+  content: unknown
+  answer: unknown
+}): Promise<{ id: string }> {
+  return post(API_PATHS.admin.questions, body)
+}
+
+export async function updateAdminQuestion(
+  id: string,
+  body: {
+    stepNumber?: number
+    questionType?: string
+    examType?: string
+    difficulty?: number
+    content?: unknown
+    answer?: unknown
+  },
+): Promise<void> {
+  await put(API_PATHS.admin.questionById(id), body)
+}
+
+export async function toggleAdminQuestion(id: string, isEnabled: boolean): Promise<void> {
+  await put(API_PATHS.admin.questionToggle(id), { isEnabled })
+}
+
+export async function deleteAdminQuestion(id: string): Promise<void> {
+  await del(API_PATHS.admin.questionById(id))
+}
+
+export async function batchCreateAdminQuestions(questions: Array<{
+  stepNumber: number
+  questionType: string
+  examType?: string
+  difficulty: number
+  content: unknown
+  answer: unknown
+}>): Promise<{
+  total: number; success: number; failed: number
+  errors: Array<{ index: number; message: string }>
+  successIds: string[]
+}> {
+  return post(API_PATHS.admin.questionsBatch, { questions })
+}
+
+export async function exportAdminQuestions(params?: {
+  format?: string
+  examType?: string
+  stepNumber?: number
+  questionType?: string
+  isEnabled?: boolean
+}): Promise<AdminQuestionExportResult | Blob> {
+  if (params?.format === 'xlsx' || params?.format === 'csv') {
+    // For file downloads, fetch directly
+    const { getApiBaseUrl } = await import('./config')
+    const base = getApiBaseUrl()
+    const searchParams = new URLSearchParams()
+    for (const [k, v] of Object.entries(params ?? {})) {
+      if (v !== undefined && v !== null && v !== '') searchParams.set(k, String(v))
+    }
+    const url = `${base}${API_PATHS.admin.questionsExport}?${searchParams.toString()}`
+    const token = (await import('../storage/tokenStorage')).getToken()
+    const resp = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    return resp.blob()
+  }
+  return get(API_PATHS.admin.questionsExport, { params })
+}
+
+export async function downloadQuestionsTemplate(): Promise<Blob> {
+  const { getApiBaseUrl } = await import('./config')
+  const base = getApiBaseUrl()
+  const url = `${base}${API_PATHS.admin.questionsTemplate}`
+  const token = (await import('../storage/tokenStorage')).getToken()
+  const resp = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  return resp.blob()
+}
+

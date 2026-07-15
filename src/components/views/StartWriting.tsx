@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, RotateCcw, Wand2 } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
-import { loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
+import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
 import { runPreSubmitGrading } from '../../api/aiGrading'
 import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingPreviewStorage'
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
@@ -317,6 +317,94 @@ export function StartWriting() {
       return next
     })
   }
+
+  // ── 自动保存：localStorage + 服务器 ──
+  const autoSaveTimerRef = useRef<number | null>(null)
+  const lastAutoSavedHashRef = useRef<string>('')
+  const localStorageKey = topic ? `auto_save_draft_${topic.id}` : 'auto_save_draft_0'
+
+  // 恢复 localStorage 中的草稿（页面刷新/崩溃后）
+  useEffect(() => {
+    if (!isAuthenticated) return
+    try {
+      const saved = localStorage.getItem(localStorageKey)
+      if (saved && isEditorEmpty(content)) {
+        const parsed = JSON.parse(saved) as { title: string; content: string }
+        if (parsed.content && !isEditorEmpty(parsed.content)) {
+          setTitle(parsed.title ?? '')
+          setContent(parsed.content)
+          setEditorKey((k) => k + 1)
+          setFeedback({ tone: 'info', message: '已恢复上次编辑内容' })
+        }
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 内容变化 → localStorage（500ms 防抖）
+  useEffect(() => {
+    if (!isAuthenticated) return
+    try {
+      if (title || content) {
+        localStorage.setItem(localStorageKey, JSON.stringify({ title, content }))
+      }
+    } catch { /* ignore */ }
+  }, [title, content, isAuthenticated, localStorageKey])
+
+  // 服务器自动保存（停止输入 3s 后触发，或每 30s 强制触发一次）
+  useEffect(() => {
+    if (!isAuthenticated || !topic || topic.id === 0) return
+
+    const hash = `${title}||${content}`
+    if (hash === lastAutoSavedHashRef.current) return
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+
+    autoSaveTimerRef.current = window.setTimeout(async () => {
+      if (!isEditorEmpty(content)) {
+        try {
+          const result = await autoSaveDraft({
+            topicId: topic.id,
+            topic: topic.title,
+            title: title || undefined,
+            content: content || undefined,
+          })
+          lastAutoSavedHashRef.current = hash
+          // 静默成功，不设置 feedback
+          if (!draftId) setDraftId(result.id)
+        } catch {
+          // 静默失败，不打扰用户
+        }
+      }
+    }, 3000)
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, content, topic, isAuthenticated])
+
+  // 页面关闭前紧急写入 localStorage
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        if (title || content) {
+          localStorage.setItem(localStorageKey, JSON.stringify({ title, content }))
+        }
+      } catch { /* ignore */ }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [title, content, localStorageKey])
+
+  // 提交/手动保存成功后清除 localStorage
+  useEffect(() => {
+    if (feedback?.tone === 'success') {
+      try {
+        localStorage.removeItem(localStorageKey)
+      } catch { /* ignore */ }
+    }
+  }, [feedback, localStorageKey])
 
   const handleChangeTopic = async () => {
     setSubmittedSnapshot(null)
