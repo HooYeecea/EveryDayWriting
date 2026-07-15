@@ -9,6 +9,8 @@ import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingP
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
 import { isApiError } from '../../api/request'
 import { useAuth } from '../../context/AuthContext'
+import { useAppAlert } from '../../context/AppAlertContext'
+import { useWritingFocus } from '../../context/WritingFocusContext'
 import { getMockRandomTopic } from '../../data/mockTopics'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
 import { isTypingAnimationEnabled, setTypingAnimationEnabled } from '../../storage/typingAnimationStorage'
@@ -67,6 +69,8 @@ function draftToTopic(draft: { topicId: number | null; topic: string }): Writing
 
 export function StartWriting() {
   const { user, isAuthenticated } = useAuth()
+  const { navigationLocked } = useWritingFocus()
+  const { alert } = useAppAlert()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const draftIdParam = searchParams.get('draftId')
@@ -748,6 +752,16 @@ export function StartWriting() {
                       <Link
                         to="/records"
                         state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
+                        onClick={(event) => {
+                          if (navigationLocked) {
+                            event.preventDefault()
+                            void alert({
+                              title: '专注写作中',
+                              message: '请先结束或停止计时后再前往写作记录。',
+                              variant: 'info',
+                            })
+                          }
+                        }}
                         className="mt-1 inline-block font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
                       >
                         前往写作记录

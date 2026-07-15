@@ -5,6 +5,7 @@ import { AdminLayout } from './components/admin/AdminLayout'
 import { AuthRouteTransition, isAuthPath } from './components/auth/AuthRouteTransition'
 import { ChangePassword } from './components/views/ChangePassword'
 import { useAuth } from './context/AuthContext'
+import { useWritingFocus } from './context/WritingFocusContext'
 import { APP_ROUTES, DEFAULT_PATH, isAppPath } from './config/routes'
 import {
   ADMIN_ROUTES,
@@ -31,6 +32,7 @@ function App() {
   const location = useLocation()
   const { mustChangePassword, isLoading, roles, permissions, isAuthenticated, refreshAccess } =
     useAuth()
+  const { navigationLocked } = useWritingFocus()
   const homePath = getDefaultHomePath(roles, permissions)
 
   useEffect(() => {
@@ -91,6 +93,10 @@ function App() {
   if (isAppPath(location.pathname)) {
     if (isAuthenticated && isAdminOnly(roles)) {
       return <Navigate to={getFirstAllowedAdminPath(permissions)} replace />
+    }
+
+    if (navigationLocked && location.pathname !== DEFAULT_PATH) {
+      return <Navigate to={DEFAULT_PATH} replace />
     }
 
     return (

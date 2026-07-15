@@ -1,7 +1,10 @@
 import { NavLink } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, LogIn, User, X } from 'lucide-react'
-import { APP_ROUTES } from '../../config/routes'
+import type { MouseEvent } from 'react'
+import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
+import { useAppAlert } from '../../context/AppAlertContext'
 import { useAuth } from '../../context/AuthContext'
+import { useWritingFocus } from '../../context/WritingFocusContext'
 import { NAV_ICON_MAP } from './navConfig'
 import {
   PANEL_HEADER_CLASS,
@@ -13,6 +16,7 @@ import {
 } from './layoutConstants'
 
 const MAIN_ROUTES = APP_ROUTES.filter((route) => route.key !== 'user-center')
+const FOCUS_LOCK_HINT = '专注写作中，请先结束或停止计时后再切换页面'
 
 interface SidebarProps {
   mobileOpen?: boolean
@@ -28,6 +32,21 @@ export function Sidebar({
   onClose,
 }: SidebarProps) {
   const { isAuthenticated } = useAuth()
+  const { navigationLocked } = useWritingFocus()
+  const { alert } = useAppAlert()
+
+  const guardNavClick = (targetPath: string, event: MouseEvent) => {
+    if (navigationLocked && targetPath !== DEFAULT_PATH) {
+      event.preventDefault()
+      void alert({
+        title: '专注写作中',
+        message: FOCUS_LOCK_HINT,
+        variant: 'info',
+      })
+      return
+    }
+    onClose?.()
+  }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
@@ -35,7 +54,9 @@ export function Sidebar({
     } ${
       isActive
         ? 'bg-neutral-100 font-medium text-neutral-900'
-        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]'
+        : navigationLocked
+          ? 'cursor-not-allowed text-neutral-300'
+          : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]'
     }`
 
   const sidebarContent = (
@@ -83,9 +104,12 @@ export function Sidebar({
       >
         <NavLink
           to={isAuthenticated ? '/user-center' : '/login'}
-          onClick={onClose}
+          onClick={(event) =>
+            guardNavClick(isAuthenticated ? '/user-center' : '/login', event)
+          }
           className={navLinkClass}
           title={collapsed ? (isAuthenticated ? '用户中心' : '立即登录') : undefined}
+          aria-disabled={navigationLocked}
         >
           {({ isActive }) => (
             <>
@@ -119,9 +143,10 @@ export function Sidebar({
             <NavLink
               key={item.key}
               to={item.path}
-              onClick={onClose}
+              onClick={(event) => guardNavClick(item.path, event)}
               className={navLinkClass}
               title={collapsed ? item.label : undefined}
+              aria-disabled={navigationLocked && item.path !== DEFAULT_PATH}
             >
               {({ isActive }) => (
                 <>

@@ -99,6 +99,7 @@ interface MobileDraggableAssistFabProps {
   onPositionChange: (position: FloatingPosition) => void
   onOpen: () => void
   timerRunning: boolean
+  timerPaused: boolean
   timerDisplaySeconds: number
   fabRef: RefObject<HTMLButtonElement | null>
 }
@@ -108,6 +109,7 @@ function MobileDraggableAssistFab({
   onPositionChange,
   onOpen,
   timerRunning,
+  timerPaused,
   timerDisplaySeconds,
   fabRef,
 }: MobileDraggableAssistFabProps) {
@@ -199,7 +201,7 @@ function MobileDraggableAssistFab({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className={`fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md transition-transform duration-200 active:scale-95 active:cursor-grabbing ${timerRunning ? 'animate-pulse-soft' : ''}`}
+      className={`fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md transition-transform duration-200 active:scale-95 active:cursor-grabbing ${timerRunning && !timerPaused ? 'animate-pulse-soft' : ''}`}
       aria-label="打开写作辅助，按住可拖动"
       title="点击打开，按住拖动"
     >
@@ -207,6 +209,7 @@ function MobileDraggableAssistFab({
       辅助
       {timerRunning && (
         <span className="font-mono text-xs text-amber-600">
+          {timerPaused ? '暂停 ' : ''}
           {formatSecondsForRail(timerDisplaySeconds)}
         </span>
       )}
@@ -309,16 +312,18 @@ interface AssistPanelContentProps {
   activeFeature: AssistFeatureId | null
   onActiveFeatureChange: (id: AssistFeatureId | null) => void
   timerRunning: boolean
+  timerPaused: boolean
   timerDisplaySeconds: number
   panelOpen: boolean
   headerClose: ReactNode
-  onTimerRunningChange: (running: boolean, displaySeconds: number) => void
+  onTimerRunningChange: (running: boolean, displaySeconds: number, paused: boolean) => void
 }
 
 function AssistPanelContent({
   activeFeature,
   onActiveFeatureChange,
   timerRunning,
+  timerPaused,
   timerDisplaySeconds,
   panelOpen,
   headerClose,
@@ -374,7 +379,7 @@ function AssistPanelContent({
                     </p>
                     {feature.id === 'writing-timer' && timerRunning && (
                       <p className="mt-1 font-mono text-[11px] text-amber-600">
-                        计时中 {formatSecondsForRail(timerDisplaySeconds)}
+                        {timerPaused ? '已暂停' : '计时中'} {formatSecondsForRail(timerDisplaySeconds)}
                       </p>
                     )}
                   </div>
@@ -403,6 +408,7 @@ export function WritingAssistPanel() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [activeFeature, setActiveFeature] = useState<AssistFeatureId | null>(null)
   const [timerRunning, setTimerRunning] = useState(false)
+  const [timerPaused, setTimerPaused] = useState(false)
   const [timerDisplaySeconds, setTimerDisplaySeconds] = useState(0)
   const [mobilePosition, setMobilePosition] = useState(getDefaultMobilePanelPosition)
   const [fabPosition, setFabPosition] = useState(
@@ -410,10 +416,14 @@ export function WritingAssistPanel() {
   )
   const mobileFabRef = useRef<HTMLButtonElement>(null)
 
-  const handleTimerRunningChange = useCallback((running: boolean, displaySeconds: number) => {
-    setTimerRunning(running)
-    setTimerDisplaySeconds(displaySeconds)
-  }, [])
+  const handleTimerRunningChange = useCallback(
+    (running: boolean, displaySeconds: number, paused: boolean) => {
+      setTimerRunning(running)
+      setTimerPaused(paused)
+      setTimerDisplaySeconds(displaySeconds)
+    },
+    [],
+  )
 
   const panelOpen = isDesktop ? desktopExpanded : mobileOpen
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
@@ -440,6 +450,7 @@ export function WritingAssistPanel() {
     activeFeature,
     onActiveFeatureChange: setActiveFeature,
     timerRunning,
+    timerPaused,
     timerDisplaySeconds,
     panelOpen: mobileOpen,
     onTimerRunningChange: handleTimerRunningChange,
@@ -506,7 +517,8 @@ export function WritingAssistPanel() {
                       </p>
                       {feature.id === 'writing-timer' && timerRunning && (
                         <p className="mt-1 font-mono text-[11px] text-amber-600">
-                          计时中 {formatSecondsForRail(timerDisplaySeconds)}
+                          {timerPaused ? '已暂停' : '计时中'}{' '}
+                          {formatSecondsForRail(timerDisplaySeconds)}
                         </p>
                       )}
                     </div>
@@ -559,6 +571,7 @@ export function WritingAssistPanel() {
               onPositionChange={setFabPosition}
               onOpen={openMobile}
               timerRunning={timerRunning}
+              timerPaused={timerPaused}
               timerDisplaySeconds={timerDisplaySeconds}
             />
           )}
