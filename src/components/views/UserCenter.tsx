@@ -234,30 +234,40 @@ export function UserCenter() {
       className="user-center-scroll flex-1 min-h-0 overflow-y-scroll overflow-anchor-none"
     >
       <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[5.25rem] w-full max-w-2xl items-center gap-3 sm:min-h-[5.5rem] sm:gap-4">
-          <div className="min-w-0 shrink-0">
-            <h2 className={PANEL_TITLE_CLASS}>用户中心</h2>
-            <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>
-              {user.nickname} · {getVipLabel(user.vipLevel)}
-            </p>
-          </div>
+        <div className="mx-auto flex min-h-[5.25rem] w-full max-w-5xl items-center justify-between gap-3 sm:min-h-[5.5rem] sm:gap-5">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+            <div className="min-w-0 shrink-0">
+              <h2 className={PANEL_TITLE_CLASS}>用户中心</h2>
+              <p className={`${PANEL_SUBTITLE_CLASS} max-w-[9rem] truncate sm:max-w-[14rem]`}>
+                {user.nickname} · {getVipLabel(user.vipLevel)}
+              </p>
+            </div>
 
-          <div className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto">
-            {TABS.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => selectTab(key)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors sm:px-3 ${
-                  tab === key
-                    ? 'bg-neutral-900 font-medium text-white'
-                    : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
-                }`}
-              >
-                <Icon size={15} />
-                {label}
-              </button>
-            ))}
+            <div
+              className="hidden h-7 w-px shrink-0 bg-neutral-200 sm:block"
+              aria-hidden
+            />
+
+            <nav
+              className="flex items-center gap-0.5 sm:gap-1"
+              aria-label="用户中心栏目"
+            >
+              {TABS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selectTab(key)}
+                  className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors sm:px-3 ${
+                    tab === key
+                      ? 'bg-neutral-900 font-medium text-white'
+                      : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+                  }`}
+                >
+                  <Icon size={15} className="shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </nav>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -285,7 +295,7 @@ export function UserCenter() {
               title="全部退出"
             >
               <LogOut size={12} />
-              <span className="hidden md:inline">全部退出</span>
+              <span className="hidden lg:inline">全部退出</span>
             </button>
           </div>
         </div>
