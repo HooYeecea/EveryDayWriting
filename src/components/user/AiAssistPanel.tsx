@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Key, Sparkles } from 'lucide-react'
 import { getAiConfig, submitAiKey } from '../../api/ai'
 import type { AiConfig, AiProviderBrief } from '../../types'
 import { loadAiAssistSettings, saveAiAssistSettings } from '../../storage/aiSettingsStorage'
+import { MenuSelect } from '../common/MenuSelect'
 
 function pickDefaultModel(provider: AiProviderBrief | undefined) {
   if (!provider) return ''
@@ -21,6 +22,24 @@ export function AiAssistPanel() {
   const [message, setMessage] = useState('')
 
   const selectedProvider = config?.providers.find((item) => item.id === providerId)
+
+  const providerOptions = useMemo(
+    () =>
+      (config?.providers ?? []).map((provider) => ({
+        value: provider.id,
+        label: provider.name,
+      })),
+    [config],
+  )
+
+  const modelOptions = useMemo(
+    () =>
+      (selectedProvider?.models ?? []).map((model) => ({
+        value: model.id,
+        label: model.name,
+      })),
+    [selectedProvider],
+  )
 
   useEffect(() => {
     const saved = loadAiAssistSettings()
@@ -99,33 +118,26 @@ export function AiAssistPanel() {
                   <label className="mb-1.5 block text-xs font-medium text-neutral-500">
                     Provider
                   </label>
-                  <select
+                  <MenuSelect
                     value={providerId}
-                    onChange={(e) => handleProviderChange(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none focus:border-neutral-400 focus:bg-white"
-                  >
-                    {config.providers.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={providerOptions}
+                    onChange={handleProviderChange}
+                    placeholder="选择 Provider"
+                    ariaLabel="选择 AI Provider"
+                  />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-neutral-500">
                     模型
                   </label>
-                  <select
+                  <MenuSelect
                     value={modelId}
-                    onChange={(e) => setModelId(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none focus:border-neutral-400 focus:bg-white"
-                  >
-                    {(selectedProvider?.models ?? []).map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={modelOptions}
+                    onChange={setModelId}
+                    placeholder="选择模型"
+                    ariaLabel="选择模型"
+                    disabled={modelOptions.length === 0}
+                  />
                 </div>
               </div>
 
