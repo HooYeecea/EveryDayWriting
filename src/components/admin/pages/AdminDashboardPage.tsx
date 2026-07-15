@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type AnimationEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -102,19 +102,38 @@ export function AdminDashboardPage() {
   const [data, setData] = useState<AdminDashboardOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [periodSwitching, setPeriodSwitching] = useState(false)
+  const [periodEnterClass, setPeriodEnterClass] = useState('')
   const [error, setError] = useState('')
   const requestIdRef = useRef(0)
   const periodRef = useRef(period)
+  const hasDataRef = useRef(false)
+  const pendingPeriodDirRef = useRef<'next' | 'prev' | null>(null)
+  const periodContentRef = useRef<HTMLDivElement | null>(null)
   periodRef.current = period
+  hasDataRef.current = data != null
 
-  const load = async (silent = false) => {
+  const selectPeriod = (next: DashboardPeriod) => {
+    if (next === period) return
+    const from = PERIODS.findIndex((item) => item.id === period)
+    const to = PERIODS.findIndex((item) => item.id === next)
+    if (from >= 0 && to >= 0) {
+      pendingPeriodDirRef.current = to > from ? 'next' : 'prev'
+    } else {
+      pendingPeriodDirRef.current = 'next'
+    }
+    setPeriod(next)
+  }
+
+  const load = async (mode: 'full' | 'silent' | 'period' = 'full') => {
     if (!canView) {
       setLoading(false)
       setData(null)
       return
     }
     const requestId = ++requestIdRef.current
-    if (silent) setRefreshing(true)
+    if (mode === 'silent') setRefreshing(true)
+    else if (mode === 'period' && hasDataRef.current) setPeriodSwitching(true)
     else setLoading(true)
     setError('')
     try {
@@ -123,24 +142,27 @@ export function AdminDashboardPage() {
       setData(result)
     } catch (err) {
       if (requestId !== requestIdRef.current) return
+      pendingPeriodDirRef.current = null
       setError(err instanceof Error ? err.message : '加载运营看板失败')
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false)
         setRefreshing(false)
+        setPeriodSwitching(false)
       }
     }
   }
 
   const { refreshNow, resetTimer } = useAutoRefresh(
-    () => load(true),
+    () => load('silent'),
     AUTO_REFRESH_MS,
     canView && data != null,
   )
 
   useEffect(() => {
     let cancelled = false
-    void load(false).then(() => {
+    const mode = hasDataRef.current ? 'period' : 'full'
+    void load(mode).then(() => {
       if (!cancelled) resetTimer()
     })
     return () => {
@@ -149,6 +171,28 @@ export function AdminDashboardPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on period / permission only
   }, [canView, period])
+
+  useLayoutEffect(() => {
+    if (periodSwitching || !data) return
+    const direction = pendingPeriodDirRef.current
+    if (!direction) return
+    pendingPeriodDirRef.current = null
+
+    const cls =
+      direction === 'next' ? 'dashboard-period-enter-next' : 'dashboard-period-enter-prev'
+    const el = periodContentRef.current
+    if (el) {
+      el.classList.remove('dashboard-period-enter-next', 'dashboard-period-enter-prev')
+      void el.offsetWidth
+      el.classList.add(cls)
+    }
+    setPeriodEnterClass(cls)
+  }, [data, periodSwitching])
+
+  const clearPeriodEnterClass = (event: AnimationEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return
+    setPeriodEnterClass('')
+  }
 
   const vipChart = useMemo(
     () =>
@@ -245,7 +289,8 @@ export function AdminDashboardPage() {
                       ? 'border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
                       : 'border-transparent'
                   }
-                  onClick={() => setPeriod(item.id)}
+                  onClick={() => selectPeriod(item.id)}
+                  disabled={periodSwitching}
                 >
                   {item.label}
                 </AdminGhostButton>
@@ -253,9 +298,9 @@ export function AdminDashboardPage() {
             </div>
             <AdminGhostButton
               onClick={() => refreshNow()}
-              disabled={loading || refreshing}
+              disabled={loading || refreshing || periodSwitching}
             >
-              {refreshing ? '刷新中…' : '刷新'}
+              {refreshing || periodSwitching ? '刷新中…' : '刷新'}
             </AdminGhostButton>
           </div>
         }
@@ -267,12 +312,21 @@ export function AdminDashboardPage() {
           </div>
         ) : null}
 
-        {loading || !data ? (
+        {loading && !data ? (
           <AdminCard>
-            <AdminEmpty message={loading ? '正在加载运营数据…' : '暂无数据'} />
+            <AdminEmpty message="正在加载运营数据…" />
+          </AdminCard>
+        ) : !data ? (
+          <AdminCard>
+            <AdminEmpty message="暂无数据" />
           </AdminCard>
         ) : (
-          <div className="space-y-5">
+          <div
+            ref={periodContentRef}
+            className={`dashboard-period-shell space-y-5 ${periodEnterClass}`}
+            data-switching={periodSwitching ? 'true' : undefined}
+            onAnimationEnd={clearPeriodEnterClass}
+          >
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 label="注册用户"

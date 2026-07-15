@@ -417,6 +417,26 @@ code, kbd, pre, samp {
   to   { opacity: 0; transform: translate3d(-18px, 0, 0); }
 }
 
+/* Admin dashboard: period (7d/30d/90d/all) soft switch */
+.dashboard-period-shell {
+  will-change: opacity, transform;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dashboard-period-shell[data-switching='true'] {
+  opacity: 0.42;
+  pointer-events: none;
+}
+.dashboard-period-enter-next {
+  animation: dashboard-period-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.dashboard-period-enter-prev {
+  animation: dashboard-period-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes dashboard-period-enter {
+  from { opacity: 0.28; }
+  to   { opacity: 1; }
+}
+
 /* Writing records: draft ↔ submit — dual-pane track (GPU transform, no remount) */
 .records-list-viewport {
   overflow: hidden;
@@ -478,6 +498,10 @@ code, kbd, pre, samp {
   .app-page-enter-prev,
   .app-page-exit-next,
   .app-page-exit-prev { animation: none; }
+
+  .dashboard-period-shell[data-switching='true'] { opacity: 1; transition: none; }
+  .dashboard-period-enter-next,
+  .dashboard-period-enter-prev { animation: none; }
 
   .records-list-track,
   .records-search-slot,
