@@ -11,6 +11,10 @@ interface TopicTypeOption {
 interface TopicTypeSelectProps {
   value?: string
   onChange: (value: string | undefined) => void
+  /** 触发按钮额外 class */
+  className?: string
+  /** 外层容器额外 class，桌面端竖排时用 sm:w-full 对齐 */
+  rootClassName?: string
 }
 
 function buildOptions(types: TopicTypeItem[]): TopicTypeOption[] {
@@ -20,7 +24,12 @@ function buildOptions(types: TopicTypeItem[]): TopicTypeOption[] {
   ]
 }
 
-export function TopicTypeSelect({ value, onChange }: TopicTypeSelectProps) {
+export function TopicTypeSelect({
+  value,
+  onChange,
+  className = '',
+  rootClassName = '',
+}: TopicTypeSelectProps) {
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; minWidth: number } | null>(
     null,
@@ -152,12 +161,12 @@ export function TopicTypeSelect({ value, onChange }: TopicTypeSelectProps) {
       : null
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
+    <div ref={rootRef} className={`relative shrink-0 ${rootClassName}`}>
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex h-9 w-[5.75rem] items-center justify-between gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 sm:w-auto sm:min-w-[92px] sm:gap-2 sm:px-3"
+        className={`flex h-9 w-[5.75rem] items-center justify-between gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 sm:w-auto sm:min-w-[92px] sm:gap-2 sm:px-3 ${className}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="题目类型筛选"

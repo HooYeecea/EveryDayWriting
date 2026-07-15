@@ -629,15 +629,21 @@ export function StartWriting() {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:flex-none sm:px-3'
+    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:w-full sm:flex-none sm:px-3'
 
+  // 手机：类型 + 换题横排；桌面：上换题 / 下类型，同宽竖排
   const topicControls = (
-    <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-auto sm:pt-1">
-      <TopicTypeSelect value={topicTypeFilter} onChange={handleTopicTypeFilterChange} />
-      <button type="button" onClick={handleChangeTopic} className={changeTopicButtonClass}>
+    <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-[7.75rem] sm:flex-col sm:items-stretch sm:justify-center sm:gap-2 sm:self-stretch">
+      <button type="button" onClick={handleChangeTopic} className={`${changeTopicButtonClass} order-2 sm:order-1`}>
         <RefreshCw size={14} className="shrink-0" />
         <span className="truncate">换一个题目</span>
       </button>
+      <TopicTypeSelect
+        value={topicTypeFilter}
+        onChange={handleTopicTypeFilterChange}
+        rootClassName="order-1 sm:order-2 sm:w-full"
+        className="sm:!w-full sm:!min-w-0"
+      />
     </div>
   )
 
@@ -648,10 +654,13 @@ export function StartWriting() {
         className="relative flex shrink-0 flex-col overflow-hidden border-b border-neutral-200 bg-white"
         style={{ height: topicHeight }}
       >
-        <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-5xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-stretch sm:gap-4 sm:px-5 sm:py-2.5">
+        <div
+          className={`mx-auto flex h-full min-h-0 w-full min-w-0 max-w-5xl flex-col gap-2 py-2.5 sm:flex-row sm:items-stretch sm:gap-3 sm:py-2.5 ${MAIN_CONTENT_X_CLASS}`}
+        >
           <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-2.5 sm:gap-3">
-            <p className="hidden shrink-0 self-center text-base font-semibold uppercase tracking-[0.1em] text-neutral-600 sm:block">
-              题目
+            <p className="hidden shrink-0 self-center text-center font-sans text-lg font-semibold leading-snug tracking-wide text-neutral-600 sm:block">
+              <span className="block">写作</span>
+              <span className="block">题目</span>
             </p>
             <div className="min-h-0 min-w-0 flex-1">
               <TopicPromptBox fill prompt={topicPrompt} type={topic.type} />
