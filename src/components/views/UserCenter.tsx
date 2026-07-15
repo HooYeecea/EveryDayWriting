@@ -106,6 +106,22 @@ export function UserCenter() {
     if (settled > 0) setViewportHeight(settled)
   }, [tab])
 
+  // 公告异步加载 / 展开折叠等会使当前页高度变化；同步视口，避免 overflow:hidden 裁切内容
+  useLayoutEffect(() => {
+    const pane = paneRefs.current[tab]
+    if (!pane) return
+
+    const syncHeight = () => {
+      const next = pane.offsetHeight
+      if (next > 0) setViewportHeight(next)
+    }
+
+    syncHeight()
+    const observer = new ResizeObserver(syncHeight)
+    observer.observe(pane)
+    return () => observer.disconnect()
+  }, [tab])
+
   const showAdminEntry =
     hasUserRole(roles) && canAccessAdmin(roles, permissions)
 

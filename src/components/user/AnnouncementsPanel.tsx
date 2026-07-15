@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, ChevronDown } from 'lucide-react'
 import {
   countUnreadAnnouncements,
   getAnnouncements,
@@ -17,7 +17,7 @@ export function AnnouncementsPanel() {
   const [items, setItems] = useState<AnnouncementItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     getAnnouncements()
@@ -28,9 +28,16 @@ export function AnnouncementsPanel() {
 
   const unreadCount = countUnreadAnnouncements(items)
 
-  const handleOpen = async (item: AnnouncementItem) => {
-    setExpandedId((current) => (current === item.id ? null : item.id))
-    if (item.hasRead) return
+  const toggleExpand = async (item: AnnouncementItem) => {
+    const willExpand = !expandedIds.has(item.id)
+    setExpandedIds((current) => {
+      const next = new Set(current)
+      if (next.has(item.id)) next.delete(item.id)
+      else next.add(item.id)
+      return next
+    })
+
+    if (!willExpand || item.hasRead) return
 
     try {
       await markAnnouncementRead(item.id)
@@ -64,35 +71,50 @@ export function AnnouncementsPanel() {
       )}
 
       <ul className="mt-4 space-y-3">
-        {items.map((item) => (
-          <li key={item.id} className="rounded-xl border border-neutral-100 bg-neutral-50">
-            <button
-              type="button"
-              onClick={() => void handleOpen(item)}
-              className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  {!item.hasRead && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden />
-                  )}
-                  <span className="font-medium text-neutral-900">{item.title}</span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-neutral-500">
-                    {PRIORITY_LABELS[item.priority] ?? item.priority}
-                  </span>
+        {items.map((item) => {
+          const expanded = expandedIds.has(item.id)
+
+          return (
+            <li key={item.id} className="rounded-xl border border-neutral-100 bg-neutral-50">
+              <button
+                type="button"
+                onClick={() => void toggleExpand(item)}
+                aria-expanded={expanded}
+                className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!item.hasRead && (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden />
+                    )}
+                    <span className="font-medium text-neutral-900">{item.title}</span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-neutral-500">
+                      {PRIORITY_LABELS[item.priority] ?? item.priority}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    {new Date(item.publishedAt).toLocaleString('zh-CN')}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-neutral-400">
-                  {new Date(item.publishedAt).toLocaleString('zh-CN')}
-                </p>
-              </div>
-            </button>
-            {expandedId === item.id && (
-              <div className="border-t border-neutral-100 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-neutral-700">
-                {item.content}
-              </div>
-            )}
-          </li>
-        ))}
+                <span
+                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-400"
+                  aria-hidden
+                >
+                  <ChevronDown
+                    size={18}
+                    className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                  />
+                </span>
+                <span className="sr-only">{expanded ? '折叠公告' : '展开公告'}</span>
+              </button>
+              {expanded && (
+                <div className="border-t border-neutral-100 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-neutral-700">
+                  {item.content}
+                </div>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </section>
   )
