@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { PANEL_SUBTITLE_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
 interface AdminPageHeaderProps {
   title: string
@@ -9,15 +10,13 @@ interface AdminPageHeaderProps {
 
 export function AdminPageHeader({ title, description, actions }: AdminPageHeaderProps) {
   return (
-    <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-6xl items-start justify-between gap-4">
-        <div>
-          <h2 className="font-sans text-xl font-semibold text-neutral-900">{title}</h2>
-          {description ? (
-            <p className="mt-0.5 font-sans text-sm text-neutral-400">{description}</p>
-          ) : null}
+    <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-[5.25rem] max-w-6xl items-center justify-between gap-4 sm:min-h-[5.5rem]">
+        <div className="min-w-0">
+          <h2 className={PANEL_TITLE_CLASS}>{title}</h2>
+          {description ? <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>{description}</p> : null}
         </div>
-        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="flex max-w-[55%] shrink-0 items-center justify-end gap-2 overflow-x-auto">{actions}</div> : null}
       </div>
     </div>
   )

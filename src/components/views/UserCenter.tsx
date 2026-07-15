@@ -30,6 +30,10 @@ import { resolveAssetUrl } from '../../utils/assetUrl'
 import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
 import { getFirstAllowedAdminPath } from '../../config/adminRoutes'
 import { canAccessAdmin, hasUserRole } from '../../utils/roles'
+import {
+  PANEL_SUBTITLE_CLASS,
+  PANEL_TITLE_CLASS,
+} from '../layout/layoutConstants'
 
 type UserTab = 'overview' | 'checkin' | 'usage' | 'settings'
 type SlideDirection = 'prev' | 'next'
@@ -229,51 +233,22 @@ export function UserCenter() {
       ref={scrollRef}
       className="user-center-scroll flex-1 min-h-0 overflow-y-scroll overflow-anchor-none"
     >
-      <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-neutral-900">用户中心</h2>
-              <p className="mt-0.5 text-sm text-neutral-400">
-                {user.nickname} · {getVipLabel(user.vipLevel)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {showAdminEntry && (
-                <button
-                  type="button"
-                  onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
-                  className="flex items-center gap-1 rounded-lg border border-neutral-900 bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
-                >
-                  <Shield size={12} />
-                  管理后台
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
-              >
-                退出登录
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleLogoutAll()}
-                className="flex items-center gap-1 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
-              >
-                <LogOut size={12} />
-                全部退出
-              </button>
-            </div>
+      <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-[5.25rem] w-full max-w-2xl items-center gap-3 sm:min-h-[5.5rem] sm:gap-4">
+          <div className="min-w-0 shrink-0">
+            <h2 className={PANEL_TITLE_CLASS}>用户中心</h2>
+            <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>
+              {user.nickname} · {getVipLabel(user.vipLevel)}
+            </p>
           </div>
 
-          <div className="mt-4 flex gap-1">
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto">
             {TABS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => selectTab(key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors sm:px-3 ${
                   tab === key
                     ? 'bg-neutral-900 font-medium text-white'
                     : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
@@ -283,6 +258,35 @@ export function UserCenter() {
                 {label}
               </button>
             ))}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            {showAdminEntry && (
+              <button
+                type="button"
+                onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
+                className="flex items-center gap-1 rounded-lg border border-neutral-900 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 sm:px-3"
+              >
+                <Shield size={12} />
+                <span className="hidden sm:inline">管理后台</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
+            >
+              退出登录
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLogoutAll()}
+              className="flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
+              title="全部退出"
+            >
+              <LogOut size={12} />
+              <span className="hidden md:inline">全部退出</span>
+            </button>
           </div>
         </div>
       </div>
