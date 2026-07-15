@@ -121,7 +121,6 @@ export function WritingTimerAssist({ onRunningChange }: WritingTimerAssistProps)
 
   const canStart =
     !sessionActive &&
-    status !== 'running' &&
     (durationKind === 'unlimited' || !useCountdown
       ? durationKind !== 'custom' || customSeconds > 0
       : durationSeconds !== null && durationSeconds > 0)
