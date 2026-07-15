@@ -92,7 +92,7 @@ export function TopicTypeSelect({ value, onChange }: TopicTypeSelectProps) {
       {open && (
         <ul
           role="listbox"
-          className="absolute right-0 z-20 mt-1.5 min-w-[120px] overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 z-20 mt-1.5 min-w-[120px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg"
         >
           {options.map((option) => {
             const selected = option.value === 'all' ? !value : value === option.value

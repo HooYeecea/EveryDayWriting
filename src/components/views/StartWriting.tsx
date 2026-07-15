@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, RotateCcw, Wand2 } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
@@ -12,6 +12,10 @@ import { useAuth } from '../../context/AuthContext'
 import { getMockRandomTopic } from '../../data/mockTopics'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
 import { isTypingAnimationEnabled, setTypingAnimationEnabled } from '../../storage/typingAnimationStorage'
+import {
+  loadTopicPanelHeight,
+  saveTopicPanelHeight,
+} from '../../storage/topicPanelHeightStorage'
 import { NotionEditor } from '../editor/NotionEditor'
 import { TopicPromptBox } from '../writing/TopicPromptBox'
 import { TopicTypeSelect } from '../writing/TopicTypeSelect'
@@ -20,9 +24,19 @@ import {
   MAIN_CONTENT_X_CLASS,
   PANEL_FOOTER_CLASS,
   PANEL_FOOTER_INNER_CLASS,
-  PANEL_TOPIC_HEADER_CLASS,
 } from '../layout/layoutConstants'
 import type { DraftConflictData, DraftSaveResult, WritingSavePayload, WritingTopic } from '../../types'
+
+const TOPIC_PANEL_MIN_HEIGHT_MOBILE = 130
+const TOPIC_PANEL_MIN_HEIGHT_DESKTOP = 88 // 5.5rem，与侧栏品牌区底部分割线对齐
+const TOPIC_PANEL_MAX_RATIO = 0.55
+
+function getTopicPanelMinHeight(): number {
+  if (typeof window === 'undefined') return TOPIC_PANEL_MIN_HEIGHT_DESKTOP
+  return window.matchMedia('(min-width: 640px)').matches
+    ? TOPIC_PANEL_MIN_HEIGHT_DESKTOP
+    : TOPIC_PANEL_MIN_HEIGHT_MOBILE
+}
 
 type RecordsTab = 'saves' | 'submits'
 
@@ -77,8 +91,79 @@ export function StartWriting() {
   const [iterateBaselineSnapshot, setIterateBaselineSnapshot] = useState<string | null>(null)
   const submitLockRef = useRef(false)
   const preserveWritingSessionRef = useRef(false)
+  const pageRef = useRef<HTMLDivElement>(null)
+  const topicPanelRef = useRef<HTMLDivElement>(null)
+  const topicHeightRef = useRef<number>(loadTopicPanelHeight() ?? getTopicPanelMinHeight())
   const [typingAnimOn, setTypingAnimOn] = useState(() => isTypingAnimationEnabled())
+  const [topicHeight, setTopicHeight] = useState(
+    () => loadTopicPanelHeight() ?? getTopicPanelMinHeight(),
+  )
+  const [isResizingTopic, setIsResizingTopic] = useState(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
+
+  const clampTopicHeight = (height: number) => {
+    const minHeight = getTopicPanelMinHeight()
+    const pageHeight = pageRef.current?.clientHeight ?? window.innerHeight
+    const maxHeight = Math.max(minHeight, Math.floor(pageHeight * TOPIC_PANEL_MAX_RATIO))
+    return Math.min(maxHeight, Math.max(minHeight, Math.round(height)))
+  }
+
+  useEffect(() => {
+    topicHeightRef.current = topicHeight
+  }, [topicHeight])
+
+  useEffect(() => {
+    const syncHeight = () => {
+      setTopicHeight((current) => {
+        const next = clampTopicHeight(current)
+        if (next !== current && loadTopicPanelHeight() != null) {
+          saveTopicPanelHeight(next)
+        }
+        return next
+      })
+    }
+
+    syncHeight()
+    window.addEventListener('resize', syncHeight)
+    return () => window.removeEventListener('resize', syncHeight)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- measure against live pageRef
+  }, [])
+
+  const handleTopicResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    const panel = topicPanelRef.current
+    if (!panel) return
+
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = panel.getBoundingClientRect().height
+    const handle = event.currentTarget
+    handle.setPointerCapture(event.pointerId)
+    setIsResizingTopic(true)
+    document.body.style.cursor = 'row-resize'
+    document.body.style.userSelect = 'none'
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const next = clampTopicHeight(startHeight + (moveEvent.clientY - startY))
+      topicHeightRef.current = next
+      setTopicHeight(next)
+    }
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      handle.releasePointerCapture(upEvent.pointerId)
+      handle.removeEventListener('pointermove', onPointerMove)
+      handle.removeEventListener('pointerup', onPointerUp)
+      handle.removeEventListener('pointercancel', onPointerUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      setIsResizingTopic(false)
+      saveTopicPanelHeight(topicHeightRef.current)
+    }
+
+    handle.addEventListener('pointermove', onPointerMove)
+    handle.addEventListener('pointerup', onPointerUp)
+    handle.addEventListener('pointercancel', onPointerUp)
+  }
 
   const currentSubmitSnapshot = buildSubmitSnapshot(title, content)
   const isContentAlreadySubmitted = submittedSnapshot === currentSubmitSnapshot
@@ -521,27 +606,72 @@ export function StartWriting() {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]'
+    'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:flex-none sm:px-3'
+
+  const topicControls = (
+    <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-auto sm:pt-1">
+      <TopicTypeSelect value={topicTypeFilter} onChange={handleTopicTypeFilterChange} />
+      <button type="button" onClick={handleChangeTopic} className={changeTopicButtonClass}>
+        <RefreshCw size={14} className="shrink-0" />
+        <span className="truncate">换一个题目</span>
+      </button>
+    </div>
+  )
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className={`shrink-0 ${PANEL_TOPIC_HEADER_CLASS}`}>
-        <div className="mx-auto w-full max-w-5xl relative left-[-65px] flex items-center gap-3 sm:gap-4">
-          <p className="shrink-0 text-base font-semibold uppercase tracking-[0.1em] text-neutral-600">题目</p>
-          <TopicPromptBox prompt={topicPrompt} type={topic.type} />
-          <div className="flex shrink-0 items-center gap-2">
-            <TopicTypeSelect value={topicTypeFilter} onChange={handleTopicTypeFilterChange} />
-            <button type="button" onClick={handleChangeTopic} className={changeTopicButtonClass}>
-              <RefreshCw size={14} />
-              换一个题目
-            </button>
+    <div ref={pageRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        ref={topicPanelRef}
+        className="relative flex shrink-0 flex-col overflow-hidden border-b border-neutral-200 bg-white"
+        style={{ height: topicHeight }}
+      >
+        <div className="mx-auto flex h-full min-h-0 w-full min-w-0 max-w-5xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-stretch sm:gap-4 sm:px-5 sm:py-2.5">
+          <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-2.5 sm:gap-3">
+            <p className="hidden shrink-0 self-center text-base font-semibold uppercase tracking-[0.1em] text-neutral-600 sm:block">
+              题目
+            </p>
+            <div className="min-h-0 min-w-0 flex-1">
+              <TopicPromptBox fill prompt={topicPrompt} type={topic.type} />
+            </div>
           </div>
+          {topicControls}
+        </div>
+
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="拖动调节题目区域高度"
+          aria-valuemin={TOPIC_PANEL_MIN_HEIGHT_DESKTOP}
+          aria-valuemax={Math.floor(
+            (pageRef.current?.clientHeight ?? 800) * TOPIC_PANEL_MAX_RATIO,
+          )}
+          aria-valuenow={topicHeight}
+          tabIndex={0}
+          onPointerDown={handleTopicResizePointerDown}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+            event.preventDefault()
+            const next = clampTopicHeight(
+              topicHeight + (event.key === 'ArrowDown' ? 16 : -16),
+            )
+            setTopicHeight(next)
+            saveTopicPanelHeight(next)
+          }}
+          className="absolute inset-x-0 bottom-0 z-10 flex h-3 translate-y-1/2 cursor-row-resize touch-none items-center justify-center"
+        >
+          <span
+            className={`h-1 w-10 rounded-full transition-colors duration-200 ${
+              isResizingTopic
+                ? 'bg-neutral-500'
+                : 'bg-neutral-300/90 hover:bg-neutral-400'
+            }`}
+          />
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className={`mx-auto w-full max-w-5xl -translate-x-1 lg:-translate-x-2 flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+          <div className={`mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-y-auto overflow-x-hidden py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
             <div className="mb-6">
               <input
                 type="text"
@@ -558,7 +688,7 @@ export function StartWriting() {
           </div>
 
           <div className={PANEL_FOOTER_CLASS}>
-            <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl -translate-x-1 lg:-translate-x-2 flex-col lg:flex-row`}>
+            <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl flex-col lg:flex-row`}>
               <div className="flex w-full flex-wrap items-center gap-3 text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
                 <button
                   type="button"
