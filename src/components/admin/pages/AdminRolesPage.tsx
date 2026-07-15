@@ -23,6 +23,7 @@ import {
   AdminPrimaryButton,
   adminInputClass,
 } from '../AdminUi'
+import { AdminActionMenu } from '../AdminActionMenu'
 
 export function AdminRolesPage() {
   const { refreshAccess } = useAuth()
@@ -214,16 +215,23 @@ export function AdminRolesPage() {
                     <p className="mt-2 text-xs text-neutral-400">
                       {item.userCount} 用户 · {item.permissionCount} 权限
                     </p>
-                    <div className="mt-3 flex gap-2">
-                      <AdminGhostButton onClick={() => void openDetail(item.id)}>
-                        详情/编辑
-                      </AdminGhostButton>
-                      <AdminGhostButton
-                        disabled={item.isSystem}
-                        onClick={() => void handleDelete(item)}
-                      >
-                        删除
-                      </AdminGhostButton>
+                    <div className="mt-3">
+                      <AdminActionMenu
+                        items={[
+                          {
+                            id: 'edit',
+                            label: '详情/编辑',
+                            onClick: () => void openDetail(item.id),
+                          },
+                          {
+                            id: 'delete',
+                            label: '删除',
+                            disabled: item.isSystem,
+                            tone: 'danger',
+                            onClick: () => void handleDelete(item),
+                          },
+                        ]}
+                      />
                     </div>
                   </li>
                 ))}

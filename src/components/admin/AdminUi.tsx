@@ -11,12 +11,18 @@ interface AdminPageHeaderProps {
 export function AdminPageHeader({ title, description, actions }: AdminPageHeaderProps) {
   return (
     <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-[5.25rem] max-w-6xl items-center justify-between gap-4 sm:min-h-[5.5rem]">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 py-3 sm:min-h-[5.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0">
         <div className="min-w-0">
           <h2 className={PANEL_TITLE_CLASS}>{title}</h2>
-          {description ? <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>{description}</p> : null}
+          {description ? (
+            <p className={`${PANEL_SUBTITLE_CLASS} whitespace-normal sm:truncate`}>{description}</p>
+          ) : null}
         </div>
-        {actions ? <div className="flex max-w-[55%] shrink-0 items-center justify-end gap-2 overflow-x-auto">{actions}</div> : null}
+        {actions ? (
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:max-w-[60%] sm:justify-end">
+            {actions}
+          </div>
+        ) : null}
       </div>
     </div>
   )

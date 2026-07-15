@@ -24,6 +24,7 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { AdminActionMenu } from '../AdminActionMenu'
 
 export function AdminUsersPage() {
   const { permissions, user: currentUser, refreshAccess } = useAuth()
@@ -201,9 +202,9 @@ export function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 text-neutral-700">{user.vipLevel}</td>
                       <td className="px-4 py-3 text-neutral-700">{user.totalWritings}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span
-                          className={`rounded-full px-2 py-0.5 text-xs ${
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${
                             user.isBanned
                               ? 'bg-red-50 text-red-600'
                               : 'bg-neutral-100 text-neutral-600'
@@ -213,35 +214,50 @@ export function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          {canDetail && (
-                            <AdminGhostButton
-                              disabled={detailLoading}
-                              onClick={() => void openDetail(user.id)}
-                            >
-                              详情
-                            </AdminGhostButton>
-                          )}
-                          {canAssignRoles && (
-                            <AdminGhostButton onClick={() => openRoles(user)}>角色</AdminGhostButton>
-                          )}
-                          {canVip && (
-                            <AdminGhostButton
-                              disabled={busyId === user.id}
-                              onClick={() => void handleVip(user)}
-                            >
-                              VIP
-                            </AdminGhostButton>
-                          )}
-                          {canBan && (
-                            <AdminGhostButton
-                              disabled={busyId === user.id}
-                              onClick={() => void handleBanToggle(user)}
-                            >
-                              {user.isBanned ? '解封' : '封禁'}
-                            </AdminGhostButton>
-                          )}
-                        </div>
+                        <AdminActionMenu
+                          items={[
+                            ...(canDetail
+                              ? [
+                                  {
+                                    id: 'detail',
+                                    label: '详情',
+                                    disabled: detailLoading,
+                                    onClick: () => void openDetail(user.id),
+                                  },
+                                ]
+                              : []),
+                            ...(canAssignRoles
+                              ? [
+                                  {
+                                    id: 'roles',
+                                    label: '角色',
+                                    onClick: () => openRoles(user),
+                                  },
+                                ]
+                              : []),
+                            ...(canVip
+                              ? [
+                                  {
+                                    id: 'vip',
+                                    label: 'VIP',
+                                    disabled: busyId === user.id,
+                                    onClick: () => void handleVip(user),
+                                  },
+                                ]
+                              : []),
+                            ...(canBan
+                              ? [
+                                  {
+                                    id: 'ban',
+                                    label: user.isBanned ? '解封' : '封禁',
+                                    disabled: busyId === user.id,
+                                    tone: 'danger' as const,
+                                    onClick: () => void handleBanToggle(user),
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}

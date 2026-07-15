@@ -235,7 +235,7 @@ export function AdminDashboardPage() {
             : '全站用户、写作、活跃与 Token 运营指标'
         }
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex flex-wrap gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5">
               {PERIODS.map((item) => (
                 <AdminGhostButton
