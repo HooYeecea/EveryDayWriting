@@ -2,12 +2,33 @@ import { useState, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { AdminSidebar } from './AdminSidebar'
 
+const ADMIN_SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed'
+
 interface AdminLayoutProps {
   children: ReactNode
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleCollapse = () => {
+    setSidebarCollapsed((value) => {
+      const next = !value
+      try {
+        localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
 
   return (
     <div className="flex h-full min-h-screen flex-col lg:h-screen lg:flex-row">
@@ -26,7 +47,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
 
-      <AdminSidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <AdminSidebar
+        mobileOpen={mobileMenuOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleCollapse}
+        onClose={() => setMobileMenuOpen(false)}
+      />
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#fafafa]">
         {children}
