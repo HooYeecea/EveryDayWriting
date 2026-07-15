@@ -1,12 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Layout } from './components/layout/Layout'
+import { AppPageSwitcher } from './components/layout/AppPageSwitcher'
 import { AdminLayout } from './components/admin/AdminLayout'
 import { AuthRouteTransition, isAuthPath } from './components/auth/AuthRouteTransition'
 import { ChangePassword } from './components/views/ChangePassword'
 import { useAuth } from './context/AuthContext'
 import { useWritingFocus } from './context/WritingFocusContext'
-import { APP_ROUTES, DEFAULT_PATH, isAppPath } from './config/routes'
+import { DEFAULT_PATH, isAppPath } from './config/routes'
 import {
   ADMIN_ROUTES,
   canAccessAdminPath,
@@ -101,16 +102,7 @@ function App() {
 
     return (
       <Layout>
-        {APP_ROUTES.map(({ path, key, element }) => (
-          <div
-            key={key}
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
-              location.pathname !== path ? 'hidden' : ''
-            }`}
-          >
-            {element}
-          </div>
-        ))}
+        <AppPageSwitcher />
       </Layout>
     )
   }

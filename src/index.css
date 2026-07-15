@@ -355,6 +355,68 @@ code, kbd, pre, samp {
   to   { opacity: 1;    transform: translate3d(0, 0, 0); }
 }
 
+/* User app sidebar/route page switch — keep pages mounted, slide + fade */
+.app-page-shell {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-page-pane {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+.app-page-pane--active {
+  z-index: 2;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+.app-page-pane--exiting {
+  z-index: 1;
+  pointer-events: none;
+  visibility: visible;
+}
+.app-page-enter-next {
+  animation: app-page-enter-next 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.app-page-enter-prev {
+  animation: app-page-enter-prev 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.app-page-exit-next {
+  animation: app-page-exit-next 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.app-page-exit-prev {
+  animation: app-page-exit-prev 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes app-page-enter-next {
+  from { opacity: 0; transform: translate3d(28px, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes app-page-enter-prev {
+  from { opacity: 0; transform: translate3d(-28px, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes app-page-exit-next {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(18px, 0, 0); }
+}
+@keyframes app-page-exit-prev {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(-18px, 0, 0); }
+}
+
 /* Writing records: draft ↔ submit — dual-pane track (GPU transform, no remount) */
 .records-list-viewport {
   overflow: hidden;
@@ -411,6 +473,11 @@ code, kbd, pre, samp {
   .version-page-enter-prev,
   .user-tab-enter-next,
   .user-tab-enter-prev { animation: none; }
+
+  .app-page-enter-next,
+  .app-page-enter-prev,
+  .app-page-exit-next,
+  .app-page-exit-prev { animation: none; }
 
   .records-list-track,
   .records-search-slot,
