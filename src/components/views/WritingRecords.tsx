@@ -189,7 +189,8 @@ export function WritingRecords() {
   const [selectedDraft, setSelectedDraft] = useState<WritingDraftListItem | null>(null)
   const [draftDetail, setDraftDetail] = useState<WritingDraft | null>(null)
   const [draftDetailLoading, setDraftDetailLoading] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [savesLoading, setSavesLoading] = useState(false)
+  const [submitsLoading, setSubmitsLoading] = useState(false)
   const [mobileShowDetail, setMobileShowDetail] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [activeKeyword, setActiveKeyword] = useState('')
@@ -199,11 +200,12 @@ export function WritingRecords() {
 
   const [deleting, setDeleting] = useState(false)
 
-  const list = tab === 'saves' ? saves : submits
-
-  const selectedSubmitGroup = submits.find(
-    (item) => item.id === selectedId || item.allVersionIds.includes(selectedId ?? ''),
-  )
+  const selectTab = (next: RecordTab) => {
+    if (next === tab) return
+    setTab(next)
+    setSelectedId(null)
+    setMobileShowDetail(false)
+  }
 
   useEffect(() => {
     const state = location.state as RecordsLocationState | null
@@ -214,6 +216,10 @@ export function WritingRecords() {
       setTab(state.tab)
     }
   }, [location.state])
+
+  const selectedSubmitGroup = submits.find(
+    (item) => item.id === selectedId || item.allVersionIds.includes(selectedId ?? ''),
+  )
 
   const handleDelete = async () => {
     if (!selectedId || deleting) return
@@ -288,14 +294,16 @@ export function WritingRecords() {
   useEffect(() => {
     if (!isAuthenticated) return
 
-    setLoading(true)
-    if (tab === 'saves') {
-      getDrafts(1, 100)
-        .then((result) => setSaves(result.items))
-        .finally(() => setLoading(false))
-      return
-    }
+    setSavesLoading(true)
+    getDrafts(1, 100)
+      .then((result) => setSaves(result.items))
+      .finally(() => setSavesLoading(false))
+  }, [isAuthenticated, location.key])
 
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    setSubmitsLoading(true)
     getSubmittedWritings({
       keyword: needsServerKeyword(activeKeyword, searchFields)
         ? activeKeyword
@@ -311,8 +319,8 @@ export function WritingRecords() {
         )
         setSubmits(groupSubmitListItems(filtered))
       })
-      .finally(() => setLoading(false))
-  }, [isAuthenticated, tab, activeKeyword, searchFields, location.key])
+      .finally(() => setSubmitsLoading(false))
+  }, [isAuthenticated, activeKeyword, searchFields, location.key])
 
   useEffect(() => {
     if (!selectedId) {
@@ -391,11 +399,7 @@ export function WritingRecords() {
         <div className="flex gap-1 border-b border-neutral-200 p-2">
           <button
             type="button"
-            onClick={() => {
-              setTab('saves')
-              setSelectedId(null)
-              setMobileShowDetail(false)
-            }}
+            onClick={() => selectTab('saves')}
             className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:text-xs ${
               tab === 'saves'
                 ? 'bg-neutral-900 font-medium text-white'
@@ -406,11 +410,7 @@ export function WritingRecords() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setTab('submits')
-              setSelectedId(null)
-              setMobileShowDetail(false)
-            }}
+            onClick={() => selectTab('submits')}
             className={`flex-1 rounded-lg py-2 text-xs transition-colors sm:text-sm md:text-xs ${
               tab === 'submits'
                 ? 'bg-neutral-900 font-medium text-white'
@@ -421,82 +421,97 @@ export function WritingRecords() {
           </button>
         </div>
 
-        <div className="shrink-0 lg:hidden">
-          {tab === 'submits' && <WritingRecordsSearchBar {...searchBarProps} compact />}
-        </div>
+        <div className="records-list-viewport flex min-h-0 flex-1 flex-col">
+          <div className="records-list-track" data-active={tab}>
+            <div className="records-list-pane">
+              <div className="flex-1 overflow-y-auto p-2 [scrollbar-gutter:stable]">
+                {savesLoading && saves.length === 0 && (
+                  <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>
+                )}
+                {!savesLoading && saves.length === 0 && (
+                  <p className="py-8 text-center text-sm text-neutral-400">暂无草稿</p>
+                )}
+                {saves.map((record) => (
+                  <button
+                    key={record.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(record.id)
+                      setMobileShowDetail(true)
+                    }}
+                    className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
+                      tab === 'saves' && selectedId === record.id
+                        ? 'border-l-neutral-900 bg-neutral-100'
+                        : 'border-l-transparent hover:bg-neutral-50'
+                    }`}
+                  >
+                    <p className="truncate text-sm font-medium text-neutral-900">
+                      {record.title || '无标题'}
+                    </p>
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
+                      <Clock size={11} />
+                      {formatTime(record.updatedAt)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="flex-1 overflow-y-auto p-2">
-          {loading && <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>}
-          {!loading && list.length === 0 && (
-            <p className="py-8 text-center text-sm text-neutral-400">
-              {tab === 'saves' ? '暂无草稿' : '暂无提交记录'}
-            </p>
-          )}
-          {tab === 'saves' &&
-            saves.map((record) => (
-              <button
-                key={record.id}
-                type="button"
-                onClick={() => {
-                  setSelectedId(record.id)
-                  setMobileShowDetail(true)
-                }}
-                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
-                  selectedId === record.id
-                    ? 'border-l-neutral-900 bg-neutral-100'
-                    : 'border-l-transparent hover:bg-neutral-50'
-                }`}
-              >
-                <p className="truncate text-sm font-medium text-neutral-900">
-                  {record.title || '无标题'}
-                </p>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
-                  <Clock size={11} />
-                  {formatTime(record.updatedAt)}
-                </div>
-              </button>
-            ))}
-          {tab === 'submits' &&
-            submits.map((record) => (
-              <button
-                key={record.iterationGroupId ?? record.id}
-                type="button"
-                onClick={() => {
-                  setSelectedId(record.id)
-                  setMobileShowDetail(true)
-                }}
-                className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
-                  selectedSubmitGroup?.id === record.id ||
-                  record.allVersionIds.includes(selectedId ?? '')
-                    ? 'border-l-neutral-900 bg-neutral-100'
-                    : 'border-l-transparent hover:bg-neutral-50'
-                }`}
-              >
-                <p className="truncate text-sm font-medium text-neutral-900">
-                  {record.title || '无标题'}
-                </p>
-                <div className="mt-1 flex items-center justify-between gap-2">
-                  <span className="truncate text-[11px] text-neutral-400">{record.topicType}</span>
-                  <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
-                    {record.aiScore !== null && (
-                      <span className="font-medium text-neutral-600">{record.aiScore} 分</span>
-                    )}
-                    {record.versionCount > 1 && (
-                      <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
-                        {record.versionCount} 版
+            <div className="records-list-pane">
+              <div className="shrink-0 border-b border-neutral-200 lg:hidden">
+                <WritingRecordsSearchBar {...searchBarProps} compact searchEnabled />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-gutter:stable]">
+                {submitsLoading && submits.length === 0 && (
+                  <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>
+                )}
+                {!submitsLoading && submits.length === 0 && (
+                  <p className="py-8 text-center text-sm text-neutral-400">暂无提交记录</p>
+                )}
+                {submits.map((record) => (
+                  <button
+                    key={record.iterationGroupId ?? record.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(record.id)
+                      setMobileShowDetail(true)
+                    }}
+                    className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
+                      tab === 'submits' &&
+                      (selectedSubmitGroup?.id === record.id ||
+                        record.allVersionIds.includes(selectedId ?? ''))
+                        ? 'border-l-neutral-900 bg-neutral-100'
+                        : 'border-l-transparent hover:bg-neutral-50'
+                    }`}
+                  >
+                    <p className="truncate text-sm font-medium text-neutral-900">
+                      {record.title || '无标题'}
+                    </p>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="truncate text-[11px] text-neutral-400">{record.topicType}</span>
+                      <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
+                        {record.aiScore !== null && (
+                          <span className="font-medium text-neutral-600">{record.aiScore} 分</span>
+                        )}
+                        {record.versionCount > 1 && (
+                          <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
+                            {record.versionCount} 版
+                          </span>
+                        )}
+                        {record.iterationNumber != null && record.versionCount <= 1 && (
+                          <span className="text-neutral-400">v{record.iterationNumber}</span>
+                        )}
                       </span>
-                    )}
-                    {record.iterationNumber != null && record.versionCount <= 1 && (
-                      <span className="text-neutral-400">v{record.iterationNumber}</span>
-                    )}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
-                  <Clock size={11} />
-                  {formatTime(record.submittedAt)}
-                </div>
-              </button>
-            ))}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
+                      <Clock size={11} />
+                      {formatTime(record.submittedAt)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -505,30 +520,29 @@ export function WritingRecords() {
           mobileShowDetail ? 'flex' : 'hidden lg:flex'
         }`}
       >
-        <div className="hidden shrink-0 lg:block">
-          {tab === 'submits' && <WritingRecordsSearchBar {...searchBarProps} />}
-        </div>
+        <div className="records-list-viewport flex min-h-0 flex-1 flex-col">
+          <div className="records-list-track" data-active={tab}>
+            <div className="records-list-pane">
+              <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+                {mobileShowDetail && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileShowDetail(false)}
+                    className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
+                  >
+                    <ArrowLeft size={16} />
+                    返回列表
+                  </button>
+                )}
 
-        <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
-          {mobileShowDetail && (
-            <button
-              type="button"
-              onClick={() => setMobileShowDetail(false)}
-              className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
-            >
-              <ArrowLeft size={16} />
-              返回列表
-            </button>
-          )}
+                {!selectedId && (
+                  <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
+                    <FileText size={32} strokeWidth={1.5} />
+                    <p className="mt-3 text-sm">选择一条记录查看详情</p>
+                  </div>
+                )}
 
-          {!selectedId && (
-            <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
-              <FileText size={32} strokeWidth={1.5} />
-              <p className="mt-3 text-sm">选择一条记录查看详情</p>
-            </div>
-          )}
-
-          {tab === 'saves' && selectedDraft && (
+                {selectedDraft && (
             <div className="mx-auto max-w-3xl">
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -581,9 +595,34 @@ export function WritingRecords() {
                 )}
               </div>
             </div>
-          )}
+                )}
+              </div>
+            </div>
 
-          {tab === 'submits' && submitDetail && selectedId && (() => {
+            <div className="records-list-pane">
+              <div className="hidden shrink-0 border-b border-neutral-200 lg:block">
+                <WritingRecordsSearchBar {...searchBarProps} searchEnabled />
+              </div>
+              <div className={`min-h-0 flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+                {mobileShowDetail && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileShowDetail(false)}
+                    className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
+                  >
+                    <ArrowLeft size={16} />
+                    返回列表
+                  </button>
+                )}
+
+                {!selectedId && (
+                  <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
+                    <FileText size={32} strokeWidth={1.5} />
+                    <p className="mt-3 text-sm">选择一条记录查看详情</p>
+                  </div>
+                )}
+
+                {submitDetail && selectedId && (() => {
             const gradingPreview = loadGradingPreview(selectedId)
             const grammarSuggestions = submitDetail.grammarSuggestions ?? []
             const vocabularySuggestions = submitDetail.vocabularySuggestions ?? []
@@ -949,6 +988,9 @@ export function WritingRecords() {
             </div>
             )
           })()}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

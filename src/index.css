@@ -355,6 +355,53 @@ code, kbd, pre, samp {
   to   { opacity: 1;    transform: translate3d(0, 0, 0); }
 }
 
+/* Writing records: draft ↔ submit — dual-pane track (GPU transform, no remount) */
+.records-list-viewport {
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.records-list-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.records-list-track[data-active='submits'] {
+  transform: translate3d(-50%, 0, 0);
+}
+.records-list-pane {
+  display: flex;
+  width: 50%;
+  height: 100%;
+  min-height: 0;
+  flex: 0 0 50%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.records-search-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.records-search-slot[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.records-search-slot-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.records-detail-shell {
+  opacity: 1;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.records-detail-shell[data-switching='true'] {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .checkin-calendar-layer,
   .checkin-calendar-shell { transition: none; }
@@ -364,6 +411,10 @@ code, kbd, pre, samp {
   .version-page-enter-prev,
   .user-tab-enter-next,
   .user-tab-enter-prev { animation: none; }
+
+  .records-list-track,
+  .records-search-slot,
+  .records-detail-shell { transition: none; }
 
   .animate-fade-in-up,
   .animate-scale-in,
