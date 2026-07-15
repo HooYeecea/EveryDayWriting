@@ -65,10 +65,15 @@ export function UserCenter() {
   const [savingNickname, setSavingNickname] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [tabsBelow, setTabsBelow] = useState(false)
   const avatarFileRef = useRef<HTMLInputElement>(null)
   const nicknameInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const headerRowRef = useRef<HTMLDivElement>(null)
+  const headerTitleRef = useRef<HTMLDivElement>(null)
+  const headerActionsRef = useRef<HTMLDivElement>(null)
+  const tabsMeasureRef = useRef<HTMLDivElement>(null)
   const paneRefs = useRef<Partial<Record<UserTab, HTMLDivElement | null>>>({})
   const pendingDirRef = useRef<SlideDirection | null>(null)
 
@@ -124,6 +129,31 @@ export function UserCenter() {
 
   const showAdminEntry =
     hasUserRole(roles) && canAccessAdmin(roles, permissions)
+
+  // 顶栏横向放不下完整菜单（文字即将换行/挤压）时，立刻切到下方布局，不留断点缓冲
+  useLayoutEffect(() => {
+    const row = headerRowRef.current
+    const title = headerTitleRef.current
+    const actions = headerActionsRef.current
+    const measure = tabsMeasureRef.current
+    if (!row || !title || !actions || !measure) return
+
+    const syncTabsPlacement = () => {
+      const gaps = 32
+      const available = row.clientWidth - title.offsetWidth - actions.offsetWidth - gaps
+      const needed = measure.scrollWidth
+      // 变窄：立刻切下方；变宽：留一点回滞，避免图标文案切换导致来回跳
+      setTabsBelow((prev) => (prev ? needed > available + 48 : needed > available))
+    }
+
+    syncTabsPlacement()
+    const observer = new ResizeObserver(syncTabsPlacement)
+    observer.observe(row)
+    observer.observe(title)
+    observer.observe(actions)
+    observer.observe(measure)
+    return () => observer.disconnect()
+  }, [showAdminEntry, user?.nickname, user?.vipLevel])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -244,70 +274,123 @@ export function UserCenter() {
     }
   }
 
+  const renderTabs = (variant: 'inline' | 'below') =>
+    TABS.map(({ key, label, icon: Icon }) => (
+      <button
+        key={key}
+        type="button"
+        onClick={() => selectTab(key)}
+        className={
+          variant === 'below'
+            ? `flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 py-2 text-xs transition-colors ${
+                tab === key
+                  ? 'bg-neutral-900 font-medium text-white'
+                  : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+              }`
+            : `flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                tab === key
+                  ? 'bg-neutral-900 font-medium text-white'
+                  : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+              }`
+        }
+      >
+        <Icon size={15} className="shrink-0" />
+        {label}
+      </button>
+    ))
+
   return (
     <div
       ref={scrollRef}
       className="user-center-scroll flex-1 min-h-0 overflow-y-scroll overflow-anchor-none"
     >
-      <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[5.25rem] w-full max-w-5xl items-center gap-3 sm:min-h-[5.5rem] sm:gap-4">
-          <div className="min-w-0 shrink-0">
-            <h2 className={PANEL_TITLE_CLASS}>用户中心</h2>
-            <p className={`${PANEL_SUBTITLE_CLASS} max-w-[9rem] truncate sm:max-w-[14rem]`}>
-              {user.nickname} · {getVipLabel(user.vipLevel)}
-            </p>
-          </div>
+      <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white">
+        <div
+          ref={tabsMeasureRef}
+          className="pointer-events-none fixed left-0 top-0 -z-10 flex w-max gap-3 opacity-0"
+          aria-hidden
+        >
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <span
+              key={key}
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm"
+            >
+              <Icon size={15} />
+              {label}
+            </span>
+          ))}
+        </div>
 
-          <nav
-            className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-3"
-            aria-label="用户中心栏目"
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div
+            ref={headerRowRef}
+            className="mx-auto flex min-h-[5.25rem] w-full max-w-5xl items-center gap-3 sm:min-h-[5.5rem] sm:gap-4"
           >
-            {TABS.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => selectTab(key)}
-                className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors sm:px-3 ${
-                  tab === key
-                    ? 'bg-neutral-900 font-medium text-white'
-                    : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
-                }`}
-              >
-                <Icon size={15} className="shrink-0" />
-                {label}
-              </button>
-            ))}
-          </nav>
+            <div ref={headerTitleRef} className="min-w-0 shrink-0">
+              <h2 className={PANEL_TITLE_CLASS}>用户中心</h2>
+              <p className={`${PANEL_SUBTITLE_CLASS} max-w-[9rem] truncate sm:max-w-[14rem]`}>
+                {user.nickname} · {getVipLabel(user.vipLevel)}
+              </p>
+            </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {showAdminEntry && (
+            {!tabsBelow ? (
+              <nav
+                className="flex min-w-0 flex-1 items-center justify-center gap-3"
+                aria-label="用户中心栏目"
+              >
+                {renderTabs('inline')}
+              </nav>
+            ) : (
+              <div className="min-w-0 flex-1" aria-hidden />
+            )}
+
+            <div ref={headerActionsRef} className="ml-auto flex shrink-0 items-center gap-2">
+              {showAdminEntry && (
+                <button
+                  type="button"
+                  onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
+                  className="flex items-center gap-1 rounded-lg border border-neutral-900 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 sm:px-3"
+                  title="管理后台"
+                >
+                  <Shield size={12} />
+                  <span className={tabsBelow ? 'sr-only' : 'hidden sm:inline'}>管理后台</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
-                className="flex items-center gap-1 rounded-lg border border-neutral-900 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 sm:px-3"
+                onClick={() => void handleLogout()}
+                className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
               >
-                <Shield size={12} />
-                <span className="hidden sm:inline">管理后台</span>
+                {tabsBelow ? (
+                  '退出'
+                ) : (
+                  <>
+                    <span className="sm:hidden">退出</span>
+                    <span className="hidden sm:inline">退出登录</span>
+                  </>
+                )}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
-            >
-              退出登录
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleLogoutAll()}
-              className="flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
-              title="全部退出"
-            >
-              <LogOut size={12} />
-              <span className="hidden lg:inline">全部退出</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => void handleLogoutAll()}
+                className="flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
+                title="全部退出"
+              >
+                <LogOut size={12} />
+                <span className="hidden lg:inline">全部退出</span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {tabsBelow ? (
+          <nav
+            className="border-t border-neutral-100 px-3 pb-2.5 pt-2"
+            aria-label="用户中心栏目"
+          >
+            <div className="mx-auto flex max-w-5xl gap-1">{renderTabs('below')}</div>
+          </nav>
+        ) : null}
       </div>
 
       <div className="px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
