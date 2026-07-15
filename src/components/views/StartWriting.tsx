@@ -582,10 +582,9 @@ export function StartWriting() {
     setFeedback(null)
     try {
       const settings = loadAiAssistSettings()
+      const hasOwnKey = Boolean(settings.encryptedKey && settings.providerId && settings.modelId)
       const hasAiTasks =
-        settings.encryptedKey &&
-        settings.providerId &&
-        settings.modelId &&
+        (hasOwnKey || true) && // 免费通道始终可用（无 Key 时服务端自动选择）
         (settings.postSubmitReview || settings.postSubmitStructure || settings.postSubmitSuggestions)
 
       let gradingSessionId: string | undefined

@@ -143,6 +143,7 @@ export interface AdminProviderItem {
   isEnabled: boolean
   sortOrder: number
   modelCount: number
+  hasEncryptedApiKey: boolean
   updatedAt: string
 }
 
@@ -164,6 +165,7 @@ export interface AdminProviderDetail {
   authHeader: string
   isEnabled: boolean
   sortOrder: number
+  hasEncryptedApiKey: boolean
   models: AdminProviderModel[]
 }
 
@@ -272,6 +274,7 @@ export async function upsertAdminProvider(body: {
   name: string
   baseUrl: string
   authHeader: string
+  apiKey?: string
   sortOrder?: number
 }): Promise<void> {
   await post(API_PATHS.admin.providers, body)

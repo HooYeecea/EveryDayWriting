@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BarChart3, FileCheck, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
+import { getAiConfig } from '../../api/ai'
 import { loadAiAssistSettings, saveAiAssistSettings } from '../../storage/aiSettingsStorage'
 
 export function WritingAiAssist() {
@@ -7,7 +8,7 @@ export function WritingAiAssist() {
   const [postSubmitStructure, setPostSubmitStructure] = useState(false)
   const [postSubmitSuggestions, setPostSubmitSuggestions] = useState(false)
   const [realtimeAssist, setRealtimeAssist] = useState(false)
-  const [hasApiKey, setHasApiKey] = useState(false)
+  const [hasAiAccess, setHasAiAccess] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -17,7 +18,14 @@ export function WritingAiAssist() {
     setPostSubmitStructure(saved.postSubmitStructure)
     setPostSubmitSuggestions(saved.postSubmitSuggestions)
     setRealtimeAssist(saved.realtimeAssist)
-    setHasApiKey(Boolean(saved.encryptedKey && saved.providerId && saved.modelId))
+
+    // AI 可用 = 有自有 Key 或免费通道开启
+    const hasOwnKey = Boolean(saved.encryptedKey && saved.providerId && saved.modelId)
+    getAiConfig().then(cfg => {
+      setHasAiAccess(hasOwnKey || (cfg.freeQuota?.enabled ?? false))
+    }).catch(() => {
+      setHasAiAccess(hasOwnKey)
+    })
   }, [])
 
   const handleSave = () => {
@@ -44,9 +52,9 @@ export function WritingAiAssist() {
         控制提交后与写作过程中的 AI 行为。连接配置请在用户中心 → 设置中管理。
       </p>
 
-      {!hasApiKey && (
+      {!hasAiAccess && (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          尚未配置 API Key，请前往用户中心 → 设置 → AI 连接配置添加。
+          当前无法使用 AI 功能。请前往用户中心 → 设置 → AI 辅助配置。
         </p>
       )}
 

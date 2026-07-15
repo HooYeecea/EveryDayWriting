@@ -1,6 +1,6 @@
 import { API_PATHS } from './config'
 import { get, post } from './request'
-import type { AiConfig, AiProxyResult, ChatMessage, SuggestionChatHistory } from '../types'
+import type { AiConfig, AiProxyResult, ChatMessage, FreeQuotaInfo, SuggestionChatHistory } from '../types'
 
 export async function getAiConfig(): Promise<AiConfig> {
   return get<AiConfig>(API_PATHS.ai.config)
@@ -21,13 +21,20 @@ export async function callAiProxy(
     userContent: string
     gradingSessionId?: string
   },
-  encryptedKey: string,
+  encryptedKey?: string,
 ): Promise<AiProxyResult> {
-  return post<AiProxyResult>(API_PATHS.ai.proxy(purpose), payload, {
-    fetchOptions: {
-      headers: { 'X-Encrypted-Key': encryptedKey },
-    },
-  })
+  const fetchOptions: RequestInit = {}
+  if (encryptedKey) {
+    fetchOptions.headers = { 'X-Encrypted-Key': encryptedKey }
+  }
+  return post<AiProxyResult>(API_PATHS.ai.proxy(purpose), payload, { fetchOptions })
+}
+
+export async function getAiQuota(): Promise<FreeQuotaInfo & {
+  tokensRemaining: number
+  submitsRemaining: number
+}> {
+  return get(API_PATHS.ai.quota)
 }
 
 export async function getSuggestionChatHistory(

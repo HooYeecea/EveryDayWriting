@@ -63,6 +63,7 @@ export const API_PATHS = {
     config: '/ai/config',
     key: '/ai/key',
     proxy: (purpose: string) => `/ai/proxy/${purpose}`,
+    quota: '/ai/quota',
   },
   writings: {
     drafts: '/writings/drafts',

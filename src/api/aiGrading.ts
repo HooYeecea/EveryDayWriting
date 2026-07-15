@@ -18,7 +18,13 @@ export interface PreSubmitGradingResult {
  */
 export async function runPreSubmitGrading(content: string): Promise<PreSubmitGradingResult> {
   const settings = loadAiAssistSettings()
-  if (!settings.encryptedKey || !settings.providerId || !settings.modelId) {
+
+  // 有自有 Key 则用自有 Key；否则走免费通道（需至少选择一个 provider/model）
+  const hasOwnKey = Boolean(settings.encryptedKey)
+  const providerId = hasOwnKey ? settings.providerId : 'free'
+  const modelId = hasOwnKey ? settings.modelId : 'free'
+
+  if (!hasOwnKey && !settings.realtimeAssist && !settings.postSubmitReview && !settings.postSubmitStructure && !settings.postSubmitSuggestions) {
     return { completedTasks: [], failedTasks: [], stageContents: {} }
   }
 
@@ -39,12 +45,12 @@ export async function runPreSubmitGrading(content: string): Promise<PreSubmitGra
       const result = await callAiProxy(
         task.purpose,
         {
-          providerId: settings.providerId,
-          modelId: settings.modelId,
+          providerId,
+          modelId,
           userContent: content,
           gradingSessionId,
         },
-        settings.encryptedKey,
+        hasOwnKey ? settings.encryptedKey : undefined,
       )
       if (result.gradingSessionId) {
         gradingSessionId = result.gradingSessionId

@@ -42,8 +42,10 @@ export function AdminProvidersPage() {
   const [providerName, setProviderName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [authHeader, setAuthHeader] = useState('Authorization')
+  const [apiKey, setApiKey] = useState('')
   const [sortOrder, setSortOrder] = useState('99')
   const [savingProvider, setSavingProvider] = useState(false)
+  const [freeDefaultProvider, setFreeDefaultProvider] = useState('')
 
   const [modelFormOpen, setModelFormOpen] = useState(false)
   const [modelId, setModelId] = useState('')
@@ -80,6 +82,7 @@ export function AdminProvidersPage() {
     setProviderName('')
     setBaseUrl('')
     setAuthHeader('Authorization')
+    setApiKey('')
     setSortOrder('99')
     setProviderFormOpen(true)
   }
@@ -116,6 +119,7 @@ export function AdminProvidersPage() {
         name: providerName.trim(),
         baseUrl: baseUrl.trim(),
         authHeader: authHeader.trim() || 'Authorization',
+        apiKey: apiKey.trim() || undefined,
         sortOrder: Number(sortOrder) || 99,
       })
       setProviderFormOpen(false)
@@ -273,15 +277,20 @@ export function AdminProvidersPage() {
                           {item.id} · {item.baseUrl} · {item.modelCount} 模型
                         </p>
                       </div>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          item.isEnabled
-                            ? 'bg-neutral-900 text-white'
-                            : 'bg-neutral-100 text-neutral-500'
-                        }`}
-                      >
-                        {item.isEnabled ? '启用' : '停用'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {item.hasEncryptedApiKey && (
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">🔑 免费通道</span>
+                        )}
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs ${
+                            item.isEnabled
+                              ? 'bg-neutral-900 text-white'
+                              : 'bg-neutral-100 text-neutral-500'
+                          }`}
+                        >
+                          {item.isEnabled ? '启用' : '停用'}
+                        </span>
+                      </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <AdminGhostButton
@@ -413,6 +422,15 @@ export function AdminProvidersPage() {
               className={adminInputClass}
               value={authHeader}
               onChange={(e) => setAuthHeader(e.target.value)}
+            />
+          </AdminField>
+          <AdminField label="服务端 API Key（留空不修改，用于免费通道）">
+            <input
+              className={adminInputClass}
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="填写后免费用户可使用此 Provider"
             />
           </AdminField>
           <AdminField label="排序">

@@ -319,6 +319,7 @@ export interface AiModelBrief {
 export interface AiProviderBrief {
   id: string
   name: string
+  hasServerKey: boolean
   models: AiModelBrief[]
 }
 
@@ -329,10 +330,19 @@ export interface AiFeatureFlags {
   typingSound: boolean
 }
 
+export interface FreeQuotaInfo {
+  enabled: boolean
+  dailyTokenLimit: number
+  dailySubmitLimit: number
+  todayTokensUsed: number
+  todaySubmitsUsed: number
+}
+
 export interface AiConfig {
   vipLevel: number
   providers: AiProviderBrief[]
   features: AiFeatureFlags
+  freeQuota: FreeQuotaInfo | null
 }
 
 export interface AgreementStatusItem {
