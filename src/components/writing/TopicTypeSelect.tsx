@@ -71,16 +71,16 @@ export function TopicTypeSelect({ value, onChange }: TopicTypeSelectProps) {
   }, [open])
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex h-9 min-w-[92px] items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+        className="flex h-9 w-[5.75rem] items-center justify-between gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 sm:w-auto sm:min-w-[92px] sm:gap-2 sm:px-3"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="题目类型筛选"
       >
-        <span className={value ? 'font-medium text-neutral-700' : 'text-neutral-300'}>
+        <span className={`truncate ${value ? 'font-medium text-neutral-700' : 'text-neutral-300'}`}>
           {value ?? '类型'}
         </span>
         <ChevronDown

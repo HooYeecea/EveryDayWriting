@@ -32,10 +32,10 @@ export function TopicPromptBox({ prompt, type }: TopicPromptBoxProps) {
 
   return (
     <>
-      <div className="relative min-w-0 w-full flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4 sm:py-2.5">
+      <div className="relative min-w-0 w-full max-w-full flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4 sm:py-2.5">
         <p
           ref={textRef}
-          className={`line-clamp-2 text-sm leading-snug text-neutral-800 sm:text-[15px] sm:leading-relaxed ${
+          className={`break-words line-clamp-2 text-sm leading-snug text-neutral-800 sm:text-[15px] sm:leading-relaxed ${
             isOverflowing ? 'pr-6' : ''
           }`}
         >

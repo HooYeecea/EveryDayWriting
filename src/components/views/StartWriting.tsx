@@ -20,7 +20,6 @@ import {
   MAIN_CONTENT_X_CLASS,
   PANEL_FOOTER_CLASS,
   PANEL_FOOTER_INNER_CLASS,
-  PANEL_TOPIC_HEADER_CLASS,
 } from '../layout/layoutConstants'
 import type { DraftConflictData, DraftSaveResult, WritingSavePayload, WritingTopic } from '../../types'
 
@@ -521,19 +520,25 @@ export function StartWriting() {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]'
+    'flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:flex-none sm:px-3'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className={`shrink-0 ${PANEL_TOPIC_HEADER_CLASS}`}>
-        <div className="mx-auto w-full max-w-5xl relative left-[-65px] flex items-center gap-3 sm:gap-4">
-          <p className="shrink-0 text-base font-semibold uppercase tracking-[0.1em] text-neutral-600">题目</p>
-          <TopicPromptBox prompt={topicPrompt} type={topic.type} />
-          <div className="flex shrink-0 items-center gap-2">
+      <div className="shrink-0 border-b border-neutral-200 bg-white px-4 py-3 sm:px-5 sm:py-0 sm:min-h-[5.5rem] sm:flex sm:items-center">
+        <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3">
+            <p className="hidden shrink-0 text-base font-semibold uppercase tracking-[0.1em] text-neutral-600 sm:block">
+              题目
+            </p>
+            <div className="min-w-0 flex-1">
+              <TopicPromptBox prompt={topicPrompt} type={topic.type} />
+            </div>
+          </div>
+          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
             <TopicTypeSelect value={topicTypeFilter} onChange={handleTopicTypeFilterChange} />
             <button type="button" onClick={handleChangeTopic} className={changeTopicButtonClass}>
-              <RefreshCw size={14} />
-              换一个题目
+              <RefreshCw size={14} className="shrink-0" />
+              <span className="truncate">换一个题目</span>
             </button>
           </div>
         </div>
@@ -541,7 +546,7 @@ export function StartWriting() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className={`mx-auto w-full max-w-5xl -translate-x-1 lg:-translate-x-2 flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+          <div className={`mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-y-auto overflow-x-hidden py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
             <div className="mb-6">
               <input
                 type="text"
@@ -558,7 +563,7 @@ export function StartWriting() {
           </div>
 
           <div className={PANEL_FOOTER_CLASS}>
-            <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl -translate-x-1 lg:-translate-x-2 flex-col lg:flex-row`}>
+            <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl flex-col lg:flex-row`}>
               <div className="flex w-full flex-wrap items-center gap-3 text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
                 <button
                   type="button"
