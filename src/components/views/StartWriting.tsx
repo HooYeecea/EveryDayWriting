@@ -629,182 +629,181 @@ export function StartWriting() {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:w-full sm:flex-none sm:px-3'
+    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:w-full sm:flex-none'
 
-  // 手机：类型 + 换题横排；桌面：上换题 / 下类型，同宽竖排
+  // 手机：类型 + 换题横排；桌面：上换题 / 下类型，同宽竖排（收窄以对齐写作区右缘）
   const topicControls = (
-    <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-[7.75rem] sm:flex-col sm:items-stretch sm:justify-center sm:gap-2 sm:self-stretch">
-      <button type="button" onClick={handleChangeTopic} className={`${changeTopicButtonClass} order-2 sm:order-1`}>
+    <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-[6.5rem] sm:flex-col sm:items-stretch sm:justify-center sm:gap-2 sm:self-stretch">
+      <button type="button" onClick={handleChangeTopic} className={`${changeTopicButtonClass} order-2 sm:order-1`} title="换个题目">
         <RefreshCw size={14} className="shrink-0" />
-        <span className="truncate">换一个题目</span>
+        <span className="truncate">换个题目</span>
       </button>
       <TopicTypeSelect
         value={topicTypeFilter}
         onChange={handleTopicTypeFilterChange}
         rootClassName="order-1 sm:order-2 sm:w-full"
-        className="sm:!w-full sm:!min-w-0"
+        className="!px-2 sm:!w-full sm:!min-w-0"
       />
     </div>
   )
 
   return (
-    <div ref={pageRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div
-        ref={topicPanelRef}
-        className="relative flex shrink-0 flex-col overflow-hidden border-b border-neutral-200 bg-white"
-        style={{ height: topicHeight }}
-      >
+    <div ref={pageRef} className="flex min-h-0 flex-1 overflow-hidden">
+      {/* 题目 + 写作同列，避免写作辅助侧栏把两边 max-w-5xl 挤成不对齐 */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div
-          className={`mx-auto flex h-full min-h-0 w-full min-w-0 max-w-5xl flex-col gap-2 py-2.5 sm:flex-row sm:items-stretch sm:gap-3 sm:py-2.5 ${MAIN_CONTENT_X_CLASS}`}
+          ref={topicPanelRef}
+          className="relative flex shrink-0 flex-col overflow-hidden border-b border-neutral-200 bg-white"
+          style={{ height: topicHeight }}
         >
-          <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-2.5 sm:gap-3">
-            <p className="hidden shrink-0 self-center text-center font-sans text-lg font-semibold leading-snug tracking-wide text-neutral-600 sm:block">
-              <span className="block">写作</span>
-              <span className="block">题目</span>
-            </p>
-            <div className="min-h-0 min-w-0 flex-1">
-              <TopicPromptBox fill prompt={topicPrompt} type={topic.type} />
-            </div>
-          </div>
-          {topicControls}
-        </div>
-
-        <div
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="拖动调节题目区域高度"
-          aria-valuemin={TOPIC_PANEL_MIN_HEIGHT_DESKTOP}
-          aria-valuemax={Math.floor(
-            (pageRef.current?.clientHeight ?? 800) * TOPIC_PANEL_MAX_RATIO,
-          )}
-          aria-valuenow={topicHeight}
-          tabIndex={0}
-          onPointerDown={handleTopicResizePointerDown}
-          onKeyDown={(event) => {
-            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
-            event.preventDefault()
-            const next = clampTopicHeight(
-              topicHeight + (event.key === 'ArrowDown' ? 16 : -16),
-            )
-            setTopicHeight(next)
-            saveTopicPanelHeight(next)
-          }}
-          className="absolute inset-x-0 bottom-0 z-10 flex h-3 translate-y-1/2 cursor-row-resize touch-none items-center justify-center"
-        >
-          <span
-            className={`h-1 w-10 rounded-full transition-colors duration-200 ${
-              isResizingTopic
-                ? 'bg-neutral-500'
-                : 'bg-neutral-300/90 hover:bg-neutral-400'
-            }`}
-          />
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div
-            ref={writingScrollRef}
-            onScroll={handleWritingScroll}
-            className={`writing-area-scroll mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-x-hidden overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
+            className={`mx-auto flex h-full min-h-0 w-full min-w-0 max-w-5xl flex-col gap-2 py-2.5 sm:flex-row sm:items-stretch sm:gap-3 sm:py-2.5 ${MAIN_CONTENT_X_CLASS}`}
           >
-            <div className="writing-sheet flex min-h-full flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white/92 to-neutral-50/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]">
-              <div className="shrink-0 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="自定义标题"
-                  className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
-                />
+            <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-2.5 sm:gap-3">
+              <p className="hidden shrink-0 self-center text-center font-sans text-lg font-semibold leading-snug tracking-wide text-neutral-600 sm:block">
+                <span className="block">写作</span>
+                <span className="block">题目</span>
+              </p>
+              <div className="min-h-0 min-w-0 flex-1">
+                <TopicPromptBox fill prompt={topicPrompt} type={topic.type} />
               </div>
-
-              <NotionEditor key={editorKey} content={content} onChange={setContent} />
             </div>
+            {topicControls}
           </div>
 
-          <div className={PANEL_FOOTER_CLASS}>
-            <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl flex-col lg:flex-row`}>
-              <div className="flex w-full flex-wrap items-center gap-3 text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
-                <button
-                  type="button"
-                  onClick={handleToggleTypingAnim}
-                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95 ${
-                    typingAnimOn
-                      ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
-                      : 'border-neutral-200 bg-white text-neutral-400'
-                  }`}
-                  title={typingAnimOn ? '打字动效已开启，点击关闭' : '打字动效已关闭，点击开启'}
-                >
-                  <Wand2 size={13} strokeWidth={typingAnimOn ? 2 : 1.5} />
-                  打字动效
-                </button>
-                {feedback ? (
-                  <div className={feedbackToneClass}>
-                    <p>{feedback.message}</p>
-                    {feedback.tone === 'success' && feedback.recordsTab && (
-                      <Link
-                        to="/records"
-                        state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
-                        className="mt-1 inline-block font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
-                      >
-                        前往写作记录
-                      </Link>
-                    )}
-                  </div>
-                ) : (
-                  <p className="leading-none text-neutral-400">{idleFooterStatus}</p>
-                )}
-              </div>
-              <div className="flex w-full shrink-0 items-center gap-2 lg:w-auto lg:gap-3">
-                <button
-                  type="button"
-                  onClick={handleRewrite}
-                  disabled={isSaving || isSubmitting}
-                  className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-4"
-                  title="清空标题和正文，下次保存创建新草稿"
-                >
-                  <RotateCcw size={14} />
-                  重写
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSave()}
-                  disabled={isSaving}
-                  className="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
-                >
-                  {isSaving ? '保存中…' : '保存'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || isContentAlreadySubmitted || isIterateUnchanged}
-                  title={
-                    isContentAlreadySubmitted
-                      ? '当前内容已提交，修改后可再次提交'
-                      : isIterateUnchanged
-                        ? '内容相对最新版没有变化，请先修改后再提交'
-                        : undefined
-                  }
-                  className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
-                >
-                  {isSubmitting
-                    ? submitPhase === 'grading'
-                      ? 'AI 批改中…'
-                      : '提交中…'
-                    : isContentAlreadySubmitted
-                      ? '已提交'
-                      : isIterateUnchanged
-                        ? '无变化'
-                        : '提交'}
-                </button>
-              </div>
-            </div>
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="拖动调节题目区域高度"
+            aria-valuemin={TOPIC_PANEL_MIN_HEIGHT_DESKTOP}
+            aria-valuemax={Math.floor(
+              (pageRef.current?.clientHeight ?? 800) * TOPIC_PANEL_MAX_RATIO,
+            )}
+            aria-valuenow={topicHeight}
+            tabIndex={0}
+            onPointerDown={handleTopicResizePointerDown}
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+              event.preventDefault()
+              const next = clampTopicHeight(
+                topicHeight + (event.key === 'ArrowDown' ? 16 : -16),
+              )
+              setTopicHeight(next)
+              saveTopicPanelHeight(next)
+            }}
+            className="absolute inset-x-0 bottom-0 z-10 flex h-3 translate-y-1/2 cursor-row-resize touch-none items-center justify-center"
+          >
+            <span
+              className={`h-1 w-10 rounded-full transition-colors duration-200 ${
+                isResizingTopic
+                  ? 'bg-neutral-500'
+                  : 'bg-neutral-300/90 hover:bg-neutral-400'
+              }`}
+            />
           </div>
         </div>
 
-        <WritingAssistPanel />
+        <div
+          ref={writingScrollRef}
+          onScroll={handleWritingScroll}
+          className={`writing-area-scroll mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-x-hidden overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
+        >
+          <div className="writing-sheet flex min-h-full flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white/92 to-neutral-50/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]">
+            <div className="shrink-0 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="自定义标题"
+                className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
+              />
+            </div>
+
+            <NotionEditor key={editorKey} content={content} onChange={setContent} />
+          </div>
+        </div>
+
+        <div className={PANEL_FOOTER_CLASS}>
+          <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl flex-col lg:flex-row`}>
+            <div className="flex w-full flex-wrap items-center gap-3 text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
+              <button
+                type="button"
+                onClick={handleToggleTypingAnim}
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95 ${
+                  typingAnimOn
+                    ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
+                    : 'border-neutral-200 bg-white text-neutral-400'
+                }`}
+                title={typingAnimOn ? '打字动效已开启，点击关闭' : '打字动效已关闭，点击开启'}
+              >
+                <Wand2 size={13} strokeWidth={typingAnimOn ? 2 : 1.5} />
+                打字动效
+              </button>
+              {feedback ? (
+                <div className={feedbackToneClass}>
+                  <p>{feedback.message}</p>
+                  {feedback.tone === 'success' && feedback.recordsTab && (
+                    <Link
+                      to="/records"
+                      state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
+                      className="mt-1 inline-block font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
+                    >
+                      前往写作记录
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <p className="leading-none text-neutral-400">{idleFooterStatus}</p>
+              )}
+            </div>
+            <div className="flex w-full shrink-0 items-center gap-2 lg:w-auto lg:gap-3">
+              <button
+                type="button"
+                onClick={handleRewrite}
+                disabled={isSaving || isSubmitting}
+                className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-4"
+                title="清空标题和正文，下次保存创建新草稿"
+              >
+                <RotateCcw size={14} />
+                重写
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={isSaving}
+                className="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
+              >
+                {isSaving ? '保存中…' : '保存'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting || isContentAlreadySubmitted || isIterateUnchanged}
+                title={
+                  isContentAlreadySubmitted
+                    ? '当前内容已提交，修改后可再次提交'
+                    : isIterateUnchanged
+                      ? '内容相对最新版没有变化，请先修改后再提交'
+                      : undefined
+                }
+                className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
+              >
+                {isSubmitting
+                  ? submitPhase === 'grading'
+                    ? 'AI 批改中…'
+                    : '提交中…'
+                  : isContentAlreadySubmitted
+                    ? '已提交'
+                    : isIterateUnchanged
+                      ? '无变化'
+                      : '提交'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <WritingAssistPanel />
 
       <LoginRequiredModal
         open={showLoginModal}
