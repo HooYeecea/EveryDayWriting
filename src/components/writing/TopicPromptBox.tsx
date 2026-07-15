@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Maximize2, X } from 'lucide-react'
 import { PANEL_SUBTITLE_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
@@ -8,50 +8,27 @@ interface TopicPromptBoxProps {
 }
 
 export function TopicPromptBox({ prompt, type }: TopicPromptBoxProps) {
-  const textRef = useRef<HTMLParagraphElement>(null)
-  const [isOverflowing, setIsOverflowing] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     setExpanded(false)
   }, [prompt])
 
-  useEffect(() => {
-    const el = textRef.current
-    if (!el) return
-
-    const checkOverflow = () => {
-      setIsOverflowing(el.scrollHeight > el.clientHeight + 1)
-    }
-
-    checkOverflow()
-    const observer = new ResizeObserver(checkOverflow)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [prompt])
-
   return (
     <>
-      <div className="relative min-w-0 w-full max-w-full flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4 sm:py-2.5">
-        <p
-          ref={textRef}
-          className={`break-words line-clamp-2 text-sm leading-snug text-neutral-800 sm:text-[15px] sm:leading-relaxed ${
-            isOverflowing ? 'pr-6' : ''
-          }`}
-        >
+      <div className="relative min-w-0 w-full max-w-full flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4 sm:py-2.5">
+        <p className="break-words line-clamp-2 pr-9 text-sm leading-snug text-neutral-800 sm:pr-8 sm:text-[15px] sm:leading-relaxed">
           {prompt}
         </p>
-        {isOverflowing && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="absolute bottom-1.5 right-1.5 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-200/80 hover:text-neutral-700"
-            aria-label="查看完整题目"
-            title="查看完整题目"
-          >
-            <Maximize2 size={14} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="absolute bottom-1 right-1 z-10 flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50/90 text-neutral-500 shadow-sm ring-1 ring-neutral-200/80 transition-colors hover:bg-neutral-200 hover:text-neutral-800 active:scale-95 sm:bottom-1.5 sm:right-1.5 sm:h-7 sm:w-7"
+          aria-label="查看完整题目"
+          title="查看完整题目"
+        >
+          <Maximize2 size={15} />
+        </button>
       </div>
 
       {expanded && (
