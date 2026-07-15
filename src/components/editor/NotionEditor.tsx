@@ -13,7 +13,7 @@ interface NotionEditorProps {
 export function NotionEditor({
   content = '',
   onChange,
-  placeholder = '开始写作，输入 / 可快速切换格式…',
+  placeholder = '开始写作',
 }: NotionEditorProps) {
   const editor = useEditor({
     extensions: [

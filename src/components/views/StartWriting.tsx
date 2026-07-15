@@ -708,16 +708,14 @@ export function StartWriting() {
             onScroll={handleWritingScroll}
             className={`writing-area-scroll mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-x-hidden overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
           >
-            <div className="flex min-h-full flex-col">
-              <div className="mb-6 shrink-0">
+            <div className="writing-sheet flex min-h-full flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white/92 to-neutral-50/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]">
+              <div className="shrink-0 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="自定义标题"
-                  className={`w-full border-none bg-transparent text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl ${
-                    title.trim() ? 'text-center' : 'text-left'
-                  }`}
+                  className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
                 />
               </div>
 
