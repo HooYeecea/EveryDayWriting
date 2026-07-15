@@ -5,9 +5,11 @@ import { PANEL_SUBTITLE_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstan
 interface TopicPromptBoxProps {
   prompt: string
   type: string
+  /** Fill parent height and scroll the prompt instead of clamping to 2 lines */
+  fill?: boolean
 }
 
-export function TopicPromptBox({ prompt, type }: TopicPromptBoxProps) {
+export function TopicPromptBox({ prompt, type, fill = false }: TopicPromptBoxProps) {
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -16,8 +18,18 @@ export function TopicPromptBox({ prompt, type }: TopicPromptBoxProps) {
 
   return (
     <>
-      <div className="relative min-w-0 w-full max-w-full flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4 sm:py-2.5">
-        <p className="break-words line-clamp-2 pr-9 text-sm leading-snug text-neutral-800 sm:pr-8 sm:text-[15px] sm:leading-relaxed">
+      <div
+        className={`relative min-w-0 w-full max-w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:px-4 sm:py-2.5 ${
+          fill ? 'flex h-full min-h-0 flex-col' : ''
+        }`}
+      >
+        <p
+          className={`break-words pr-9 text-sm leading-snug text-neutral-800 sm:pr-8 sm:text-[15px] sm:leading-relaxed ${
+            fill
+              ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+              : 'line-clamp-2'
+          }`}
+        >
           {prompt}
         </p>
         <button
