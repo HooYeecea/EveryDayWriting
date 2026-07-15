@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -31,6 +31,7 @@ import {
 } from '../../../api/admin'
 import { getVisibleAdminRoutes } from '../../../config/adminRoutes'
 import { useAuth } from '../../../context/AuthContext'
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh'
 import { hasPermission } from '../../../utils/roles'
 import {
   AdminCard,
@@ -40,6 +41,8 @@ import {
   AdminPageBody,
   AdminPageHeader,
 } from '../AdminUi'
+
+const AUTO_REFRESH_MS = 60_000
 
 const PERIODS: { id: DashboardPeriod; label: string }[] = [
   { id: '7d', label: '近 7 天' },
@@ -98,33 +101,53 @@ export function AdminDashboardPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('7d')
   const [data, setData] = useState<AdminDashboardOverview | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const requestIdRef = useRef(0)
+  const periodRef = useRef(period)
+  periodRef.current = period
 
-  useEffect(() => {
+  const load = async (silent = false) => {
     if (!canView) {
       setLoading(false)
       setData(null)
       return
     }
-
-    let cancelled = false
-    setLoading(true)
+    const requestId = ++requestIdRef.current
+    if (silent) setRefreshing(true)
+    else setLoading(true)
     setError('')
+    try {
+      const result = await getAdminDashboardOverview(periodRef.current)
+      if (requestId !== requestIdRef.current) return
+      setData(result)
+    } catch (err) {
+      if (requestId !== requestIdRef.current) return
+      setError(err instanceof Error ? err.message : '加载运营看板失败')
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }
+  }
 
-    getAdminDashboardOverview(period)
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : '加载运营看板失败')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+  const { refreshNow, resetTimer } = useAutoRefresh(
+    () => load(true),
+    AUTO_REFRESH_MS,
+    canView && data != null,
+  )
 
+  useEffect(() => {
+    let cancelled = false
+    void load(false).then(() => {
+      if (!cancelled) resetTimer()
+    })
     return () => {
       cancelled = true
+      requestIdRef.current += 1
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on period / permission only
   }, [canView, period])
 
   const vipChart = useMemo(
@@ -208,24 +231,32 @@ export function AdminDashboardPage() {
         title="数据中心"
         description={
           data
-            ? `业务总览 · 更新于 ${new Date(data.generatedAt).toLocaleString('zh-CN')}`
+            ? `业务总览 · 更新于 ${new Date(data.generatedAt).toLocaleString('zh-CN')} · 每 1 分钟自动刷新`
             : '全站用户、写作、活跃与 Token 运营指标'
         }
         actions={
-          <div className="flex flex-wrap gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5">
-            {PERIODS.map((item) => (
-              <AdminGhostButton
-                key={item.id}
-                className={
-                  period === item.id
-                    ? 'border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
-                    : 'border-transparent'
-                }
-                onClick={() => setPeriod(item.id)}
-              >
-                {item.label}
-              </AdminGhostButton>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5">
+              {PERIODS.map((item) => (
+                <AdminGhostButton
+                  key={item.id}
+                  className={
+                    period === item.id
+                      ? 'border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
+                      : 'border-transparent'
+                  }
+                  onClick={() => setPeriod(item.id)}
+                >
+                  {item.label}
+                </AdminGhostButton>
+              ))}
+            </div>
+            <AdminGhostButton
+              onClick={() => refreshNow()}
+              disabled={loading || refreshing}
+            >
+              {refreshing ? '刷新中…' : '刷新'}
+            </AdminGhostButton>
           </div>
         }
       />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Activity, Database, HardDrive, MemoryStick, Server } from 'lucide-react'
 import { getAdminSystemInfo, type AdminSystemInfo } from '../../../api/admin'
 import { useAuth } from '../../../context/AuthContext'
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh'
 import { hasPermission } from '../../../utils/roles'
 import {
   AdminCard,
@@ -11,6 +12,8 @@ import {
   AdminPageBody,
   AdminPageHeader,
 } from '../AdminUi'
+
+const AUTO_REFRESH_MS = 10_000
 
 function formatUptime(seconds: number): string {
   if (!seconds || seconds < 0) return '—'
@@ -36,14 +39,16 @@ export function AdminSystemPage() {
   const canView = hasPermission(permissions, 'monitor:view')
   const [data, setData] = useState<AdminSystemInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!canView) {
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (silent) setRefreshing(true)
+    else setLoading(true)
     setError('')
     try {
       setData(await getAdminSystemInfo())
@@ -51,11 +56,25 @@ export function AdminSystemPage() {
       setError(err instanceof Error ? err.message : '加载系统信息失败')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
+  const { refreshNow, resetTimer } = useAutoRefresh(
+    () => load(true),
+    AUTO_REFRESH_MS,
+    canView && data != null,
+  )
+
   useEffect(() => {
-    void load()
+    let cancelled = false
+    void load(false).then(() => {
+      if (!cancelled) resetTimer()
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial / permission gate only
   }, [canView])
 
   if (!canView) {
@@ -77,12 +96,15 @@ export function AdminSystemPage() {
         title="系统监控"
         description={
           data
-            ? `运行环境快照 · ${new Date(data.generatedAt).toLocaleString('zh-CN')}`
+            ? `运行环境快照 · ${new Date(data.generatedAt).toLocaleString('zh-CN')} · 每 10 秒自动刷新`
             : '进程、内存、CPU、磁盘与数据库健康状态'
         }
         actions={
-          <AdminGhostButton onClick={() => void load()} disabled={loading}>
-            刷新
+          <AdminGhostButton
+            onClick={() => refreshNow()}
+            disabled={loading || refreshing}
+          >
+            {refreshing ? '刷新中…' : '刷新'}
           </AdminGhostButton>
         }
       />
