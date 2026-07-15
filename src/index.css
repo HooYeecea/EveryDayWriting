@@ -476,12 +476,26 @@ code, kbd, pre, samp {
   overflow: hidden;
 }
 
+/* 写作记录详情：软切换（保留内容 + 锁高 + 仅透明度），禁止 remount 淡入撑开 */
+.records-detail-scroller {
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+}
 .records-detail-shell {
   opacity: 1;
-  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.34s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .records-detail-shell[data-switching='true'] {
-  opacity: 0;
+  opacity: 0.42;
+  pointer-events: none;
+  transition-duration: 0.16s;
+}
+.records-empty-enter {
+  animation: records-empty-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes records-empty-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -506,6 +520,8 @@ code, kbd, pre, samp {
   .records-list-track,
   .records-search-slot,
   .records-detail-shell { transition: none; }
+  .records-detail-shell[data-switching='true'] { opacity: 1; }
+  .records-empty-enter { animation: none; }
 
   .animate-fade-in-up,
   .animate-scale-in,

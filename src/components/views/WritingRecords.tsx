@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, BarChart3, Check, ClipboardList, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
 import {
@@ -203,12 +203,48 @@ export function WritingRecords() {
   )
 
   const [deleting, setDeleting] = useState(false)
+  const draftDetailScrollRef = useRef<HTMLDivElement | null>(null)
+  const submitDetailScrollRef = useRef<HTMLDivElement | null>(null)
+  const draftShellRef = useRef<HTMLDivElement | null>(null)
+  const submitShellRef = useRef<HTMLDivElement | null>(null)
+  const detailRequestIdRef = useRef(0)
+  const draftHeightUnlockRef = useRef<number | null>(null)
+  const submitHeightUnlockRef = useRef<number | null>(null)
+  const [draftSwitching, setDraftSwitching] = useState(false)
+  const [submitSwitching, setSubmitSwitching] = useState(false)
+  const [draftShellMinH, setDraftShellMinH] = useState<number | undefined>()
+  const [submitShellMinH, setSubmitShellMinH] = useState<number | undefined>()
+
+  const selectRecord = (id: string) => {
+    setSelectedId(id)
+    setMobileShowDetail(true)
+  }
 
   const selectTab = (next: RecordTab) => {
     if (next === tab) return
     setTab(next)
     setSelectedId(null)
     setMobileShowDetail(false)
+  }
+
+  const lockShellHeight = (
+    shell: HTMLDivElement | null,
+    setMinH: (h: number | undefined) => void,
+  ) => {
+    if (!shell) return
+    const height = shell.offsetHeight
+    if (height > 0) setMinH(height)
+  }
+
+  const unlockShellHeightSoon = (
+    timerRef: { current: number | null },
+    setMinH: (h: number | undefined) => void,
+  ) => {
+    if (timerRef.current != null) window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => {
+      setMinH(undefined)
+      timerRef.current = null
+    }, 360)
   }
 
   useEffect(() => {
@@ -342,34 +378,106 @@ export function WritingRecords() {
       setSubmitDetailLoading(false)
       setSelectedDraft(null)
       setDraftDetail(null)
+      setDraftDetailLoading(false)
+      setDraftSwitching(false)
+      setSubmitSwitching(false)
+      setDraftShellMinH(undefined)
+      setSubmitShellMinH(undefined)
       return
     }
 
+    const requestId = ++detailRequestIdRef.current
+
     if (tab === 'saves') {
       setSubmitDetail(null)
+      setSubmitDetailLoading(false)
+      setSubmitSwitching(false)
       const draft = saves.find((item) => item.id === selectedId) ?? null
       setSelectedDraft(draft)
       if (!draft) {
         setDraftDetail(null)
+        setDraftDetailLoading(false)
+        setDraftSwitching(false)
         return
       }
 
+      // 已是当前详情：不重拉，避免列表刷新时误触发软切换
+      if (draftDetail?.id === draft.id) {
+        setDraftDetailLoading(false)
+        setDraftSwitching(false)
+        return
+      }
+
+      lockShellHeight(draftShellRef.current, setDraftShellMinH)
+      const draftScroller = draftDetailScrollRef.current
+      if (draftScroller && draftScroller.scrollTop !== 0) draftScroller.scrollTop = 0
+      setDraftSwitching(true)
       setDraftDetailLoading(true)
       loadDraftById(draft.id)
-        .then(setDraftDetail)
-        .catch(() => setDraftDetail(null))
-        .finally(() => setDraftDetailLoading(false))
+        .then((detail) => {
+          if (requestId !== detailRequestIdRef.current) return
+          setDraftDetail(detail)
+        })
+        .catch(() => {
+          if (requestId !== detailRequestIdRef.current) return
+          setDraftDetail((prev) => prev ?? null)
+        })
+        .finally(() => {
+          if (requestId === detailRequestIdRef.current) {
+            setDraftDetailLoading(false)
+            setDraftSwitching(false)
+            unlockShellHeightSoon(draftHeightUnlockRef, setDraftShellMinH)
+          }
+        })
       return
     }
 
     setSelectedDraft(null)
     setDraftDetail(null)
+    setDraftDetailLoading(false)
+    setDraftSwitching(false)
+
+    if (submitDetail?.id === selectedId) {
+      setSubmitDetailLoading(false)
+      setSubmitSwitching(false)
+      return
+    }
+
+    lockShellHeight(submitShellRef.current, setSubmitShellMinH)
+    const submitScroller = submitDetailScrollRef.current
+    if (submitScroller && submitScroller.scrollTop !== 0) submitScroller.scrollTop = 0
+    setSubmitSwitching(true)
     setSubmitDetailLoading(true)
     getSubmittedWritingById(selectedId)
-      .then(setSubmitDetail)
-      .catch(() => setSubmitDetail(null))
-      .finally(() => setSubmitDetailLoading(false))
+      .then((detail) => {
+        if (requestId !== detailRequestIdRef.current) return
+        setSubmitDetail(detail)
+      })
+      .catch(() => {
+        if (requestId !== detailRequestIdRef.current) return
+        setSubmitDetail((prev) => prev ?? null)
+      })
+      .finally(() => {
+        if (requestId === detailRequestIdRef.current) {
+          setSubmitDetailLoading(false)
+          setSubmitSwitching(false)
+          unlockShellHeightSoon(submitHeightUnlockRef, setSubmitShellMinH)
+        }
+      })
+    // draftDetail/submitDetail 仅用于跳过重复请求，不列入 deps，避免替换内容后反复触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, tab, saves])
+
+  useEffect(() => {
+    return () => {
+      if (draftHeightUnlockRef.current != null) {
+        window.clearTimeout(draftHeightUnlockRef.current)
+      }
+      if (submitHeightUnlockRef.current != null) {
+        window.clearTimeout(submitHeightUnlockRef.current)
+      }
+    }
+  }, [])
 
   if (!isAuthenticated || !user) {
     return (
@@ -449,11 +557,8 @@ export function WritingRecords() {
                   <button
                     key={record.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedId(record.id)
-                      setMobileShowDetail(true)
-                    }}
-                    className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
+                    onClick={() => selectRecord(record.id)}
+                    className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors duration-150 ${
                       tab === 'saves' && selectedId === record.id
                         ? 'border-l-neutral-900 bg-neutral-100'
                         : 'border-l-transparent hover:bg-neutral-50'
@@ -486,11 +591,8 @@ export function WritingRecords() {
                   <button
                     key={record.iterationGroupId ?? record.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedId(record.id)
-                      setMobileShowDetail(true)
-                    }}
-                    className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-all duration-200 active:scale-[0.98] ${
+                    onClick={() => selectRecord(record.id)}
+                    className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors duration-150 ${
                       tab === 'submits' &&
                       (selectedSubmitGroup?.id === record.id ||
                         record.allVersionIds.includes(selectedId ?? ''))
@@ -537,7 +639,10 @@ export function WritingRecords() {
         <div className="records-list-viewport flex min-h-0 flex-1 flex-col">
           <div className="records-list-track" data-active={tab}>
             <div className="records-list-pane">
-              <div className={`flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+              <div
+                ref={draftDetailScrollRef}
+                className={`records-detail-scroller flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
+              >
                 {mobileShowDetail && (
                   <button
                     type="button"
@@ -550,65 +655,94 @@ export function WritingRecords() {
                 )}
 
                 {!selectedId && (
-                  <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
+                  <div className="records-empty-enter flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
                     <FileText size={32} strokeWidth={1.5} />
                     <p className="mt-3 text-sm">选择一条记录查看详情</p>
                   </div>
                 )}
 
                 {selectedDraft && (
-            <div className="mx-auto max-w-3xl">
-              <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
-                      草稿
-                    </span>
-                    <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
-                      {selectedDraft.title || '无标题'}
-                    </h3>
+                  <div
+                    ref={draftShellRef}
+                    className="records-detail-shell mx-auto max-w-3xl"
+                    data-switching={
+                      draftSwitching || (draftDetail != null && draftDetail.id !== selectedDraft.id)
+                    }
+                    style={draftShellMinH != null ? { minHeight: draftShellMinH } : undefined}
+                  >
+                    {draftDetail ? (
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
+                              草稿
+                            </span>
+                            <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
+                              {(saves.find((item) => item.id === draftDetail.id) ?? selectedDraft)
+                                .title || '无标题'}
+                            </h3>
+                          </div>
+                          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigate(`/writing?draftId=${draftDetail.id}`)
+                              }}
+                              disabled={draftDetail.id !== selectedDraft.id}
+                              className="flex items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                            >
+                              <PenLine size={14} />
+                              继续编辑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete()}
+                              disabled={deleting || draftDetail.id !== selectedDraft.id}
+                              className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
+                            >
+                              {deleting ? '删除中…' : '删除草稿'}
+                            </button>
+                          </div>
+                        </div>
+                        <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-5 text-sm">
+                          <div>
+                            <dt className="text-neutral-400">最后更新</dt>
+                            <dd className="mt-0.5 text-neutral-700">
+                              {formatTime(
+                                (saves.find((item) => item.id === draftDetail.id) ?? selectedDraft)
+                                  .updatedAt,
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        <div className="mt-4">
+                          <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
+                            <h4 className="text-sm font-medium text-neutral-500">正文预览</h4>
+                            <div
+                              className="notion-editor mt-3 text-sm text-neutral-800"
+                              dangerouslySetInnerHTML={{
+                                __html: draftDetail.content || '<p></p>',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                        <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
+                          草稿
+                        </span>
+                        <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
+                          {selectedDraft.title || '无标题'}
+                        </h3>
+                        <div className="mt-4 min-h-[12rem]">
+                          <p className="text-sm text-neutral-400">
+                            {draftDetailLoading ? '加载草稿内容…' : '未能加载该草稿'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigate(`/writing?draftId=${selectedDraft.id}`)
-                      }}
-                      className="flex items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-                    >
-                      <PenLine size={14} />
-                      继续编辑
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete()}
-                      disabled={deleting}
-                      className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
-                    >
-                      {deleting ? '删除中…' : '删除草稿'}
-                    </button>
-                  </div>
-                </div>
-                <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-5 text-sm">
-                  <div>
-                    <dt className="text-neutral-400">最后更新</dt>
-                    <dd className="mt-0.5 text-neutral-700">{formatTime(selectedDraft.updatedAt)}</dd>
-                  </div>
-                </dl>
-                {draftDetailLoading && (
-                  <p className="mt-4 text-sm text-neutral-400">加载草稿内容…</p>
-                )}
-                {draftDetail && (
-                  <div className="mt-4 rounded-xl border border-neutral-100 bg-neutral-50 p-4">
-                    <h4 className="text-sm font-medium text-neutral-500">正文预览</h4>
-                    <div
-                      className="notion-editor mt-3 text-sm text-neutral-800"
-                      dangerouslySetInnerHTML={{ __html: draftDetail.content || '<p></p>' }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
                 )}
               </div>
             </div>
@@ -617,7 +751,10 @@ export function WritingRecords() {
               <div className="hidden shrink-0 border-b border-neutral-200 lg:block">
                 <WritingRecordsSearchBar {...searchBarProps} searchEnabled />
               </div>
-              <div className={`min-h-0 flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
+              <div
+                ref={submitDetailScrollRef}
+                className={`records-detail-scroller min-h-0 flex-1 overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
+              >
                 {mobileShowDetail && (
                   <button
                     type="button"
@@ -630,14 +767,32 @@ export function WritingRecords() {
                 )}
 
                 {!selectedId && (
-                  <div className="flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
+                  <div className="records-empty-enter flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
                     <FileText size={32} strokeWidth={1.5} />
                     <p className="mt-3 text-sm">选择一条记录查看详情</p>
                   </div>
                 )}
 
-                {submitDetail && selectedId && (() => {
-            const gradingPreview = loadGradingPreview(selectedId)
+                {selectedId && (
+                  <div
+                    ref={submitShellRef}
+                    className="records-detail-shell mx-auto max-w-3xl"
+                    data-switching={
+                      submitSwitching ||
+                      (submitDetail != null && submitDetail.id !== selectedId)
+                    }
+                    style={submitShellMinH != null ? { minHeight: submitShellMinH } : undefined}
+                  >
+                    {!submitDetail ? (
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                        <div className="min-h-[12rem]">
+                          <p className="text-sm text-neutral-400">
+                            {_submitDetailLoading ? '加载记录详情…' : '未能加载该记录'}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (() => {
+            const gradingPreview = loadGradingPreview(submitDetail.id)
             const grammarSuggestions = submitDetail.grammarSuggestions ?? []
             const vocabularySuggestions = submitDetail.vocabularySuggestions ?? []
 
@@ -671,8 +826,7 @@ export function WritingRecords() {
             const versions = resolveVersionList(submitDetail, selectedSubmitGroup)
             const latestVersionId =
               versions.length > 0 ? versions[versions.length - 1].id : submitDetail.id
-            const isLatestVersion = selectedId === latestVersionId
-
+            const isLatestVersion = submitDetail.id === latestVersionId
             const detailReady = submitDetail.id === selectedId
 
             const hasAnyAiResult =
@@ -686,22 +840,16 @@ export function WritingRecords() {
               !!vocabProse
 
             return (
-            <div className="mx-auto max-w-3xl">
+              <>
               <SubmitVersionNav
                 versions={versions}
-                currentId={selectedId}
+                currentId={submitDetail.id}
                 onChange={(id) => {
                   if (id === selectedId) return
-                  setSelectedId(id)
-                  setMobileShowDetail(true)
+                  selectRecord(id)
                 }}
               >
               <VocabularySelectionAdd>
-              <div
-                className={`transition-opacity duration-500 ease-out ${
-                  detailReady ? 'opacity-100' : 'pointer-events-none opacity-40'
-                }`}
-              >
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="min-w-0">
                   <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
@@ -723,7 +871,7 @@ export function WritingRecords() {
                     <button
                       type="button"
                       onClick={() => navigate(`/writing?iterateFrom=${latestVersionId}`)}
-                      disabled={!isLatestVersion}
+                      disabled={!detailReady || !isLatestVersion}
                       title={!isLatestVersion ? '请基于最新版继续修改' : undefined}
                       className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -736,7 +884,7 @@ export function WritingRecords() {
                     <button
                       type="button"
                       onClick={() => void handleDelete()}
-                      disabled={deleting}
+                      disabled={deleting || !detailReady}
                       className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
                     >
                       {deleting ? '删除中…' : '删除记录'}
@@ -926,9 +1074,9 @@ export function WritingRecords() {
                               <span className="font-medium text-green-600">{item.correction}</span>
                             </p>
                             <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
-                            {selectedId && item.id && (
+                            {detailReady && item.id && (
                               <SuggestionChatBox
-                                submitId={selectedId}
+                                submitId={submitDetail.id}
                                 suggestionId={item.id}
                                 label={item.original}
                               />
@@ -971,9 +1119,9 @@ export function WritingRecords() {
                             {item.context && (
                               <p className="mt-1 text-xs text-neutral-500">{item.context}</p>
                             )}
-                            {selectedId && item.id && (
+                            {detailReady && item.id && (
                               <SuggestionChatBox
-                                submitId={selectedId}
+                                submitId={submitDetail.id}
                                 suggestionId={item.id}
                                 label={item.original}
                               />
@@ -996,12 +1144,13 @@ export function WritingRecords() {
                   </p>
                 )}
               </div>
-              </div>
               </VocabularySelectionAdd>
               </SubmitVersionNav>
-            </div>
+              </>
             )
-          })()}
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
