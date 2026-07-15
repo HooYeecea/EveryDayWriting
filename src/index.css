@@ -114,7 +114,8 @@ code, kbd, pre, samp {
 }
 
 .notion-editor .tiptap p {
-  margin: 0 0 1.75em;
+  /* 与自动换行行距一致：回车只换行，不再额外加大段间距 */
+  margin: 0;
 }
 
 .notion-editor .tiptap ul,
