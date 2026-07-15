@@ -8,6 +8,7 @@ import {
 } from '../../api/vocabulary'
 import type { CreateVocabularyPayload, VocabularyItem, VocabularyType } from '../../types'
 import { DEFAULT_PART_OF_SPEECH, PART_OF_SPEECH_OPTIONS } from '../../data/partOfSpeech'
+import { useAppConfirm } from '../../context/AppConfirmContext'
 import { MenuSelect } from '../common/MenuSelect'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
@@ -27,6 +28,7 @@ const POS_OPTIONS = PART_OF_SPEECH_OPTIONS.map((item) => ({
 }))
 
 export function PersonalVocabulary() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<VocabularyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -81,7 +83,13 @@ export function PersonalVocabulary() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确定删除该词条？')) return
+    const ok = await confirm({
+      title: '删除词条',
+      message: '确定删除该词条？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteVocabularyItem(id)
       setItems((prev) => prev.filter((item) => item.id !== id))

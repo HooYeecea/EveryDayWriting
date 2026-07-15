@@ -11,6 +11,7 @@ import {
   type AdminProviderDetail,
   type AdminProviderItem,
 } from '../../../api/admin'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -28,6 +29,7 @@ const DEFAULT_TEMPLATE = { messages: [{ role: 'user', content: '{{prompt}}' }] }
 const DEFAULT_MAPPING = { content: 'choices.0.message.content' }
 
 export function AdminProvidersPage() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminProviderItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -141,7 +143,13 @@ export function AdminProvidersPage() {
   }
 
   const handleDelete = async (item: AdminProviderItem) => {
-    if (!window.confirm(`确定删除供应商 ${item.name}？请先禁用或删除其下所有模型。`)) return
+    const ok = await confirm({
+      title: '删除供应商',
+      message: `确定删除供应商「${item.name}」？请先禁用或删除其下所有模型。`,
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     setBusyId(item.id)
     try {
       await deleteAdminProvider(item.id)
@@ -218,7 +226,13 @@ export function AdminProvidersPage() {
 
   const removeModel = async (modelIdValue: string) => {
     if (!detail) return
-    if (!window.confirm('确定删除该模型？')) return
+    const ok = await confirm({
+      title: '删除模型',
+      message: '确定删除该模型？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminModel(detail.id, modelIdValue)
       await refreshDetail(detail.id)

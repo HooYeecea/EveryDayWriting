@@ -6,6 +6,7 @@ import {
   updateAdminQuote,
   type AdminQuoteItem,
 } from '../../../api/admin'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -17,6 +18,7 @@ import {
 } from '../AdminUi'
 
 export function AdminQuotesPage() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminQuoteItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -72,7 +74,13 @@ export function AdminQuotesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确定删除该语录？')) return
+    const ok = await confirm({
+      title: '删除语录',
+      message: '确定删除该语录？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminQuote(id)
       await load()

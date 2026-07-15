@@ -14,6 +14,8 @@ import { AiMarkdownContent } from '../writing/AiMarkdownContent'
 import { SubmitVersionNav } from '../writing/SubmitVersionNav'
 import { VocabularySelectionAdd } from '../vocabulary/VocabularySelectionAdd'
 import { useAuth } from '../../context/AuthContext'
+import { useAppAlert } from '../../context/AppAlertContext'
+import { useAppConfirm } from '../../context/AppConfirmContext'
 import { loadGradingPreview } from '../../storage/gradingPreviewStorage'
 import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
 import type {
@@ -177,6 +179,8 @@ function resolveVersionList(
 
 export function WritingRecords() {
   const { user, isAuthenticated } = useAuth()
+  const { alert } = useAppAlert()
+  const { confirm } = useAppConfirm()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = (location.state as RecordsLocationState | null) ?? null
@@ -224,7 +228,13 @@ export function WritingRecords() {
   const handleDelete = async () => {
     if (!selectedId || deleting) return
     const label = tab === 'saves' ? '草稿' : '提交记录'
-    if (!window.confirm(`确定删除这条${label}？`)) return
+    const ok = await confirm({
+      title: `删除${label}`,
+      message: `确定删除这条${label}？此操作不可恢复。`,
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
 
     setDeleting(true)
     try {
@@ -250,7 +260,11 @@ export function WritingRecords() {
       setSelectedId(null)
       setMobileShowDetail(false)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败')
+      void alert({
+        title: '删除失败',
+        message: err instanceof Error ? err.message : '删除失败',
+        variant: 'notice',
+      })
     } finally {
       setDeleting(false)
     }

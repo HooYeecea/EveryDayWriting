@@ -8,6 +8,7 @@ import {
   updateAdminCheckInTier,
   type AdminCheckInTierItem,
 } from '../../../api/admin'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -19,6 +20,7 @@ import {
 } from '../AdminUi'
 
 export function AdminCheckInTiersPage() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminCheckInTierItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -80,7 +82,13 @@ export function AdminCheckInTiersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确定删除该段位？')) return
+    const ok = await confirm({
+      title: '删除段位',
+      message: '确定删除该段位？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminCheckInTier(id)
       await load()

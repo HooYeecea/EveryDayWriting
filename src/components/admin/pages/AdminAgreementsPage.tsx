@@ -6,6 +6,7 @@ import {
   updateAdminAgreement,
   type AdminAgreementListItem,
 } from '../../../api/admin'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -24,6 +25,7 @@ function isEffective(item: AdminAgreementListItem): boolean {
 }
 
 export function AdminAgreementsPage() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminAgreementListItem[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -122,7 +124,13 @@ export function AdminAgreementsPage() {
       setError('已生效的协议不可删除')
       return
     }
-    if (!window.confirm('确定删除该未生效协议？')) return
+    const ok = await confirm({
+      title: '删除协议',
+      message: '确定删除该未生效协议？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminAgreement(item.id)
       await load()

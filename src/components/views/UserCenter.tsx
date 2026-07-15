@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { updateUserProfile, uploadFile } from '../../api/user'
 import { useAuth } from '../../context/AuthContext'
+import { useAppConfirm } from '../../context/AppConfirmContext'
 import { DEFAULT_PATH } from '../../config/routes'
 import { AiAssistPanel } from '../user/AiAssistPanel'
 import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
@@ -56,6 +57,7 @@ function tabPaneClass(active: boolean): string {
 export function UserCenter() {
   const { user, isAuthenticated, isLoading, logout, logoutAllDevices, refreshProfile, roles, permissions } =
     useAuth()
+  const { confirm } = useAppConfirm()
   const navigate = useNavigate()
   const [tab, setTab] = useState<UserTab>('overview')
   const [enterClass, setEnterClass] = useState('')
@@ -168,7 +170,13 @@ export function UserCenter() {
   }
 
   const handleLogoutAll = async () => {
-    if (!window.confirm('确定退出所有设备？当前设备也需要重新登录。')) return
+    const ok = await confirm({
+      title: '退出全部设备',
+      message: '确定退出所有设备？当前设备也需要重新登录。',
+      confirmLabel: '全部退出',
+      variant: 'warning',
+    })
+    if (!ok) return
     await logoutAllDevices()
     navigate(DEFAULT_PATH, { replace: true })
   }

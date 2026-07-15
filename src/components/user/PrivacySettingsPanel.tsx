@@ -3,8 +3,10 @@ import { Shield } from 'lucide-react'
 import { getAgreementStatus } from '../../api/agreements'
 import { deleteAiMemory } from '../../api/privacy'
 import type { AgreementStatusItem } from '../../api/agreements'
+import { useAppConfirm } from '../../context/AppConfirmContext'
 
 export function PrivacySettingsPanel() {
+  const { confirm } = useAppConfirm()
   const [agreements, setAgreements] = useState<AgreementStatusItem[]>([])
   const [loading, setLoading] = useState(true)
   const [clearing, setClearing] = useState(false)
@@ -19,7 +21,13 @@ export function PrivacySettingsPanel() {
   }, [])
 
   const handleClearAiMemory = async () => {
-    if (!window.confirm('确定清除所有 AI 建议追问记录？此操作不可恢复。')) return
+    const ok = await confirm({
+      title: '清除 AI 记忆',
+      message: '确定清除所有 AI 建议追问记录？此操作不可恢复。',
+      confirmLabel: '清除',
+      variant: 'warning',
+    })
+    if (!ok) return
 
     setClearing(true)
     setError('')

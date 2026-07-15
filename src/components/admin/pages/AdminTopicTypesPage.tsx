@@ -6,6 +6,7 @@ import {
   updateAdminTopicType,
   type AdminTopicTypeItem,
 } from '../../../api/admin'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -17,6 +18,7 @@ import {
 } from '../AdminUi'
 
 export function AdminTopicTypesPage() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminTopicTypeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -72,7 +74,13 @@ export function AdminTopicTypesPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('确定删除该题目类型？')) return
+    const ok = await confirm({
+      title: '删除题目类型',
+      message: '确定删除该题目类型？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminTopicType(id)
       await load()

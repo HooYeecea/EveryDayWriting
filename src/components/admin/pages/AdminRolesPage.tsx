@@ -11,6 +11,7 @@ import {
   type AdminRoleItem,
 } from '../../../api/admin'
 import { useAuth } from '../../../context/AuthContext'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -27,6 +28,7 @@ import { AdminActionMenu } from '../AdminActionMenu'
 
 export function AdminRolesPage() {
   const { refreshAccess } = useAuth()
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminRoleItem[]>([])
   const [permissions, setPermissions] = useState<AdminPermissionItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -133,7 +135,13 @@ export function AdminRolesPage() {
       setError('系统内置角色不可删除')
       return
     }
-    if (!window.confirm(`确定删除角色 ${item.name}？`)) return
+    const ok = await confirm({
+      title: '删除角色',
+      message: `确定删除角色「${item.name}」？此操作不可恢复。`,
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminRole(item.id)
       if (detail?.id === item.id) setDetail(null)

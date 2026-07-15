@@ -6,6 +6,7 @@ import {
   updateAdminAnnouncement,
   type AdminAnnouncementListItem,
 } from '../../../api/admin'
+import { useAppConfirm } from '../../../context/AppConfirmContext'
 import {
   AdminCard,
   AdminEmpty,
@@ -34,6 +35,7 @@ function writeContentCache(cache: Record<string, string>) {
 }
 
 export function AdminAnnouncementsPage() {
+  const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminAnnouncementListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -151,7 +153,13 @@ export function AdminAnnouncementsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确定删除该公告？')) return
+    const ok = await confirm({
+      title: '删除公告',
+      message: '确定删除该公告？此操作不可恢复。',
+      confirmLabel: '删除',
+      variant: 'warning',
+    })
+    if (!ok) return
     try {
       await deleteAdminAnnouncement(id)
       const cache = readContentCache()
