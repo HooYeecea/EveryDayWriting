@@ -149,6 +149,64 @@ code, kbd, pre, samp {
   font-size: 1em;
 }
 
+/* Start writing: scroll only when content overflows; auto-hide scrollbar when idle */
+.writing-area-scroll {
+  scrollbar-gutter: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.writing-area-scroll:hover,
+.writing-area-scroll:focus-within,
+.writing-area-scroll.is-scrolling {
+  scrollbar-color: rgb(163 163 163) transparent;
+}
+
+.writing-area-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.writing-area-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.writing-area-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+}
+
+.writing-area-scroll:hover::-webkit-scrollbar-thumb,
+.writing-area-scroll:focus-within::-webkit-scrollbar-thumb,
+.writing-area-scroll.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: rgb(163 163 163);
+}
+
+.writing-area-scroll .notion-editor {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.writing-area-scroll .notion-editor .tiptap,
+.writing-area-scroll .notion-editor .tiptap.ProseMirror {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .writing-area-scroll .notion-editor .tiptap {
+    min-height: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .writing-area-scroll .notion-editor .tiptap {
+    min-height: 0;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
    Auth route transitions
    ══════════════════════════════════════════════════════════════ */

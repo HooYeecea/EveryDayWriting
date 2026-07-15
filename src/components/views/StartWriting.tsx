@@ -94,6 +94,8 @@ export function StartWriting() {
   const pageRef = useRef<HTMLDivElement>(null)
   const topicPanelRef = useRef<HTMLDivElement>(null)
   const topicHeightRef = useRef<number>(loadTopicPanelHeight() ?? getTopicPanelMinHeight())
+  const writingScrollRef = useRef<HTMLDivElement>(null)
+  const writingScrollHideTimerRef = useRef<number | null>(null)
   const [typingAnimOn, setTypingAnimOn] = useState(() => isTypingAnimationEnabled())
   const [topicHeight, setTopicHeight] = useState(
     () => loadTopicPanelHeight() ?? getTopicPanelMinHeight(),
@@ -164,6 +166,27 @@ export function StartWriting() {
     handle.addEventListener('pointerup', onPointerUp)
     handle.addEventListener('pointercancel', onPointerUp)
   }
+
+  const handleWritingScroll = () => {
+    const el = writingScrollRef.current
+    if (!el) return
+    el.classList.add('is-scrolling')
+    if (writingScrollHideTimerRef.current != null) {
+      window.clearTimeout(writingScrollHideTimerRef.current)
+    }
+    writingScrollHideTimerRef.current = window.setTimeout(() => {
+      el.classList.remove('is-scrolling')
+      writingScrollHideTimerRef.current = null
+    }, 900)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (writingScrollHideTimerRef.current != null) {
+        window.clearTimeout(writingScrollHideTimerRef.current)
+      }
+    }
+  }, [])
 
   const currentSubmitSnapshot = buildSubmitSnapshot(title, content)
   const isContentAlreadySubmitted = submittedSnapshot === currentSubmitSnapshot
@@ -671,20 +694,26 @@ export function StartWriting() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className={`mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-y-auto overflow-x-hidden py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}>
-            <div className="mb-6">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="自定义标题"
-                className={`w-full border-none bg-transparent text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl ${
-                  title.trim() ? 'text-center' : 'text-left'
-                }`}
-              />
-            </div>
+          <div
+            ref={writingScrollRef}
+            onScroll={handleWritingScroll}
+            className={`writing-area-scroll mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-x-hidden overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
+          >
+            <div className="flex min-h-full flex-col">
+              <div className="mb-6 shrink-0">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="自定义标题"
+                  className={`w-full border-none bg-transparent text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl ${
+                    title.trim() ? 'text-center' : 'text-left'
+                  }`}
+                />
+              </div>
 
-            <NotionEditor key={editorKey} content={content} onChange={setContent} />
+              <NotionEditor key={editorKey} content={content} onChange={setContent} />
+            </div>
           </div>
 
           <div className={PANEL_FOOTER_CLASS}>
