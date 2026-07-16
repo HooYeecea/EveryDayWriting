@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Loader2, Sparkles } from 'lucide-react'
 import {
   batchCreateAdminQuestions,
   createAdminQuestion,
   deleteAdminQuestion,
   downloadQuestionsTemplate,
   exportAdminQuestions,
+  generateAdminQuestions,
+  getAdminQuestion,
   listAdminQuestions,
   toggleAdminQuestion,
+  type AdminQuestionDetail,
+  type AdminQuestionGenerateItem,
   type AdminQuestionListItem,
 } from '../../../api/admin'
 import { useAppConfirm } from '../../../context/AppConfirmContext'
@@ -15,6 +20,7 @@ import {
   AdminEmpty,
   AdminError,
   AdminGhostButton,
+  AdminModal,
   AdminPageBody,
   AdminPageHeader,
   AdminPrimaryButton,
@@ -37,6 +43,15 @@ const STEP_LABELS: Record<number, string> = {
   4: '段落纠错',
   5: '短写作',
 }
+const AI_COUNTS = [1, 5, 10, 20] as const
+
+function prettyJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value ?? '')
+  }
+}
 
 export function AdminQuestionsPage() {
   const { confirm } = useAppConfirm()
@@ -48,7 +63,6 @@ export function AdminQuestionsPage() {
   const [examFilter, setExamFilter] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  // Create form
   const [showCreate, setShowCreate] = useState(false)
   const [createStep, setCreateStep] = useState(1)
   const [createType, setCreateType] = useState('vocabulary')
@@ -57,10 +71,28 @@ export function AdminQuestionsPage() {
   const [createContent, setCreateContent] = useState('')
   const [createAnswer, setCreateAnswer] = useState('')
 
-  // Batch import
   const [showBatch, setShowBatch] = useState(false)
   const [batchJson, setBatchJson] = useState('')
-  const [batchResult, setBatchResult] = useState<{ total: number; success: number; failed: number; errors: Array<{ index: number; message: string }> } | null>(null)
+  const [batchResult, setBatchResult] = useState<{
+    total: number
+    success: number
+    failed: number
+    errors: Array<{ index: number; message: string }>
+  } | null>(null)
+
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detail, setDetail] = useState<AdminQuestionDetail | null>(null)
+
+  const [showAi, setShowAi] = useState(false)
+  const [aiCount, setAiCount] = useState<(typeof AI_COUNTS)[number]>(5)
+  const [aiExam, setAiExam] = useState('General')
+  const [aiType, setAiType] = useState('mixed')
+  const [aiDifficulty, setAiDifficulty] = useState(3)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiImporting, setAiImporting] = useState(false)
+  const [aiPreview, setAiPreview] = useState<AdminQuestionGenerateItem[]>([])
+  const [aiWarnings, setAiWarnings] = useState<string[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -83,6 +115,11 @@ export function AdminQuestionsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const flashSuccess = (msg: string) => {
+    setSuccessMsg(msg)
+    setTimeout(() => setSuccessMsg(''), 3000)
+  }
 
   const handleCreate = async () => {
     if (!createContent.trim()) return
@@ -107,8 +144,7 @@ export function AdminQuestionsPage() {
       setShowCreate(false)
       setCreateContent('')
       setCreateAnswer('')
-      setSuccessMsg('题目已添加')
-      setTimeout(() => setSuccessMsg(''), 3000)
+      flashSuccess('题目已添加')
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : '添加失败')
@@ -134,7 +170,10 @@ export function AdminQuestionsPage() {
   const handleExport = async (format: string) => {
     try {
       if (format === 'csv') {
-        const blob = await exportAdminQuestions({ format: 'csv', examType: examFilter || undefined }) as Blob
+        const blob = (await exportAdminQuestions({
+          format: 'csv',
+          examType: examFilter || undefined,
+        })) as Blob
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -142,7 +181,10 @@ export function AdminQuestionsPage() {
         a.click()
         URL.revokeObjectURL(url)
       } else {
-        const data = await exportAdminQuestions({ format: 'json', examType: examFilter || undefined })
+        const data = await exportAdminQuestions({
+          format: 'json',
+          examType: examFilter || undefined,
+        })
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -195,26 +237,120 @@ export function AdminQuestionsPage() {
     }
   }
 
+  const handleViewDetail = async (id: string) => {
+    setDetailOpen(true)
+    setDetail(null)
+    setDetailLoading(true)
+    setError('')
+    try {
+      const data = await getAdminQuestion(id)
+      setDetail(data)
+    } catch (err) {
+      setDetailOpen(false)
+      setError(err instanceof Error ? err.message : '加载详情失败')
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const handleAiGenerate = async () => {
+    setAiBusy(true)
+    setError('')
+    setAiPreview([])
+    setAiWarnings([])
+    try {
+      const result = await generateAdminQuestions({
+        count: aiCount,
+        examType: aiExam,
+        questionType: aiType,
+        difficulty: aiDifficulty,
+      })
+      setAiPreview(result.questions ?? [])
+      setAiWarnings(result.warnings ?? [])
+      if ((result.questions?.length ?? 0) === 0) {
+        setError('AI 未生成有效题目，请调整参数后重试')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI 生成失败')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  const handleAiImport = async () => {
+    if (aiPreview.length === 0) return
+    const ok = await confirm({
+      title: '写入题库',
+      message: `确认将预览中的 ${aiPreview.length} 道题写入题库？`,
+      confirmLabel: '写入',
+      variant: 'info',
+    })
+    if (!ok) return
+
+    setAiImporting(true)
+    setError('')
+    try {
+      const result = await batchCreateAdminQuestions(aiPreview)
+      if (result.success > 0) {
+        flashSuccess(`AI 题目已写入：成功 ${result.success}，失败 ${result.failed}`)
+        setShowAi(false)
+        setAiPreview([])
+        setAiWarnings([])
+        await load()
+      } else {
+        setError(
+          result.errors[0]
+            ? `写入失败：${result.errors[0].message}`
+            : '写入失败，请检查预览内容',
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '写入题库失败')
+    } finally {
+      setAiImporting(false)
+    }
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <AdminPageHeader
         title="题库管理"
-        description="管理测评题库，支持按考试类型筛选、批量导入和导出"
+        description="管理测评题库，支持详情查看、AI 一键出题与批量导入导出"
         actions={
           <>
             <AdminGhostButton onClick={handleTemplate}>下载模板</AdminGhostButton>
             <AdminGhostButton onClick={() => void handleExport('csv')}>导出 CSV</AdminGhostButton>
             <AdminGhostButton onClick={() => void handleExport('json')}>导出 JSON</AdminGhostButton>
             <AdminGhostButton onClick={() => setShowBatch(true)}>批量导入</AdminGhostButton>
+            <AdminGhostButton
+              onClick={() => {
+                setShowAi(true)
+                setAiPreview([])
+                setAiWarnings([])
+                setError('')
+              }}
+            >
+              <span className="inline-flex items-center gap-1">
+                <Sparkles size={12} />
+                AI 一键出题
+              </span>
+            </AdminGhostButton>
             <AdminPrimaryButton onClick={() => setShowCreate(true)}>添加题目</AdminPrimaryButton>
           </>
         }
       />
       <AdminPageBody>
-        {error ? <div className="mb-4"><AdminError message={error} /></div> : null}
-        {successMsg ? <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{successMsg}</div> : null}
+        {error ? (
+          <div className="mb-4">
+            <AdminError message={error} />
+          </div>
+        ) : null}
+        {successMsg ? (
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+            {successMsg}
+          </div>
+        ) : null}
 
-        {/* Filter */}
         <AdminCard className="mb-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-neutral-400">筛选:</span>
@@ -222,7 +358,10 @@ export function AdminQuestionsPage() {
               <button
                 key={et}
                 type="button"
-                onClick={() => { setExamFilter(et); setPage(1) }}
+                onClick={() => {
+                  setExamFilter(et)
+                  setPage(1)
+                }}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   examFilter === et
                     ? 'bg-neutral-900 text-white'
@@ -235,7 +374,140 @@ export function AdminQuestionsPage() {
           </div>
         </AdminCard>
 
-        {/* Batch Import Panel */}
+        {showAi && (
+          <AdminCard className="mb-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles size={16} className="text-neutral-600" />
+              <p className="text-sm font-medium text-neutral-700">AI 一键出题</p>
+            </div>
+            <p className="mb-3 text-xs text-neutral-500">
+              调用后端生成预览（不会直接入库）。确认预览无误后再写入题库。
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-xs text-neutral-400">生成数量</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {AI_COUNTS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setAiCount(n)}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+                        aiCount === n
+                          ? 'bg-neutral-900 text-white'
+                          : 'border border-neutral-200 bg-neutral-50 text-neutral-600'
+                      }`}
+                    >
+                      {n} 题
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-neutral-400">考试类型</label>
+                <select
+                  value={aiExam}
+                  onChange={(e) => setAiExam(e.target.value)}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
+                  {EXAM_TYPES.filter(Boolean).map((et) => (
+                    <option key={et} value={et}>
+                      {EXAM_LABELS[et]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-neutral-400">题型</label>
+                <select
+                  value={aiType}
+                  onChange={(e) => setAiType(e.target.value)}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
+                  <option value="mixed">混合题型</option>
+                  <option value="vocabulary">词汇选择</option>
+                  <option value="grammar_judge">语法判断</option>
+                  <option value="sentence_rewrite">句型改写</option>
+                  <option value="error_correction">段落纠错</option>
+                  <option value="short_writing">短写作</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-neutral-400">目标难度</label>
+                <select
+                  value={aiDifficulty}
+                  onChange={(e) => setAiDifficulty(Number(e.target.value))}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <AdminPrimaryButton disabled={aiBusy || aiImporting} onClick={() => void handleAiGenerate()}>
+                {aiBusy ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 size={12} className="animate-spin" />
+                    生成中…
+                  </span>
+                ) : (
+                  `生成 ${aiCount} 题预览`
+                )}
+              </AdminPrimaryButton>
+              <AdminPrimaryButton
+                disabled={aiBusy || aiImporting || aiPreview.length === 0}
+                onClick={() => void handleAiImport()}
+              >
+                {aiImporting ? '写入中…' : `确认写入题库（${aiPreview.length}）`}
+              </AdminPrimaryButton>
+              <AdminGhostButton
+                disabled={aiBusy || aiImporting}
+                onClick={() => {
+                  setShowAi(false)
+                  setAiPreview([])
+                  setAiWarnings([])
+                }}
+              >
+                取消
+              </AdminGhostButton>
+            </div>
+
+            {aiWarnings.length > 0 && (
+              <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                {aiWarnings.slice(0, 8).map((w) => (
+                  <p key={w}>{w}</p>
+                ))}
+              </div>
+            )}
+
+            {aiPreview.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <p className="text-xs font-medium text-neutral-500">
+                  预览（{aiPreview.length} 题）— 仅预览，未入库
+                </p>
+                {aiPreview.map((q, index) => (
+                  <div
+                    key={`${q.questionType}-${index}`}
+                    className="rounded-xl border border-neutral-100 bg-neutral-50 p-3"
+                  >
+                    <p className="text-sm font-medium text-neutral-800">
+                      #{index + 1} · {EXAM_LABELS[q.examType] ?? q.examType} · {q.questionType} ·
+                      难度{q.difficulty}
+                    </p>
+                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-neutral-600">
+                      {prettyJson({ content: q.content, answer: q.answer })}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </AdminCard>
+        )}
+
         {showBatch && (
           <AdminCard className="mb-4">
             <p className="mb-2 text-sm font-medium text-neutral-700">批量导入（JSON 格式，最多 200 条）</p>
@@ -248,33 +520,58 @@ export function AdminQuestionsPage() {
             />
             <div className="mt-3 flex gap-2">
               <AdminPrimaryButton onClick={() => void handleBatchImport()}>导入</AdminPrimaryButton>
-              <AdminGhostButton onClick={() => { setShowBatch(false); setBatchResult(null); setBatchJson('') }}>取消</AdminGhostButton>
+              <AdminGhostButton
+                onClick={() => {
+                  setShowBatch(false)
+                  setBatchResult(null)
+                  setBatchJson('')
+                }}
+              >
+                取消
+              </AdminGhostButton>
             </div>
             {batchResult && (
               <div className="mt-3 rounded border border-neutral-200 p-3 text-sm">
-                <p>总计: {batchResult.total} · 成功: <span className="text-green-600">{batchResult.success}</span> · 失败: <span className="text-red-600">{batchResult.failed}</span></p>
+                <p>
+                  总计: {batchResult.total} · 成功:{' '}
+                  <span className="text-green-600">{batchResult.success}</span> · 失败:{' '}
+                  <span className="text-red-600">{batchResult.failed}</span>
+                </p>
                 {batchResult.errors.slice(0, 10).map((e) => (
-                  <p key={e.index} className="mt-1 text-xs text-red-500">第 {e.index + 1} 题: {e.message}</p>
+                  <p key={e.index} className="mt-1 text-xs text-red-500">
+                    第 {e.index + 1} 题: {e.message}
+                  </p>
                 ))}
               </div>
             )}
           </AdminCard>
         )}
 
-        {/* Create Panel */}
         {showCreate && (
           <AdminCard className="mb-4">
             <p className="mb-3 text-sm font-medium text-neutral-700">添加新题目</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">步骤</label>
-                <select value={createStep} onChange={(e) => setCreateStep(Number(e.target.value))} className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm">
-                  {[1, 2, 3, 4, 5].map((s) => <option key={s} value={s}>{s} - {STEP_LABELS[s]}</option>)}
+                <select
+                  value={createStep}
+                  onChange={(e) => setCreateStep(Number(e.target.value))}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <option key={s} value={s}>
+                      {s} - {STEP_LABELS[s]}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">题型</label>
-                <select value={createType} onChange={(e) => setCreateType(e.target.value)} className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm">
+                <select
+                  value={createType}
+                  onChange={(e) => setCreateType(e.target.value)}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
                   <option value="vocabulary">词汇选择</option>
                   <option value="grammar_judge">语法判断</option>
                   <option value="sentence_rewrite">句型改写</option>
@@ -284,35 +581,70 @@ export function AdminQuestionsPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">考试类型</label>
-                <select value={createExam} onChange={(e) => setCreateExam(e.target.value)} className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm">
-                  {EXAM_TYPES.filter(Boolean).map((et) => <option key={et} value={et}>{EXAM_LABELS[et]}</option>)}
+                <select
+                  value={createExam}
+                  onChange={(e) => setCreateExam(e.target.value)}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
+                  {EXAM_TYPES.filter(Boolean).map((et) => (
+                    <option key={et} value={et}>
+                      {EXAM_LABELS[et]}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">难度</label>
-                <select value={createDifficulty} onChange={(e) => setCreateDifficulty(Number(e.target.value))} className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm">
-                  {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
+                <select
+                  value={createDifficulty}
+                  onChange={(e) => setCreateDifficulty(Number(e.target.value))}
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">Content (JSON)</label>
-                <textarea value={createContent} onChange={(e) => setCreateContent(e.target.value)} rows={4} placeholder='{"sentence":"...","options":[...]}' className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 font-mono text-xs" />
+                <textarea
+                  value={createContent}
+                  onChange={(e) => setCreateContent(e.target.value)}
+                  rows={4}
+                  placeholder='{"sentence":"...","options":[...]}'
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 font-mono text-xs"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">Answer (JSON)</label>
-                <textarea value={createAnswer} onChange={(e) => setCreateAnswer(e.target.value)} rows={4} placeholder='{"correctOption":"A"}' className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 font-mono text-xs" />
+                <textarea
+                  value={createAnswer}
+                  onChange={(e) => setCreateAnswer(e.target.value)}
+                  rows={4}
+                  placeholder='{"correctOption":"A"}'
+                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 font-mono text-xs"
+                />
               </div>
             </div>
             <div className="mt-3 flex gap-2">
               <AdminPrimaryButton onClick={() => void handleCreate()}>创建</AdminPrimaryButton>
-              <AdminGhostButton onClick={() => { setShowCreate(false); setCreateContent(''); setCreateAnswer('') }}>取消</AdminGhostButton>
+              <AdminGhostButton
+                onClick={() => {
+                  setShowCreate(false)
+                  setCreateContent('')
+                  setCreateAnswer('')
+                }}
+              >
+                取消
+              </AdminGhostButton>
             </div>
           </AdminCard>
         )}
 
-        {/* Question List */}
         <AdminCard className="overflow-hidden p-0 sm:p-0">
           {loading ? (
             <AdminEmpty message="加载中…" />
@@ -322,40 +654,135 @@ export function AdminQuestionsPage() {
             <>
               <ul className="divide-y divide-neutral-100">
                 {items.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+                  <li
+                    key={item.id}
+                    className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+                  >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-neutral-900">
                         <span className="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500">
                           {EXAM_LABELS[item.examType] ?? item.examType}
                         </span>
                         步骤{item.stepNumber} · {item.questionType} · 难度{item.difficulty}
-                        {!item.isEnabled && <span className="ml-2 text-xs text-red-400">已禁用</span>}
+                        {!item.isEnabled && (
+                          <span className="ml-2 text-xs text-red-400">已禁用</span>
+                        )}
                       </p>
                       <p className="mt-1 truncate text-xs text-neutral-400">
-                        {typeof item.content === 'object' ? JSON.stringify(item.content).slice(0, 100) : String(item.content ?? '').slice(0, 100)}
+                        {typeof item.content === 'object'
+                          ? JSON.stringify(item.content).slice(0, 100)
+                          : String(item.content ?? '').slice(0, 100)}
                       </p>
                     </div>
-                    <div className="flex gap-2 text-xs text-neutral-400">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
                       <span>使用 {item.usageCount} 次</span>
+                      <AdminGhostButton onClick={() => void handleViewDetail(item.id)}>
+                        详情
+                      </AdminGhostButton>
                       <AdminGhostButton onClick={() => void handleToggle(item.id, item.isEnabled)}>
                         {item.isEnabled ? '禁用' : '启用'}
                       </AdminGhostButton>
-                      <AdminGhostButton onClick={() => void handleDelete(item.id)}>删除</AdminGhostButton>
+                      <AdminGhostButton onClick={() => void handleDelete(item.id)}>
+                        删除
+                      </AdminGhostButton>
                     </div>
                   </li>
                 ))}
               </ul>
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 border-t border-neutral-100 px-4 py-3">
-                  <AdminGhostButton onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1}>上一页</AdminGhostButton>
-                  <span className="text-xs text-neutral-400">{page} / {totalPages}</span>
-                  <AdminGhostButton onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}>下一页</AdminGhostButton>
+                  <AdminGhostButton
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    disabled={page <= 1}
+                  >
+                    上一页
+                  </AdminGhostButton>
+                  <span className="text-xs text-neutral-400">
+                    {page} / {totalPages}
+                  </span>
+                  <AdminGhostButton
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    下一页
+                  </AdminGhostButton>
                 </div>
               )}
             </>
           )}
         </AdminCard>
       </AdminPageBody>
+
+      <AdminModal
+        open={detailOpen}
+        title="题目详情"
+        onClose={() => {
+          setDetailOpen(false)
+          setDetail(null)
+        }}
+        footer={
+          <AdminGhostButton
+            onClick={() => {
+              setDetailOpen(false)
+              setDetail(null)
+            }}
+          >
+            关闭
+          </AdminGhostButton>
+        }
+      >
+        {detailLoading || !detail ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-neutral-400">
+            <Loader2 size={16} className="animate-spin" />
+            加载详情…
+          </div>
+        ) : (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500">
+              <p>
+                考试类型：
+                <span className="text-neutral-800">
+                  {EXAM_LABELS[detail.examType] ?? detail.examType}
+                </span>
+              </p>
+              <p>
+                题型：
+                <span className="text-neutral-800">{detail.questionType}</span>
+              </p>
+              <p>
+                步骤：
+                <span className="text-neutral-800">
+                  {detail.stepNumber} · {STEP_LABELS[detail.stepNumber] ?? ''}
+                </span>
+              </p>
+              <p>
+                难度：
+                <span className="text-neutral-800">{detail.difficulty}</span>
+              </p>
+              <p>
+                状态：
+                <span className="text-neutral-800">{detail.isEnabled ? '启用' : '禁用'}</span>
+              </p>
+              <p>
+                使用次数：
+                <span className="text-neutral-800">{detail.usageCount}</span>
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-neutral-500">Content</p>
+              <pre className="max-h-52 overflow-auto rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-[11px] text-neutral-700">
+                {prettyJson(detail.content)}
+              </pre>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-neutral-500">Answer</p>
+              <pre className="max-h-40 overflow-auto rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-[11px] text-neutral-700">
+                {prettyJson(detail.answer)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </AdminModal>
     </div>
   )
 }

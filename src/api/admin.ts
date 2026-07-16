@@ -765,6 +765,34 @@ export interface AdminQuestionListItem {
   updatedAt: string
 }
 
+export interface AdminQuestionDetail extends AdminQuestionListItem {
+  answer: unknown
+  createdBy?: string | null
+}
+
+export interface AdminQuestionGenerateItem {
+  stepNumber: number
+  questionType: string
+  examType: string
+  difficulty: number
+  content: unknown
+  answer: unknown
+}
+
+export interface AdminQuestionGenerateResult {
+  previewOnly: boolean
+  message?: string
+  requestedCount: number
+  generatedCount: number
+  filters: {
+    examType: string
+    questionType: string
+    difficulty: number | null
+  }
+  questions: AdminQuestionGenerateItem[]
+  warnings: string[]
+}
+
 export interface AdminQuestionExportResult {
   exportedAt: string
   filters: Record<string, unknown>
@@ -792,6 +820,19 @@ export async function listAdminQuestions(params?: {
   page: number; pageSize: number; totalCount: number; totalPages: number
 }> {
   return get(API_PATHS.admin.questions, { params })
+}
+
+export async function getAdminQuestion(id: string): Promise<AdminQuestionDetail> {
+  return get(API_PATHS.admin.questionById(id))
+}
+
+export async function generateAdminQuestions(body: {
+  count: 1 | 5 | 10 | 20
+  examType?: string
+  questionType?: string
+  difficulty?: number
+}): Promise<AdminQuestionGenerateResult> {
+  return post(API_PATHS.admin.questionsGenerate, body)
 }
 
 export async function createAdminQuestion(body: {

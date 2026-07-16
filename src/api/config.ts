@@ -152,6 +152,7 @@ export const API_PATHS = {
     questionById: (id: string) => `/admin/questions/${id}`,
     questionToggle: (id: string) => `/admin/questions/${id}/toggle`,
     questionsBatch: '/admin/questions/batch',
+    questionsGenerate: '/admin/questions/generate',
     questionsExport: '/admin/questions/export',
     questionsTemplate: '/admin/questions/template',
   },
