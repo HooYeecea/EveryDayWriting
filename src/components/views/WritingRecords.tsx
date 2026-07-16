@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useReportReady } from '../../hooks/useReportReady'
 import { ArrowLeft, BarChart3, Check, ClipboardList, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
+import { BrandLoading } from '../brand/BrandLoading'
 import {
   deleteDraft,
   deleteSubmit,
@@ -752,6 +753,8 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                           </div>
                         </div>
                       </div>
+                    ) : draftDetailLoading ? (
+                      <BrandLoading label="加载草稿内容…" minHeight={280} />
                     ) : (
                       <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
@@ -760,11 +763,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
                           {selectedDraft.title || '无标题'}
                         </h3>
-                        <div className="mt-4 min-h-[12rem]">
-                          <p className="text-sm text-neutral-400">
-                            {draftDetailLoading ? '加载草稿内容…' : '未能加载该草稿'}
-                          </p>
-                        </div>
+                        <p className="mt-4 text-sm text-neutral-400">未能加载该草稿</p>
                       </div>
                     )}
                   </div>
@@ -809,13 +808,13 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     style={submitShellMinH != null ? { minHeight: submitShellMinH } : undefined}
                   >
                     {!submitDetail ? (
-                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                        <div className="min-h-[12rem]">
-                          <p className="text-sm text-neutral-400">
-                            {_submitDetailLoading ? '加载记录详情…' : '未能加载该记录'}
-                          </p>
+                      _submitDetailLoading ? (
+                        <BrandLoading label="加载记录详情…" minHeight={280} />
+                      ) : (
+                        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                          <p className="text-sm text-neutral-400">未能加载该记录</p>
                         </div>
-                      </div>
+                      )
                     ) : (() => {
             const gradingPreview = loadGradingPreview(submitDetail.id)
             const grammarSuggestions = submitDetail.grammarSuggestions ?? []
