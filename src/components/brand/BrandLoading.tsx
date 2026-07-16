@@ -10,13 +10,14 @@ export function BrandLoading({
   className = '',
 }: {
   label?: string
-  minHeight?: number
+  /** 传入 null 时不设内联 minHeight，便于用 className 控制全屏高度 */
+  minHeight?: number | null
   className?: string
 }) {
   return (
     <div
       className={`brand-loading flex flex-col items-center justify-center gap-4 rounded-2xl border border-neutral-200 bg-white px-6 text-center shadow-sm ${className}`}
-      style={{ minHeight }}
+      style={minHeight == null ? undefined : { minHeight }}
       role="status"
       aria-live="polite"
       aria-label={label}
@@ -44,8 +45,8 @@ export function AppBootLoading({ label = '加载中…' }: { label?: string }) {
   return (
     <BrandLoading
       label={label}
-      minHeight={480}
-      className="min-h-screen w-full rounded-none border-0 shadow-none"
+      minHeight={null}
+      className="h-svh min-h-svh w-full rounded-none border-0 bg-[#fafafa] shadow-none"
     />
   )
 }
