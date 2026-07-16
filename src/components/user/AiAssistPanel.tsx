@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Key, Sparkles, Zap } from 'lucide-react'
 import { getAiConfig, submitAiKey } from '../../api/ai'
-import type { AiConfig, AiProviderBrief, FreeQuotaInfo } from '../../types'
+import type { AiConfig, AiProviderBrief } from '../../types'
 import { loadAiAssistSettings, saveAiAssistSettings } from '../../storage/aiSettingsStorage'
 import { MenuSelect } from '../common/MenuSelect'
 

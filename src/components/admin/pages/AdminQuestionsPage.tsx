@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   batchCreateAdminQuestions,
   createAdminQuestion,
@@ -47,7 +47,6 @@ export function AdminQuestionsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [examFilter, setExamFilter] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
 
   // Create form
   const [showCreate, setShowCreate] = useState(false)

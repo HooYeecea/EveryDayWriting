@@ -45,7 +45,6 @@ export function AdminProvidersPage() {
   const [apiKey, setApiKey] = useState('')
   const [sortOrder, setSortOrder] = useState('99')
   const [savingProvider, setSavingProvider] = useState(false)
-  const [freeDefaultProvider, setFreeDefaultProvider] = useState('')
 
   const [modelFormOpen, setModelFormOpen] = useState(false)
   const [modelId, setModelId] = useState('')
