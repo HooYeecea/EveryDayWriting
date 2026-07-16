@@ -19,6 +19,7 @@ import {
   AdminPrimaryButton,
   adminInputClass,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const CONTENT_CACHE_KEY = 'ew_admin_announcement_content'
 
@@ -34,7 +35,7 @@ function writeContentCache(cache: Record<string, string>) {
   localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(cache))
 }
 
-export function AdminAnnouncementsPage() {
+export function AdminAnnouncementsPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminAnnouncementListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +66,8 @@ export function AdminAnnouncementsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const openCreate = () => {
     setEditing(null)

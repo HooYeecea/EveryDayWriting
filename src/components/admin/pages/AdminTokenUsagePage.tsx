@@ -8,8 +8,9 @@ import {
   AdminPageBody,
   AdminPageHeader,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
-export function AdminTokenUsagePage() {
+export function AdminTokenUsagePage({ onReady }: { onReady?: () => void } = {}) {
   const [items, setItems] = useState<AdminTokenUsageItem[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -35,6 +36,8 @@ export function AdminTokenUsagePage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

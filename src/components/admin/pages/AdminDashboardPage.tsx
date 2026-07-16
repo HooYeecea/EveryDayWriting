@@ -41,6 +41,8 @@ import {
   AdminPageBody,
   AdminPageHeader,
 } from '../AdminUi'
+import { BrandLoading } from '../../brand/BrandLoading'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const AUTO_REFRESH_MS = 60_000
 
@@ -91,7 +93,7 @@ function StatCard({
   )
 }
 
-export function AdminDashboardPage() {
+export function AdminDashboardPage({ onReady }: { onReady?: () => void } = {}) {
   const { pathname } = useLocation()
   const { permissions } = useAuth()
   const pageActive = pathname === '/admin'
@@ -110,6 +112,7 @@ export function AdminDashboardPage() {
   const requestIdRef = useRef(0)
   const periodRef = useRef(period)
   const hasDataRef = useRef(false)
+  const periodCacheRef = useRef<Partial<Record<DashboardPeriod, AdminDashboardOverview>>>({})
   const pendingPeriodDirRef = useRef<'next' | 'prev' | null>(null)
   const periodContentRef = useRef<HTMLDivElement | null>(null)
   periodRef.current = period
@@ -124,6 +127,15 @@ export function AdminDashboardPage() {
     } else {
       pendingPeriodDirRef.current = 'next'
     }
+
+    const cached = periodCacheRef.current[next]
+    if (cached) {
+      setPeriod(next)
+      setData(cached)
+      setError('')
+      return
+    }
+
     setPeriod(next)
   }
 
@@ -141,6 +153,7 @@ export function AdminDashboardPage() {
     try {
       const result = await getAdminDashboardOverview(periodRef.current)
       if (requestId !== requestIdRef.current) return
+      periodCacheRef.current[periodRef.current] = result
       setData(result)
     } catch (err) {
       if (requestId !== requestIdRef.current) return
@@ -163,6 +176,19 @@ export function AdminDashboardPage() {
 
   useEffect(() => {
     let cancelled = false
+    if (!canView) {
+      setLoading(false)
+      return
+    }
+
+    const cached = periodCacheRef.current[period]
+    if (cached) {
+      setData(cached)
+      setLoading(false)
+      setPeriodSwitching(false)
+      return
+    }
+
     const mode = hasDataRef.current ? 'period' : 'full'
     void load(mode).then(() => {
       if (!cancelled) resetTimer()
@@ -173,6 +199,8 @@ export function AdminDashboardPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on period / permission only
   }, [canView, period])
+
+  useReportReady(!loading, onReady)
 
   useLayoutEffect(() => {
     if (periodSwitching || !data) return
@@ -315,9 +343,9 @@ export function AdminDashboardPage() {
         ) : null}
 
         {loading && !data ? (
-          <AdminCard>
-            <AdminEmpty message="正在加载运营数据…" />
-          </AdminCard>
+          <BrandLoading label="加载运营数据…" minHeight={360} />
+        ) : periodSwitching ? (
+          <BrandLoading label="切换时间范围…" minHeight={360} />
         ) : !data ? (
           <AdminCard>
             <AdminEmpty message="暂无数据" />

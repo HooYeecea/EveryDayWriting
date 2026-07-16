@@ -13,6 +13,7 @@ import {
   AdminPageBody,
   AdminPageHeader,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const AUTO_REFRESH_MS = 10_000
 
@@ -35,7 +36,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function AdminSystemPage() {
+export function AdminSystemPage({ onReady }: { onReady?: () => void } = {}) {
   const { pathname } = useLocation()
   const { permissions } = useAuth()
   const pageActive = pathname === '/admin/system'
@@ -79,6 +80,8 @@ export function AdminSystemPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial / permission gate only
   }, [canView])
+
+  useReportReady(!loading, onReady)
 
   if (!canView) {
     return (

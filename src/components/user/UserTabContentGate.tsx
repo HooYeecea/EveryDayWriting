@@ -1,9 +1,9 @@
-import { Loader2 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { BrandLoading, BRAND_LOADING_MIN_HEIGHT } from '../brand/BrandLoading'
 
-export const USER_TAB_LOADING_MIN_HEIGHT = 280
+export const USER_TAB_LOADING_MIN_HEIGHT = BRAND_LOADING_MIN_HEIGHT
 
-/** 用户中心 Tab 首次加载占位：固定高度，避免内容到位前视口抖动 */
+/** @deprecated 使用 BrandLoading；保留别名以兼容用户中心既有调用 */
 export function UserTabLoading({
   label = '加载中…',
   minHeight = USER_TAB_LOADING_MIN_HEIGHT,
@@ -11,22 +11,11 @@ export function UserTabLoading({
   label?: string
   minHeight?: number
 }) {
-  return (
-    <div
-      className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white text-sm text-neutral-400 shadow-sm"
-      style={{ minHeight }}
-      role="status"
-      aria-live="polite"
-    >
-      <Loader2 size={22} className="animate-spin text-neutral-300" strokeWidth={1.75} />
-      <span>{label}</span>
-    </div>
-  )
+  return <BrandLoading label={label} minHeight={minHeight} />
 }
 
 /**
- * 首次就绪前只展示稳定加载态；子组件保持挂载以便拉数，就绪后一次切入正式内容。
- * 用 opacity 隐藏（不用 visibility:hidden），避免打卡日历等子层 visibility:visible 穿透。
+ * 首次就绪前只展示品牌加载态；子组件保持挂载以便拉数，就绪后一次切入正式内容。
  */
 export function UserTabContentGate({
   ready,
@@ -41,7 +30,7 @@ export function UserTabContentGate({
 }) {
   return (
     <div className="relative">
-      {!ready && <UserTabLoading label={loadingLabel} minHeight={minHeight} />}
+      {!ready && <BrandLoading label={loadingLabel} minHeight={minHeight} />}
       <div
         className={
           ready

@@ -19,12 +19,13 @@ import {
   AdminPrimaryButton,
   adminInputClass,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 function isEffective(item: AdminAgreementListItem): boolean {
   return new Date(item.effectiveAt).getTime() <= Date.now()
 }
 
-export function AdminAgreementsPage() {
+export function AdminAgreementsPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminAgreementListItem[]>([])
   const [page, setPage] = useState(1)
@@ -62,6 +63,8 @@ export function AdminAgreementsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const handleCreate = async () => {
     if (!title.trim() || !content.trim() || !effectiveAt) {

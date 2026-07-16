@@ -25,6 +25,7 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 import { QuestionPreviewCard } from '../QuestionPreviewCard'
 
 const EXAM_TYPES = ['', 'CET4', 'CET6', 'IELTS', 'TOEFL', 'Postgraduate', 'General']
@@ -46,7 +47,7 @@ const STEP_LABELS: Record<number, string> = {
 }
 const AI_COUNTS = [1, 5, 10, 20] as const
 
-export function AdminQuestionsPage() {
+export function AdminQuestionsPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminQuestionListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -108,6 +109,8 @@ export function AdminQuestionsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const flashSuccess = (msg: string) => {
     setSuccessMsg(msg)
@@ -276,7 +279,7 @@ export function AdminQuestionsPage() {
       title: '写入题库',
       message: `确认将预览中的 ${aiPreview.length} 道题写入题库？`,
       confirmLabel: '写入',
-      variant: 'info',
+      variant: 'default',
     })
     if (!ok) return
 

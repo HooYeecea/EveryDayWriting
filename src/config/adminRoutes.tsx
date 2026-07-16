@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Activity,
@@ -50,12 +50,16 @@ export type AdminMenuKey =
   | 'prompts'
   | 'questions'
 
+export type AdminPageProps = {
+  onReady?: () => void
+}
+
 export interface AdminRoute {
   key: AdminMenuKey
   path: string
   label: string
   icon: LucideIcon
-  element: ReactNode
+  component: ComponentType<AdminPageProps>
   /** 进入该菜单所需权限码；概览页不设，有任一管理权限即可 */
   permission?: string | string[] | null
 }
@@ -68,7 +72,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin',
     label: '数据中心',
     icon: LayoutDashboard,
-    element: <AdminDashboardPage />,
+    component: AdminDashboardPage,
     permission: 'dashboard:view',
   },
   {
@@ -76,7 +80,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/system',
     label: '系统监控',
     icon: Activity,
-    element: <AdminSystemPage />,
+    component: AdminSystemPage,
     permission: 'monitor:view',
   },
   {
@@ -84,7 +88,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/users',
     label: '用户管理',
     icon: Users,
-    element: <AdminUsersPage />,
+    component: AdminUsersPage,
     permission: 'user:list',
   },
   {
@@ -92,7 +96,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/announcements',
     label: '公告管理',
     icon: Bell,
-    element: <AdminAnnouncementsPage />,
+    component: AdminAnnouncementsPage,
     permission: 'announcement:manage',
   },
   {
@@ -100,7 +104,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/agreements',
     label: '协议管理',
     icon: FileText,
-    element: <AdminAgreementsPage />,
+    component: AdminAgreementsPage,
     permission: 'agreement:manage',
   },
   {
@@ -108,7 +112,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/quotes',
     label: '励志语录',
     icon: Quote,
-    element: <AdminQuotesPage />,
+    component: AdminQuotesPage,
     permission: 'quotes:manage',
   },
   {
@@ -116,7 +120,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/checkin-tiers',
     label: '签到段位',
     icon: Trophy,
-    element: <AdminCheckInTiersPage />,
+    component: AdminCheckInTiersPage,
     permission: 'checkin_tier:manage',
   },
   {
@@ -124,7 +128,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/topic-types',
     label: '题目类型',
     icon: ListOrdered,
-    element: <AdminTopicTypesPage />,
+    component: AdminTopicTypesPage,
     permission: 'topic_type:manage',
   },
   {
@@ -132,7 +136,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/providers',
     label: '模型供应商',
     icon: Cpu,
-    element: <AdminProvidersPage />,
+    component: AdminProvidersPage,
     permission: 'provider:manage',
   },
   {
@@ -140,7 +144,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/roles',
     label: '角色权限',
     icon: Shield,
-    element: <AdminRolesPage />,
+    component: AdminRolesPage,
     permission: 'role:manage',
   },
   {
@@ -148,7 +152,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/configs',
     label: '系统配置',
     icon: Settings,
-    element: <AdminConfigsPage />,
+    component: AdminConfigsPage,
     permission: 'config:manage',
   },
   {
@@ -156,7 +160,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/token-usage',
     label: 'Token 用量',
     icon: Gauge,
-    element: <AdminTokenUsagePage />,
+    component: AdminTokenUsagePage,
     permission: 'token_usage:view',
   },
   {
@@ -164,7 +168,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/audit-logs',
     label: '操作审计',
     icon: ScrollText,
-    element: <AdminAuditLogsPage />,
+    component: AdminAuditLogsPage,
     permission: 'audit:view',
   },
   {
@@ -172,7 +176,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/prompts',
     label: 'Prompt 模板',
     icon: MessageSquare,
-    element: <AdminPromptsPage />,
+    component: AdminPromptsPage,
     permission: 'prompt:manage',
   },
   {
@@ -180,7 +184,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     path: '/admin/questions',
     label: '题库管理',
     icon: ListOrdered,
-    element: <AdminQuestionsPage />,
+    component: AdminQuestionsPage,
     permission: 'test_question:manage',
   },
 ]
@@ -199,8 +203,7 @@ export function getVisibleAdminRoutes(permissions: string[]): AdminRoute[] {
 }
 
 export function getFirstAllowedAdminPath(permissions: string[]): string {
-  const visible = getVisibleAdminRoutes(permissions)
-  return visible[0]?.path ?? ADMIN_DEFAULT_PATH
+  return getVisibleAdminRoutes(permissions)[0]?.path ?? ADMIN_DEFAULT_PATH
 }
 
 export function canAccessAdminPath(pathname: string, permissions: string[]): boolean {

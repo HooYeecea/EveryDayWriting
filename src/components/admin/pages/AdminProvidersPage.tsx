@@ -24,11 +24,12 @@ import {
   AdminPrimaryButton,
   adminInputClass,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const DEFAULT_TEMPLATE = { messages: [{ role: 'user', content: '{{prompt}}' }] }
 const DEFAULT_MAPPING = { content: 'choices.0.message.content' }
 
-export function AdminProvidersPage() {
+export function AdminProvidersPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminProviderItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +71,8 @@ export function AdminProvidersPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const refreshDetail = async (id: string) => {
     setDetail(await getAdminProvider(id))
