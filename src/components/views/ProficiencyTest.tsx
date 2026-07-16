@@ -9,13 +9,13 @@ import {
   Sparkles,
   Target,
 } from 'lucide-react'
-import { callAiProxy } from '../api/ai'
-import { isApiError } from '../api/request'
-import * as proficiencyApi from '../api/proficiencyTest'
-import { useAuth } from '../context/AuthContext'
-import { loadAiAssistSettings } from '../storage/aiSettingsStorage'
-import { parseAiProxyContent } from '../storage/gradingPreviewStorage'
-import { getToken } from '../storage/tokenStorage'
+import { callAiProxy } from '../../api/ai'
+import { isApiError } from '../../api/request'
+import * as proficiencyApi from '../../api/proficiencyTest'
+import { useAuth } from '../../context/AuthContext'
+import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
+import { parseAiProxyContent } from '../../storage/gradingPreviewStorage'
+import { getToken } from '../../storage/tokenStorage'
 import type {
   ObjectiveQuestion,
   ProficiencyEvaluationResult,
@@ -23,8 +23,8 @@ import type {
   ProficiencyTestStatusResponse,
   SelfAssessmentQuestion,
   WritingPromptResponse,
-} from '../types/proficiencyTest'
-import { getDefaultHomePath } from '../utils/roles'
+} from '../../types/proficiencyTest'
+import { getDefaultHomePath } from '../../utils/roles'
 
 type ViewMode = 'loading' | 'welcome' | 'testing' | 'evaluating' | 'result' | 'error'
 
