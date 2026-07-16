@@ -22,7 +22,7 @@ import type {
   ProficiencyStage,
   ProficiencyTestStatusResponse,
   SelfAssessmentQuestion,
-  WritingPromptResponse,
+  WritingTask,
 } from '../../types/proficiencyTest'
 import { getDefaultHomePath } from '../../utils/roles'
 
@@ -50,6 +50,16 @@ function questionTypeLabel(type: string): string {
   }
 }
 
+function difficultyBandLabel(band?: string, difficulty?: number): string {
+  if (band === 'easy' || difficulty === 1 || difficulty === 2) return '简单'
+  if (band === 'hard' || difficulty === 4 || difficulty === 5) return '较难'
+  return '中等'
+}
+
+function writingSlotLabel(slot: string): string {
+  return slot === 'hard' ? '进阶写作' : '基础写作'
+}
+
 function normalizeContent(content: ObjectiveQuestion['content']) {
   if (!content) return {}
   if (typeof content === 'string') {
@@ -60,6 +70,13 @@ function normalizeContent(content: ObjectiveQuestion['content']) {
     }
   }
   return content as Record<string, unknown>
+}
+
+function sortWritingTasks(tasks: WritingTask[]): WritingTask[] {
+  const order = { easy: 0, hard: 1 }
+  return [...tasks].sort(
+    (a, b) => (order[a.slot as keyof typeof order] ?? 9) - (order[b.slot as keyof typeof order] ?? 9),
+  )
 }
 
 export function ProficiencyTestPage() {
@@ -80,24 +97,47 @@ export function ProficiencyTestPage() {
   const [objectiveQuestions, setObjectiveQuestions] = useState<ObjectiveQuestion[]>([])
   const [objectiveAnswers, setObjectiveAnswers] = useState<Record<string, string>>({})
   const [objectiveIndex, setObjectiveIndex] = useState(0)
-  const [writingPrompt, setWritingPrompt] = useState<WritingPromptResponse | null>(null)
-  const [writingText, setWritingText] = useState('')
+  const [writingTasks, setWritingTasks] = useState<WritingTask[]>([])
+  const [writingTexts, setWritingTexts] = useState<Record<string, string>>({})
+  const [writingIndex, setWritingIndex] = useState(0)
   const [result, setResult] = useState<ProficiencyEvaluationResult | null>(null)
   const [overallLevel, setOverallLevel] = useState<string | null>(null)
   const [overallScore, setOverallScore] = useState<number | null>(null)
 
-  const wordCount = useMemo(() => countWords(writingText), [writingText])
+  const currentWriting = writingTasks[writingIndex]
+  const currentWritingText = currentWriting ? writingTexts[currentWriting.slot] ?? '' : ''
+  const currentWordCount = useMemo(
+    () => countWords(currentWritingText),
+    [currentWritingText],
+  )
 
-  const restoreFromStage = useCallback(async (id: string, current: ProficiencyStage) => {
-    if (current === 'B' || current === 'C') {
-      const qs = await proficiencyApi.getObjectiveQuestions(id)
-      setObjectiveQuestions(qs.questions)
-    }
-    if (current === 'C') {
-      const prompt = await proficiencyApi.getWritingPrompt(id)
-      setWritingPrompt(prompt)
-    }
+  const loadWritingTasks = useCallback(async (id: string) => {
+    const data = await proficiencyApi.getWritingPrompts(id)
+    const tasks = sortWritingTasks(data.tasks ?? [])
+    setWritingTasks(tasks)
+    setWritingTexts((prev) => {
+      const next = { ...prev }
+      for (const task of tasks) {
+        if (task.text) next[task.slot] = task.text
+        else if (next[task.slot] == null) next[task.slot] = ''
+      }
+      return next
+    })
+    setWritingIndex(0)
   }, [])
+
+  const restoreFromStage = useCallback(
+    async (id: string, current: ProficiencyStage) => {
+      if (current === 'B' || current === 'C') {
+        const qs = await proficiencyApi.getObjectiveQuestions(id)
+        setObjectiveQuestions(qs.questions)
+      }
+      if (current === 'C') {
+        await loadWritingTasks(id)
+      }
+    },
+    [loadWritingTasks],
+  )
 
   const runEvaluation = useCallback(
     async (id: string) => {
@@ -194,8 +234,9 @@ export function ProficiencyTestPage() {
       setSelfAnswers({})
       setObjectiveAnswers({})
       setObjectiveIndex(0)
-      setWritingText('')
-      setWritingPrompt(null)
+      setWritingTexts({})
+      setWritingTasks([])
+      setWritingIndex(0)
       if (start.currentStage === 'B' || start.currentStage === 'C') {
         await restoreFromStage(start.testId, start.currentStage)
       }
@@ -268,8 +309,7 @@ export function ProficiencyTestPage() {
           answer: objectiveAnswers[q.id].trim(),
         })),
       )
-      const prompt = await proficiencyApi.getWritingPrompt(testId)
-      setWritingPrompt(prompt)
+      await loadWritingTasks(testId)
       setStage('C')
     } catch (err) {
       setError(err instanceof Error ? err.message : '提交客观题失败')
@@ -279,21 +319,40 @@ export function ProficiencyTestPage() {
   }
 
   const handleSubmitWriting = async () => {
-    if (!testId || !writingPrompt) return
-    const min = writingPrompt.minWords ?? 80
-    const max = (writingPrompt.maxWords ?? 150) + 50
-    if (wordCount < min) {
-      setError(`请至少写 ${min} 词（当前 ${wordCount}）`)
-      return
+    if (!testId || writingTasks.length === 0) return
+
+    for (const task of writingTasks) {
+      const text = (writingTexts[task.slot] ?? '').trim()
+      const words = countWords(text)
+      if (!text) {
+        setError(`请完成${writingSlotLabel(task.slot)}`)
+        setWritingIndex(writingTasks.findIndex((t) => t.slot === task.slot))
+        return
+      }
+      if (words < task.minWords) {
+        setError(`${writingSlotLabel(task.slot)}请至少写 ${task.minWords} 词（当前 ${words}）`)
+        setWritingIndex(writingTasks.findIndex((t) => t.slot === task.slot))
+        return
+      }
+      if (words > task.maxWords + 40) {
+        setError(
+          `${writingSlotLabel(task.slot)}请控制在约 ${task.maxWords} 词以内（当前 ${words}）`,
+        )
+        setWritingIndex(writingTasks.findIndex((t) => t.slot === task.slot))
+        return
+      }
     }
-    if (wordCount > max) {
-      setError(`请控制在约 ${writingPrompt.maxWords} 词以内（当前 ${wordCount}）`)
-      return
-    }
+
     setBusy(true)
     setError('')
     try {
-      await proficiencyApi.submitWriting(testId, writingText)
+      await proficiencyApi.submitWritingAnswers(
+        testId,
+        writingTasks.map((task) => ({
+          slot: task.slot,
+          text: (writingTexts[task.slot] ?? '').trim(),
+        })),
+      )
       setBusy(false)
       await runEvaluation(testId)
     } catch (err) {
@@ -340,7 +399,7 @@ export function ProficiencyTestPage() {
         <StageCard
           step="1 / 3"
           title="快速自评"
-          subtitle="约 30 秒，帮助我们了解你的练习背景"
+          subtitle="约 1 分钟，帮助我们了解你的练习背景与目标"
         >
           <div className="space-y-5">
             {selfQuestions.map((q) => (
@@ -380,7 +439,7 @@ export function ProficiencyTestPage() {
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-              下一步：基础题
+              下一步：递进基础题
               <ArrowRight size={16} />
             </button>
           </div>
@@ -390,9 +449,15 @@ export function ProficiencyTestPage() {
       {view === 'testing' && stage === 'B' && currentObjective && (
         <StageCard
           step={`2 / 3 · ${objectiveIndex + 1}/${objectiveQuestions.length}`}
-          title="基础能力题"
-          subtitle={`${questionTypeLabel(currentObjective.questionType)} · 约 1–2 分钟`}
+          title="递进基础题"
+          subtitle={`${questionTypeLabel(currentObjective.questionType)} · ${difficultyBandLabel(currentObjective.difficultyBand, currentObjective.difficulty)} · 由易到难共 ${objectiveQuestions.length || 10} 题`}
         >
+          <div className="mb-3 flex items-center gap-2 text-xs text-neutral-400">
+            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">
+              {difficultyBandLabel(currentObjective.difficultyBand, currentObjective.difficulty)}
+            </span>
+            <span>难度 {currentObjective.difficulty}/5</span>
+          </div>
           <ObjectiveQuestionView
             question={currentObjective}
             answer={objectiveAnswers[currentObjective.id] ?? ''}
@@ -430,49 +495,112 @@ export function ProficiencyTestPage() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-                进入短写作
+                进入双写作
               </button>
             )}
           </div>
         </StageCard>
       )}
 
-      {view === 'testing' && stage === 'C' && writingPrompt && (
+      {view === 'testing' && stage === 'C' && currentWriting && (
         <StageCard
-          step="3 / 3"
-          title="短写作"
-          subtitle={writingPrompt.instruction || '写 80–150 词，约 2–3 分钟'}
+          step={`3 / 3 · ${writingIndex + 1}/${writingTasks.length}`}
+          title="一易一难双写作"
+          subtitle="先完成基础写作，再挑战进阶写作；两篇都要提交"
         >
+          <div className="mb-4 flex gap-2">
+            {writingTasks.map((task, index) => {
+              const done = countWords(writingTexts[task.slot] ?? '') >= task.minWords
+              const active = index === writingIndex
+              return (
+                <button
+                  key={task.slot}
+                  type="button"
+                  onClick={() => setWritingIndex(index)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                    active
+                      ? 'border-neutral-900 bg-neutral-900 text-white'
+                      : done
+                        ? 'border-neutral-300 bg-neutral-50 text-neutral-700'
+                        : 'border-neutral-200 bg-white text-neutral-500'
+                  }`}
+                >
+                  {writingSlotLabel(task.slot)}
+                  {done ? ' · 已写' : ''}
+                </button>
+              )
+            })}
+          </div>
+
           <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="mb-2 flex items-center gap-2 text-xs text-neutral-400">
+              <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">
+                {writingSlotLabel(currentWriting.slot)}
+              </span>
+              <span>难度 {currentWriting.difficulty}/5</span>
+            </div>
             <p className="font-serif text-base leading-relaxed text-neutral-800">
-              {writingPrompt.prompt}
+              {currentWriting.prompt}
             </p>
+            {currentWriting.instruction && (
+              <p className="mt-2 text-xs text-neutral-500">{currentWriting.instruction}</p>
+            )}
           </div>
           <textarea
-            value={writingText}
-            onChange={(e) => setWritingText(e.target.value)}
-            rows={10}
+            value={currentWritingText}
+            onChange={(e) =>
+              setWritingTexts((prev) => ({
+                ...prev,
+                [currentWriting.slot]: e.target.value,
+              }))
+            }
+            rows={9}
             placeholder="Write your response in English…"
             className="mt-4 w-full resize-y rounded-xl border border-neutral-200 bg-white px-4 py-3 font-serif text-sm leading-relaxed text-neutral-800 outline-none focus:border-neutral-400 focus:bg-white"
           />
           <div className="mt-2 flex items-center justify-between text-xs text-neutral-400">
             <span>
-              建议 {writingPrompt.minWords}–{writingPrompt.maxWords} 词
+              建议 {currentWriting.minWords}–{currentWriting.maxWords} 词
             </span>
-            <span className={wordCount < (writingPrompt.minWords ?? 80) ? 'text-amber-600' : ''}>
-              {wordCount} 词
+            <span
+              className={
+                currentWordCount < currentWriting.minWords ? 'text-amber-600' : ''
+              }
+            >
+              {currentWordCount} 词
             </span>
           </div>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleSubmitWriting()}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
-          >
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            提交并开始 AI 评估
-          </button>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              disabled={writingIndex === 0 || busy}
+              onClick={() => setWritingIndex((i) => Math.max(0, i - 1))}
+              className="rounded-lg border border-neutral-200 px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
+            >
+              上一篇
+            </button>
+            {writingIndex < writingTasks.length - 1 ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setWritingIndex((i) => i + 1)}
+                className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
+              >
+                下一篇
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleSubmitWriting()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
+              >
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                提交两篇并评估
+              </button>
+            )}
+          </div>
         </StageCard>
       )}
 
@@ -588,14 +716,14 @@ function WelcomePanel({
         {isResume ? '继续英语能力测评' : '先了解你的英语写作水平'}
       </h1>
       <p className="mt-3 text-center text-sm leading-relaxed text-neutral-500">
-        接下来有一段约 3–5 分钟的测评流程。完成后，AI
-        会评估你的当前水平，并生成更适合你的写作提升计划。
+        约 5–8 分钟：自评 + 由易到难基础题 + 一易一难两篇短写作。完成后 AI
+        会给出等级诊断与个人计划。
       </p>
 
       <div className="mt-6 space-y-3">
         {[
-          { icon: ClipboardList, title: '快速自评 + 基础题', desc: '了解背景并校准基础能力' },
-          { icon: PenLine, title: '短写作样本', desc: '80–150 词，最能反映真实写作水平' },
+          { icon: ClipboardList, title: '自评 + 递进基础题', desc: '约 10 题，难度由易到难校准能力区间' },
+          { icon: PenLine, title: '一易一难双写作', desc: '基础篇 + 进阶篇，更准确反映真实写作水平' },
           { icon: Sparkles, title: 'AI 分析与个人计划', desc: '给出等级诊断与后续练习规划' },
         ].map(({ icon: Icon, title, desc }) => (
           <div
@@ -748,7 +876,7 @@ function ResultPanel({
           测评完成
         </h1>
         <p className="mt-2 text-sm text-neutral-500">
-          {result?.summary || '已根据你的短写作与基础题生成能力画像'}
+          {result?.summary || '已根据你的双写作与基础题生成能力画像'}
         </p>
       </div>
 

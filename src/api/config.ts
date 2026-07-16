@@ -97,6 +97,7 @@ export const API_PATHS = {
     selfAssessment: (testId: string) => `/proficiency-test/${testId}/self-assessment`,
     objectiveQuestions: (testId: string) => `/proficiency-test/${testId}/objective-questions`,
     objectiveAnswers: (testId: string) => `/proficiency-test/${testId}/objective-answers`,
+    writingPrompts: (testId: string) => `/proficiency-test/${testId}/writing-prompts`,
     writingPrompt: (testId: string) => `/proficiency-test/${testId}/writing-prompt`,
     writing: (testId: string) => `/proficiency-test/${testId}/writing`,
     evaluationPayload: (testId: string) => `/proficiency-test/${testId}/evaluation-payload`,

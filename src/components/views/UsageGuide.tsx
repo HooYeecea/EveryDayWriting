@@ -37,7 +37,7 @@ export function UsageGuide() {
                     <p className="mt-2 text-sm leading-relaxed text-neutral-600">
                       {onboarding?.status === 'in_progress'
                         ? '你有一份未完成的能力测评，继续完成后可获得个人写作提升计划。'
-                        : '你还没有完成英语水平测评。大约 3–5 分钟，完成后会生成更适合你的练习规划。'}
+                        : '你还没有完成英语水平测评。约 5–8 分钟（自评 + 递进基础题 + 双写作），完成后会生成更适合你的练习规划。'}
                     </p>
                   </div>
                 </div>

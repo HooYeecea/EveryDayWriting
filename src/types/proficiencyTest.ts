@@ -8,6 +8,9 @@ export type ProficiencyTestStatus =
 /** 测评阶段：A 自评 / B 客观题 / C 短写作 / done */
 export type ProficiencyStage = 'A' | 'B' | 'C' | 'done'
 
+export type WritingSlot = 'easy' | 'hard'
+export type DifficultyBand = 'easy' | 'medium' | 'hard'
+
 /** profile / 登录后的引导摘要 */
 export interface ProficiencyOnboardingBrief {
   status: ProficiencyTestStatus
@@ -63,12 +66,16 @@ export interface ObjectiveQuestion {
   id: string
   questionType: string
   difficulty: number
+  /** easy | medium | hard */
+  difficultyBand?: DifficultyBand | string
   content: ObjectiveQuestionContent | string | null
   sortOrder: number
 }
 
 export interface ObjectiveQuestionsResponse {
   testId: string
+  totalCount?: number
+  difficultyCurve?: string
   questions: ObjectiveQuestion[]
 }
 
@@ -78,23 +85,34 @@ export interface SubmitObjectiveAnswersResponse {
   correctCount: number
   totalCount: number
   objectiveScore: number
+  bandBreakdown?: Record<string, { correct?: number; total?: number }>
 }
 
-export interface WritingPromptResponse {
-  testId: string
-  questionId: string | null
+export interface WritingTask {
+  slot: WritingSlot | string
+  questionId?: string | null
+  difficulty: number
   prompt: string
   instruction?: string | null
   minWords: number
   maxWords: number
   suggestedMinutes?: number
+  text?: string | null
+  wordCount?: number | null
+  submitted?: boolean
+}
+
+export interface WritingPromptsResponse {
+  testId: string
+  tasks: WritingTask[]
 }
 
 export interface SubmitWritingResponse {
   testId: string
-  wordCount: number
+  totalWordCount: number
   currentStage: ProficiencyStage
   readyForEvaluation: boolean
+  tasks: WritingTask[]
 }
 
 export interface EvaluationPayloadResponse {
@@ -154,6 +172,7 @@ export interface ProficiencyResultResponse {
   overallScore: number | null
   objectiveScore: number | null
   writingWordCount: number | null
+  writingTasks?: unknown
   result: ProficiencyEvaluationResult | null
   completedAt: string | null
 }

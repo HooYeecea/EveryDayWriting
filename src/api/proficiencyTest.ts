@@ -9,7 +9,7 @@ import type {
   StudyPlanResponse,
   SubmitObjectiveAnswersResponse,
   SubmitWritingResponse,
-  WritingPromptResponse,
+  WritingPromptsResponse,
   ProficiencyResultResponse,
   SelfAssessmentQuestion,
 } from '../types/proficiencyTest'
@@ -57,15 +57,15 @@ export async function submitObjectiveAnswers(
   })
 }
 
-export async function getWritingPrompt(testId: string): Promise<WritingPromptResponse> {
-  return get<WritingPromptResponse>(API_PATHS.proficiencyTest.writingPrompt(testId))
+export async function getWritingPrompts(testId: string): Promise<WritingPromptsResponse> {
+  return get<WritingPromptsResponse>(API_PATHS.proficiencyTest.writingPrompts(testId))
 }
 
-export async function submitWriting(
+export async function submitWritingAnswers(
   testId: string,
-  text: string,
+  answers: Array<{ slot: string; text: string }>,
 ): Promise<SubmitWritingResponse> {
-  return post<SubmitWritingResponse>(API_PATHS.proficiencyTest.writing(testId), { text })
+  return post<SubmitWritingResponse>(API_PATHS.proficiencyTest.writing(testId), { answers })
 }
 
 export async function getEvaluationPayload(testId: string): Promise<EvaluationPayloadResponse> {
