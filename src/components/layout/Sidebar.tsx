@@ -5,6 +5,7 @@ import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { useAuth } from '../../context/AuthContext'
 import { useWritingFocus } from '../../context/WritingFocusContext'
+import { useProficiencyGuideRedDot } from '../../hooks/useProficiencyGuideRedDot'
 import { NAV_ICON_MAP } from './navConfig'
 import {
   PANEL_HEADER_CLASS,
@@ -31,14 +32,10 @@ export function Sidebar({
   onToggleCollapse,
   onClose,
 }: SidebarProps) {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated } = useAuth()
   const { navigationLocked } = useWritingFocus()
   const { alert } = useAppAlert()
-  const showGuideRedDot = Boolean(
-    isAuthenticated &&
-      user?.proficiencyOnboarding?.showGuideRedDot &&
-      user.proficiencyOnboarding.status !== 'completed',
-  )
+  const showGuideRedDot = useProficiencyGuideRedDot()
 
   const guardNavClick = (targetPath: string, event: MouseEvent) => {
     if (navigationLocked && targetPath !== DEFAULT_PATH) {
@@ -161,8 +158,11 @@ export function Sidebar({
                       strokeWidth={isActive ? 2 : 1.75}
                       className={isActive ? 'text-neutral-800' : 'text-neutral-400'}
                     />
-                    {item.key === 'usage-guide' && showGuideRedDot && (
-                      <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                    {item.key === 'usage-guide' && showGuideRedDot && collapsed && (
+                      <span
+                        className="absolute -right-0.5 -top-0.5 hidden h-2 w-2 rounded-full bg-red-500 lg:block"
+                        aria-hidden
+                      />
                     )}
                   </span>
                   <span
@@ -172,6 +172,12 @@ export function Sidebar({
                   >
                     {item.label}
                   </span>
+                  {item.key === 'usage-guide' && showGuideRedDot && !collapsed && (
+                    <span
+                      className="ml-auto h-2 w-2 shrink-0 rounded-full bg-red-500"
+                      aria-label="未完成能力测评"
+                    />
+                  )}
                 </>
               )}
             </NavLink>

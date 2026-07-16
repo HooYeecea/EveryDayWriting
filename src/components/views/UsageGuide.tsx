@@ -1,34 +1,14 @@
 import { BookOpen, HelpCircle, MessageCircle, Mic, Target, Zap, ArrowRight } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { dismissProficiencyRedDot } from '../../api/proficiencyTest'
 import { useAuth } from '../../context/AuthContext'
+import { useProficiencyGuideRedDot } from '../../hooks/useProficiencyGuideRedDot'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
 export function UsageGuide() {
-  const { user, isAuthenticated, refreshProfile } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const onboarding = user?.proficiencyOnboarding
-  const showTestEntry =
-    isAuthenticated && onboarding && onboarding.status !== 'completed'
-  const [redDotVisible, setRedDotVisible] = useState(
-    Boolean(showTestEntry && onboarding?.showGuideRedDot),
-  )
-
-  useEffect(() => {
-    setRedDotVisible(Boolean(showTestEntry && onboarding?.showGuideRedDot))
-  }, [showTestEntry, onboarding?.showGuideRedDot])
-
-  useEffect(() => {
-    if (!showTestEntry || !onboarding?.showGuideRedDot) return
-    void dismissProficiencyRedDot()
-      .then(() => {
-        setRedDotVisible(false)
-        return refreshProfile()
-      })
-      .catch(() => {
-        // 红点关闭失败不影响页面
-      })
-  }, [showTestEntry, onboarding?.showGuideRedDot, refreshProfile])
+  const showGuideRedDot = useProficiencyGuideRedDot()
+  const showTestEntry = isAuthenticated && showGuideRedDot
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -36,6 +16,9 @@ export function UsageGuide() {
         <div className="flex items-center gap-2">
           <HelpCircle size={18} className="text-neutral-500" />
           <h1 className={PANEL_TITLE_CLASS}>使用指南</h1>
+          {showTestEntry && (
+            <span className="h-2 w-2 rounded-full bg-red-500" aria-label="未完成能力测评" />
+          )}
         </div>
       </div>
 
@@ -47,9 +30,7 @@ export function UsageGuide() {
                 <div className="flex items-start gap-3">
                   <div className="relative mt-0.5">
                     <Target size={18} className="text-neutral-700" />
-                    {redDotVisible && (
-                      <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
-                    )}
+                    <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
                   </div>
                   <div>
                     <h2 className="text-sm font-medium text-neutral-900">英语能力测评</h2>

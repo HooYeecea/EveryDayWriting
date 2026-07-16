@@ -5,20 +5,17 @@ import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { useAuth } from '../../context/AuthContext'
 import { useWritingFocus } from '../../context/WritingFocusContext'
+import { useProficiencyGuideRedDot } from '../../hooks/useProficiencyGuideRedDot'
 import { NAV_ICON_MAP } from './navConfig'
 
 const MAIN_ROUTES = APP_ROUTES.filter((route) => route.key !== 'user-center')
 const FOCUS_LOCK_HINT = '专注写作中，请先结束或停止计时后再切换页面'
 
 export function MobileBottomNav() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated } = useAuth()
   const { navigationLocked } = useWritingFocus()
   const { alert } = useAppAlert()
-  const showGuideRedDot = Boolean(
-    isAuthenticated &&
-      user?.proficiencyOnboarding?.showGuideRedDot &&
-      user.proficiencyOnboarding.status !== 'completed',
-  )
+  const showGuideRedDot = useProficiencyGuideRedDot()
 
   const guardNavClick = (targetPath: string, event: MouseEvent) => {
     if (navigationLocked && targetPath !== DEFAULT_PATH) {
@@ -78,7 +75,10 @@ export function MobileBottomNav() {
                   <span className="relative">
                     <Icon size={20} strokeWidth={isActive ? 2 : 1.75} />
                     {item.key === 'usage-guide' && showGuideRedDot && (
-                      <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                      <span
+                        className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-red-500"
+                        aria-label="未完成能力测评"
+                      />
                     )}
                   </span>
                   <span className="truncate">{item.label}</span>
