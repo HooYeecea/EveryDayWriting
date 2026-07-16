@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useReportReady } from '../../hooks/useReportReady'
 import { ArrowLeft, BarChart3, Check, ClipboardList, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
 import {
   deleteDraft,
@@ -175,7 +176,7 @@ function resolveVersionList(
   return []
 }
 
-export function WritingRecords() {
+export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated } = useAuth()
   const { alert } = useAppAlert()
   const { confirm } = useAppConfirm()
@@ -191,8 +192,10 @@ export function WritingRecords() {
   const [selectedDraft, setSelectedDraft] = useState<WritingDraftListItem | null>(null)
   const [draftDetail, setDraftDetail] = useState<WritingDraft | null>(null)
   const [draftDetailLoading, setDraftDetailLoading] = useState(false)
-  const [savesLoading, setSavesLoading] = useState(false)
-  const [submitsLoading, setSubmitsLoading] = useState(false)
+  const [savesLoading, setSavesLoading] = useState(() => isAuthenticated)
+  const [submitsLoading, setSubmitsLoading] = useState(() => isAuthenticated)
+
+  useReportReady(!isAuthenticated || (!savesLoading && !submitsLoading), onReady)
   const [mobileShowDetail, setMobileShowDetail] = useState(false)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [activeKeyword, setActiveKeyword] = useState('')
@@ -348,7 +351,11 @@ export function WritingRecords() {
 
   // 仅当前页激活时拉草稿；不再依赖 location.key（侧栏切换会误触发）
   useEffect(() => {
-    if (!isAuthenticated || !isRecordsActive) return
+    if (!isAuthenticated) {
+      setSavesLoading(false)
+      return
+    }
+    if (!isRecordsActive) return
 
     let cancelled = false
     setSavesLoading(true)
@@ -366,7 +373,11 @@ export function WritingRecords() {
 
   // 仅服务端 keyword 变化时重拉；字段勾选由本地 useMemo 过滤
   useEffect(() => {
-    if (!isAuthenticated || !isRecordsActive) return
+    if (!isAuthenticated) {
+      setSubmitsLoading(false)
+      return
+    }
+    if (!isRecordsActive) return
 
     let cancelled = false
     setSubmitsLoading(true)

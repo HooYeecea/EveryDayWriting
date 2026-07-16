@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
 import { useLocation } from 'react-router-dom'
+import { BrandContentGate } from '../brand/BrandLoading'
 import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
 
 function routeIndex(pathname: string): number {
@@ -10,6 +11,7 @@ function routeIndex(pathname: string): number {
  * 用户端主内容区切换：
  * - `/writing` 始终挂载，避免写作内容丢失
  * - 其它页首次访问再挂载，之后保活（保留退出动画与二次进入状态）
+ * - 首次进入某页时展示品牌加载态，页面 onReady 后再呈现内容
  */
 export function AppPageSwitcher() {
   const { pathname } = useLocation()
@@ -23,6 +25,16 @@ export function AppPageSwitcher() {
   const [mountedPaths, setMountedPaths] = useState<Set<string>>(
     () => new Set([DEFAULT_PATH, pathname]),
   )
+  const [readyPaths, setReadyPaths] = useState<Set<string>>(() => new Set())
+
+  const markPageReady = useCallback((path: string) => {
+    setReadyPaths((prev) => {
+      if (prev.has(path)) return prev
+      const next = new Set(prev)
+      next.add(path)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     setMountedPaths((prev) => {
@@ -88,12 +100,12 @@ export function AppPageSwitcher() {
 
   return (
     <div className="app-page-shell">
-      {APP_ROUTES.map(({ path, key, element }) => {
-        const shouldMount = mountedPaths.has(path)
-        if (!shouldMount) return null
+      {APP_ROUTES.map(({ path, key, label, component: Page }) => {
+        if (!mountedPaths.has(path)) return null
 
         const isActive = pathname === path
         const isExiting = exitingPath === path
+        const ready = readyPaths.has(path)
         const paneClass = [
           'app-page-pane',
           isActive ? 'app-page-pane--active' : '',
@@ -111,7 +123,13 @@ export function AppPageSwitcher() {
             aria-hidden={!isActive}
             onAnimationEnd={isActive ? clearEnterClass : undefined}
           >
-            {element}
+            <BrandContentGate
+              ready={ready}
+              loadingLabel={`加载${label}…`}
+              minHeight={420}
+            >
+              <Page onReady={() => markPageReady(path)} />
+            </BrandContentGate>
           </div>
         )
       })}

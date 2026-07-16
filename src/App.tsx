@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
+import { AppBootLoading } from './components/brand/BrandLoading'
 import { Layout } from './components/layout/Layout'
 import { AppPageSwitcher } from './components/layout/AppPageSwitcher'
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -21,14 +22,6 @@ import {
   getDefaultHomePath,
   isAdminOnly,
 } from './utils/roles'
-
-function AppLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafafa] text-sm text-neutral-400">
-      加载中…
-    </div>
-  )
-}
 
 function App() {
   const location = useLocation()
@@ -54,7 +47,7 @@ function App() {
   }, [isAuthenticated, location.pathname, refreshAccess])
 
   if (isLoading) {
-    return <AppLoading />
+    return <AppBootLoading />
   }
 
   if (mustChangePassword && getToken()) {

@@ -39,6 +39,17 @@ export function BrandLoading({
   )
 }
 
+/** 应用冷启动 / 鉴权恢复时的全屏品牌加载 */
+export function AppBootLoading({ label = '加载中…' }: { label?: string }) {
+  return (
+    <BrandLoading
+      label={label}
+      minHeight={480}
+      className="min-h-screen w-full rounded-none border-0 shadow-none"
+    />
+  )
+}
+
 /**
  * 首次就绪前展示品牌加载态；子树保持挂载以便请求，就绪后一次切入内容。
  * 用 opacity 隐藏，避免子层 visibility:visible 穿透。

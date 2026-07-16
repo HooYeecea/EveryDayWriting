@@ -10,6 +10,7 @@ import type { CreateVocabularyPayload, VocabularyItem, VocabularyType } from '..
 import { DEFAULT_PART_OF_SPEECH, PART_OF_SPEECH_OPTIONS } from '../../data/partOfSpeech'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { useAuth } from '../../context/AuthContext'
+import { useReportReady } from '../../hooks/useReportReady'
 import { MenuSelect } from '../common/MenuSelect'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
@@ -28,11 +29,13 @@ const POS_OPTIONS = PART_OF_SPEECH_OPTIONS.map((item) => ({
   label: item.label,
 }))
 
-export function PersonalVocabulary() {
+export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
   const { isAuthenticated } = useAuth()
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<VocabularyItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  useReportReady(!loading, onReady)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)

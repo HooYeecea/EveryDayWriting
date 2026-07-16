@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useReportReady } from '../../hooks/useReportReady'
 import {
   Calendar,
   Camera,
@@ -69,12 +70,14 @@ function tabPaneClass(active: boolean): string {
     : 'pointer-events-none absolute inset-x-0 top-0 z-0 opacity-0'
 }
 
-export function UserCenter() {
+export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated, isLoading, logout, logoutAllDevices, refreshProfile, roles, permissions } =
     useAuth()
   const { confirm } = useAppConfirm()
   const navigate = useNavigate()
   const location = useLocation()
+
+  useReportReady(!isLoading, onReady)
   const initialTab =
     (location.state as { tab?: UserTab } | null)?.tab &&
     TABS.some((t) => t.key === (location.state as { tab?: UserTab }).tab)
