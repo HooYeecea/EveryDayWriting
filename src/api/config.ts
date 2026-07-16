@@ -123,6 +123,8 @@ export const API_PATHS = {
     agreementById: (id: string) => `/admin/agreements/${id}`,
     dashboardOverview: '/admin/dashboard/overview',
     systemInfo: '/admin/system/info',
+    freeChannel: '/admin/free-channel',
+    freeChannelDefault: '/admin/free-channel/default',
     prompts: '/admin/prompts',
     promptById: (id: string) => `/admin/prompts/${id}`,
     promptHistory: (id: string) => `/admin/prompts/${id}/history`,

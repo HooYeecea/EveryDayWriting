@@ -83,6 +83,24 @@ export interface AdminConfigItem {
   updatedAt: string
 }
 
+export interface AdminFreeChannelModelOption {
+  id: string
+  name: string
+  isDefault: boolean
+}
+
+export interface AdminFreeChannelProviderOption {
+  id: string
+  name: string
+  models: AdminFreeChannelModelOption[]
+}
+
+export interface AdminFreeChannelConfig {
+  providerId: string | null
+  modelId: string | null
+  providers: AdminFreeChannelProviderOption[]
+}
+
 export interface AdminQuoteItem {
   id: string
   content: string
@@ -356,6 +374,17 @@ export async function listAdminConfigs(): Promise<{ items: AdminConfigItem[] }> 
 
 export async function updateAdminConfig(key: string, value: string): Promise<void> {
   await put(API_PATHS.admin.configByKey(key), { value })
+}
+
+export async function getAdminFreeChannelConfig(): Promise<AdminFreeChannelConfig> {
+  return get(API_PATHS.admin.freeChannel)
+}
+
+export async function setAdminFreeChannelDefault(body: {
+  providerId: string
+  modelId?: string
+}): Promise<void> {
+  await put(API_PATHS.admin.freeChannelDefault, body)
 }
 
 // ── Quotes ──
