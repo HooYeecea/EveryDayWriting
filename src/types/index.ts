@@ -478,6 +478,12 @@ export interface CheckInCalendar {
   totalDays: number
 }
 
+/** GET /checkin/calendar?year= 仅传年时的响应 */
+export interface CheckInYearCalendar {
+  year: number
+  months: CheckInCalendar[]
+}
+
 /** 登录/注册成功后返回给页面的会话结果 */
 export interface AuthLoginResult {
   mustChangePassword: boolean

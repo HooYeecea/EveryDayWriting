@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getCheckInCalendar, getCheckInStatus } from '../../api/checkIn'
+import { getCheckInCalendar, getCheckInStatus, getCheckInYearCalendar } from '../../api/checkIn'
 import type { CheckInCalendar, CheckInStatus } from '../../types'
 import {
   addDays,
@@ -591,11 +591,18 @@ export function WritingCheckInPanel() {
 
     try {
       if (viewMode === 'year') {
-        const calendars = await Promise.all(
-          Array.from({ length: 12 }, (_, index) => getCheckInCalendar(viewYear, index + 1)),
-        )
+        const cachedYear = getCachedYearCalendars(viewYear)
+        if (cachedYear) {
+          if (requestSeq !== calendarRequestSeq.current) return
+          setYearCalendars(cachedYear)
+          setLoadedKey(fetchKey)
+          return
+        }
+
+        const yearData = await getCheckInYearCalendar(viewYear)
         if (requestSeq !== calendarRequestSeq.current) return
 
+        const calendars = yearData.months
         calendars.forEach(cacheMonth)
         setYearCalendars(calendars)
         setLoadedKey(fetchKey)
@@ -625,7 +632,7 @@ export function WritingCheckInPanel() {
     } catch {
       // 保留占位结构，避免切换时布局塌陷
     }
-  }, [cacheMonth, viewMode, viewMonth, viewWeekStart, viewYear])
+  }, [cacheMonth, getCachedYearCalendars, viewMode, viewMonth, viewWeekStart, viewYear])
 
   useEffect(() => {
     void loadCalendar()
