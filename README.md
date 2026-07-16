@@ -1,6 +1,8 @@
 # Everyday Writing · 每日英语写作
 
-面向英语写作练习的前端 Web 应用。支持题目写作、草稿保存、正式提交、写作记录查看、写作辅助工具、坚持打卡与用户登录注册。布局已适配手机、平板与桌面端。
+面向英语写作练习的前端 Web 应用。支持题目写作、草稿与正式提交、AI 批改与辅助、写作记录、个人词库、能力测评与个人计划、打卡成长、用户中心，以及完整的管理后台。布局已适配手机、平板与桌面端。
+
+> 用户向操作说明请见：[docs/使用手册.md](./docs/使用手册.md)
 
 ## 技术栈
 
@@ -11,235 +13,233 @@
 | 样式 | Tailwind CSS 4 |
 | 路由 | React Router 7 |
 | 富文本编辑器 | Tiptap（Notion 风格） |
+| 图表 | Recharts |
 | 后端 API | ASP.NET Core `/api/v1`（JWT 鉴权） |
 | 代码检查 | Oxlint |
 
-## 功能概览
+## 功能概览（已完成）
 
-### 已实现
+### 1. 用户系统与鉴权
 
-#### 开始写作
+- 邮箱注册 / 登录 / 忘记密码（验证码）
+- JWT Access Token + Refresh Token（`localStorage`）
+- 登录图形验证码（失败次数过多时触发）
+- 强制改密引导
+- 隐私协议勾选与接受记录
+- 登录 / 注册后按角色落地：普通用户进写作页，纯管理员进后台
 
-- 顶部题目栏：题目、题型、题目框、「换一个题目」（桌面端同一行；手机端题目/题型与换题按钮两端对齐）
-- 长题目省略显示，支持弹窗查看全文
-- 自定义标题（有内容时居中显示）
-- Notion 风格富文本编辑器
-- 保存 / 提交（需登录，对接 `POST/PUT /api/v1/writings/drafts` 与 `POST /api/v1/writings/submits`）；登录后自动恢复最近草稿
-- 题目来自 `GET /api/v1/topics/random`（未登录时 fallback 本地 mock 题目）
+### 2. 开始写作
 
-**写作辅助面板**（桌面右侧窄条 / 手机浮动入口）
+- 随机题目（`GET /topics/random`），支持换题、长题目弹窗全文
+- 自定义标题 + Notion 风格富文本编辑器
+- 草稿自动 / 手动保存、登录后恢复最近草稿
+- 正式提交（对接 drafts / submits 接口）
+- 提交前可启用 AI 批改（语法 / 结构 / 词汇建议）
+- **写作辅助面板**（桌面右侧 / 手机浮动可拖动）
+  - 写作计时：预设 / 自定义 / 倒计时 / 正计时
+  - AI 连接配置入口与实时辅助能力开关
+- 专注写作时可锁定页面切换
 
-- 功能列表 → 详情导航，便于后续扩展
-- **写作计时**：预设 / 自定义 / 不限时；时/分/秒拨盘；倒计时 / 正计时；到点提醒；开始 / 停止 / 重置
-- **AI 助手**：UI 占位（保存开关与能力说明），尚未对接真实 AI
-- 桌面端：侧栏可展开 / 收起，状态持久化至 `localStorage`；计时中收起仍显示时间
-- 手机端：「辅助」浮动按钮与打开后的面板均可在页面内自由拖动；点击打开、按住拖动
+### 3. 写作记录
 
-#### 写作记录
+- 「草稿」「提交记录」双 Tab，分页加载
+- 提交记录关键字搜索
+- 提交详情：正文、AI 评分与批改内容、建议追问对话
+- 草稿「继续编辑」跳转写作页
 
-- 「草稿」「提交记录」双 Tab 列表（分页接口）
-- 提交记录支持关键字搜索（`GET /api/v1/writings/submits?keyword=`）
-- 提交详情展示 AI 评分与批改内容
-- 草稿支持「继续编辑」（`/writing?draftId=xxx`）
-- 响应式：桌面双栏；手机列表 / 详情主从切换
+### 4. 个人词库
 
-#### 用户中心
+- 词条列表、搜索、新增 / 编辑 / 删除
+- 对接 `/api/v1/vocabulary` 系列接口
 
-- 个人信息来自 `GET /api/v1/user/profile`
-- **坚持写作打卡**（`GET /api/v1/checkin/status`、`/checkin/calendar`）
-  - 每日首次**提交作文**自动打卡
-  - 连续 / 累计打卡、段位、励志语录、月历
-- 退出登录（`POST /api/v1/auth/logout`）
+### 5. 个人测评（写作统计）
 
-#### 用户系统
+- 按周期（全部 / 7 天 / 30 天 / 90 天）查看写作统计
+- 篇数、字数等图表展示（`GET /assessment/stats`）
 
-- 登录 / 注册 / 忘记密码（邮箱验证码，对接 `/api/v1/auth/*`）
-- JWT + Refresh Token 存储于浏览器 `localStorage`
-- 密码规则：至少 8 位，含大小写字母和数字
-- 登录失败 5 次后需邮箱验证码
+### 6. 新用户英语能力测评 + 个人计划
 
-#### 布局与交互
+- 路径：`/proficiency-test`（独立全屏流程）
+- 首次注册 / 登录且未测评：可引导进入测评，也可「稍后再做」
+- 未完成测评时，「使用指南」菜单显示红点提示
+- 三段流程：
+  1. **自评问卷**（频率、水平、困扰点、目标、考试、投入时间等）
+  2. **递进基础题**（约 10 题，由易到难：词汇 / 语法 / 改写 / 改错）
+  3. **一易一难双写作**（基础篇 + 进阶篇）
+- AI 评估后给出 CEFR 等级、维度分、优势 / 待提升
+- 用户中心「个人计划」标签展示阶段性训练计划
+- 使用指南页提供测评入口
 
-- 响应式布局：`lg`（1024px）区分桌面与移动
-- 桌面：左侧可折叠侧边栏 + 主内容区
-- 移动 / 平板：抽屉菜单 + 底部导航栏
-- 切换菜单时页面组件保持挂载，写作内容不会丢失
+### 7. 用户中心
 
-#### 数据持久化
+标签页结构：
 
-| 数据 | 存储方式 |
-|------|----------|
-| 写作草稿 / 提交 | 后端 PostgreSQL，经 `/api/v1/writings/*` |
-| 用户 / 打卡 | 后端数据库 |
-| Access / Refresh Token | 浏览器 `localStorage` |
-| 辅助面板折叠状态 | 浏览器 `localStorage` |
-| 手机「辅助」按钮位置 | 浏览器 `sessionStorage` |
-
-### 占位 / 部分实现（待开发）
-
-| 模块 | 状态 |
+| 标签 | 内容 |
 |------|------|
-| 个人词库 | 占位页 |
-| 个人测评 | 占位页 |
-| AI 助手 / 代理调用 | UI 占位，待接 `/api/v1/ai/proxy/{purpose}` |
-| 草稿按 ID 拉取详情 | 后端暂无 GET `/drafts/{id}`，仅 latest + 列表 |
-| 用户协议 / 公告 | 待接模块九、十三 |
+| 概览 | 资料卡、写作统计数字、系统公告、未完成测评提示 |
+| 个人计划 | 能力测评生成的写作提升计划 |
+| 打卡 | 写作打卡日历、连续天数、段位 |
+| 用量 | Token 用量统计与月度预算 |
+| 设置 | AI 连接配置、隐私设置、管理后台入口（有权限时） |
 
-## 演示账号
+- 支持修改昵称、上传头像
+- 退出当前设备 / 退出全部设备
 
-由后端 Seed 数据决定。本地开发请先启动 ASP.NET Core 后端并执行数据库迁移。
+### 8. 使用指南
 
-## 环境配置
+- 站内说明：Token 配置、AI 学习理念、推荐口语工具、词汇量目标等
+- 未完成能力测评时顶部展示测评入口，侧栏 / 底栏带红点
 
-复制 `.env.example` 为 `.env`（首次克隆后执行一次即可）：
+### 9. AI 能力（用户端）
 
-```bash
-cp .env.example .env
-```
+- 自有 API Key 加密保存在本地浏览器
+- 或走后端免费通道（需管理员开启）
+- 用途包括：语法检查、结构评分、词汇建议、能力测评评估、建议追问等
+- Token 用量可在用户中心查看
 
-| 场景 | `.env` 配置 | 请求方式 |
-|------|-------------|----------|
-| **本地开发（默认）** | 不设置 `VITE_API_BASE_URL` | 浏览器请求 `/api/v1/...`，Vite 代理到 `http://localhost:5000` |
-| **直连联调** | `VITE_API_BASE_URL=http://localhost:5000` | 浏览器直连后端（需后端开启 CORS） |
-| **生产构建** | 在 `.env.production` 或 CI 中设置真实 API 域名 | 打包时写入静态资源 |
+### 10. 管理后台（`/admin`）
 
-后端端口非 5000 且仍走代理时，在 `.env` 中设置 `DEV_API_PROXY_TARGET=http://localhost:5001`（仅 `vite.config.ts` 读取，不影响前端）。
+需管理员角色 + 对应权限码。主要模块：
+
+| 模块 | 能力 |
+|------|------|
+| 数据中心 | 运营概览 |
+| 系统监控 | 系统信息 |
+| 用户管理 | 列表、封禁 / 解封、VIP、角色 |
+| 公告管理 | 系统公告 CRUD |
+| 协议管理 | 用户协议版本与发布 |
+| 系统配置 | 全局配置项、免费 AI 通道 |
+| AI 厂商 / 模型 | Provider 与模型启停 |
+| Prompt 模板 | 在线编辑各 AI 用途 Prompt、测试、回滚 |
+| **题库管理** | 测评题库 CRUD、导入导出、**详情预览**、**AI 一键出题（1/5/10/20）预览后入库** |
+| 题目类型 | 写作题型管理 |
+| 打卡段位 / 语录 | 成长体系配置 |
+| Token 用量 | 全站用量查询 |
+| 角色权限 | 角色与权限码 |
+| 审计日志 | 管理操作记录 |
 
 ## 路由说明
+
+### 用户端
 
 | 路径 | 页面 |
 |------|------|
 | `/writing` | 开始写作（默认首页） |
 | `/user-center` | 用户中心 |
 | `/records` | 写作记录 |
-| `/vocabulary` | 个人词库（占位） |
-| `/assessment` | 个人测评（占位） |
-| `/login` | 登录 |
-| `/register` | 注册 |
-| `/forgot-password` | 忘记密码 |
+| `/vocabulary` | 个人词库 |
+| `/assessment` | 个人测评（写作统计） |
+| `/guide` | 使用指南 |
+| `/proficiency-test` | 英语能力测评（独立流程） |
+| `/login` / `/register` / `/forgot-password` | 认证 |
+| `/change-password` | 强制改密 |
+
+### 管理端
+
+| 路径 | 页面 |
+|------|------|
+| `/admin` | 数据中心 |
+| `/admin/users` | 用户管理 |
+| `/admin/questions` | 题库管理 |
+| `/admin/prompts` | Prompt 模板 |
+| `/admin/...` | 其余管理模块见 `src/config/adminRoutes.tsx` |
 
 ## 项目结构
 
 ```
 everydayWriting/
-├── data/                          # 写作数据（JSON 文件）
-│   ├── writing-saves.json         # 保存（草稿）
-│   └── writing-submits.json       # 提交（正式）
-├── server/
-│   └── index.js                   # 本地 Express API
+├── docs/
+│   ├── 使用手册.md                 # 面向用户的操作手册
+│   └── ...
+├── public/docs/API.md              # 后端 API 文档（前端仓库副本）
 ├── src/
-│   ├── api/                       # 接口封装（写作、认证、打卡等）
+│   ├── api/                        # 接口封装
 │   ├── components/
-│   │   ├── auth/                  # 登录注册、协议、弹窗
-│   │   ├── editor/                # Tiptap 编辑器
-│   │   ├── layout/                # 布局、侧边栏、底部导航
-│   │   ├── user/                  # 用户中心子模块（打卡等）
-│   │   ├── views/                 # 各页面组件
-│   │   └── writing/               # 题目框、辅助面板、计时、搜索栏
-│   ├── config/routes.tsx          # 应用路由配置
-│   ├── context/                   # AuthContext
-│   ├── data/                      # 静态 mock（题目、用户、打卡）
-│   ├── storage/                   # 浏览器本地存储
-│   └── types/                     # TypeScript 类型
-├── API.md                         # 后端 API 规划文档（待对接）
-├── index.html
+│   │   ├── admin/                  # 管理后台页面与组件
+│   │   ├── auth/                   # 登录注册、协议
+│   │   ├── common/                 # 通用对话框等
+│   │   ├── editor/                 # Tiptap 编辑器
+│   │   ├── layout/                 # 布局、侧栏、底栏
+│   │   ├── user/                   # 用户中心子面板
+│   │   ├── views/                  # 用户端页面
+│   │   ├── vocabulary/             # 词库组件
+│   │   └── writing/                # 写作辅助
+│   ├── config/                     # 用户端 / 管理端路由
+│   ├── context/                    # Auth、确认框等
+│   ├── hooks/                      # 如测评红点 hook
+│   ├── storage/                    # localStorage 封装
+│   ├── types/                      # TypeScript 类型
+│   └── utils/
 ├── package.json
 └── vite.config.ts
 ```
+
+## 环境配置
+
+复制环境文件（按场景选择）：
+
+```bash
+# 示例
+cp .env.example .env
+```
+
+| 场景 | 配置要点 |
+|------|----------|
+| 本地后端 | 不设 `VITE_API_BASE_URL`，Vite 代理 `/api/v1` → `DEV_API_PROXY_TARGET`（默认 `localhost:5000`） |
+| 远程联调 | `npm run dev:remote`，`.env.remote` 中配置 `DEV_API_PROXY_TARGET`（如生产域名） |
+| 生产构建 | CI / `.env.production` 设置真实 `VITE_API_BASE_URL` |
 
 ## 环境要求
 
 - Node.js 18+
 - npm 9+
 
-## 安装依赖
+## 常用命令
 
 ```bash
 npm install
-```
 
-## 启动开发环境
-
-**先启动后端**（ASP.NET Core，默认 `http://localhost:5000`），再启动前端：
-
-```bash
+# 开发（Vite remote 模式 + 本地 Express 中间层，按 package.json）
 npm run dev
-```
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| 前端（Vite） | http://localhost:5173 | 页面 UI |
-| 后端 API | http://localhost:5000/api/v1 | 见 API 文档 |
+# 仅 Vite（remote / local）
+npm run dev:remote
+npm run dev:local
 
-未配置 `VITE_API_BASE_URL` 时，Vite 将 `/api/v1` 代理到 `http://localhost:5000`（可在 `.env` 中设置 `VITE_API_BASE_URL` 修改代理目标）。
-
-> 仓库内 `server/index.js` 为旧版 JSON 文件演示服务，**已不再被前端默认使用**。
-
-## 打包构建
-
-生产环境请先配置 API 地址，例如创建 `.env.production`：
-
-```bash
-VITE_API_BASE_URL=https://api.yourdomain.com
-```
-
-然后执行：
-
-```bash
+# 构建
 npm run build
-```
+npm run build:remote
 
-构建产物输出至 `dist/` 目录。
-
-### 预览生产构建
-
-```bash
+# 预览构建产物
 npm run preview
+
+# 代码检查
+npm run lint
 ```
 
-预览地址默认为 http://localhost:4173。
+| 服务 | 默认地址 |
+|------|----------|
+| 前端 Vite | http://localhost:5173 |
+| 后端 API | `/api/v1`（代理或直连） |
 
-> `preview` 仅提供前端静态文件预览，**不包含 API 服务**。若要验证保存/提交等功能，需另行启动 `npm run dev:server`，并在部署时配置 API 反向代理。
+## 数据与持久化
 
-## 数据格式
+| 数据 | 存储 |
+|------|------|
+| 草稿 / 提交 / 词库 / 打卡 / 测评 / 计划 | 后端数据库 |
+| Access / Refresh Token | `localStorage` |
+| AI Key（加密后）与辅助开关 | 浏览器本地 |
+| 侧栏折叠、辅助面板状态等 | `localStorage` / `sessionStorage` |
 
-### 写作记录
+## 相关文档
 
-每条保存 / 提交记录包含以下字段：
+- [使用手册](./docs/使用手册.md) — 面向最终用户
+- [API 文档](./public/docs/API.md) — 后端接口说明
+- [CLAUDE.md](./CLAUDE.md) — 开发约定与设计规范
 
-```json
-{
-  "id": "uuid",
-  "userId": "user-001",
-  "topicId": 1,
-  "topic": "写作题目正文",
-  "topicType": "Argumentative Essay",
-  "title": "自定义标题",
-  "content": "<p>编辑器 HTML 内容</p>",
-  "time": "2026-07-01T10:30:00.000Z"
-}
-```
+## 后续可延续方向
 
-### 打卡记录（前端演示）
-
-```json
-{
-  "id": "local-checkin-uuid",
-  "userId": "user-001",
-  "date": "2026-07-03",
-  "checkedInAt": "2026-07-03T02:30:00.000Z"
-}
-```
-
-## 其他命令
-
-```bash
-npm run lint    # 代码检查（Oxlint）
-```
-
-## 后续规划
-
-- 按 [API.md](./API.md) 对接真实后端（认证、题目、AI、打卡、词库、测评等）
-- 写作记录搜索与 AI 助手、AI 批改等能力落地
-- 题目与用户数据改为接口驱动
-- 生产环境部署与 DevOps 流水线
+- 能力测评结果与写作推荐题目更深度联动
+- 个人计划进度打卡与复测提醒
+- 管理端题库质量审核工作流
+- 更细粒度的移动端写作体验优化
