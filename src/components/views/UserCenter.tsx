@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Calendar,
   Camera,
@@ -17,6 +17,7 @@ import {
   CalendarDays,
   X,
   Shield,
+  Target,
 } from 'lucide-react'
 import { updateUserProfile, uploadFile } from '../../api/user'
 import { useAuth } from '../../context/AuthContext'
@@ -24,6 +25,7 @@ import { useAppConfirm } from '../../context/AppConfirmContext'
 import { DEFAULT_PATH } from '../../config/routes'
 import { AiAssistPanel } from '../user/AiAssistPanel'
 import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
+import { PersonalPlanPanel } from '../user/PersonalPlanPanel'
 import { PrivacySettingsPanel } from '../user/PrivacySettingsPanel'
 import { TokenUsagePanel } from '../user/TokenUsagePanel'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
@@ -36,11 +38,12 @@ import {
   PANEL_TITLE_CLASS,
 } from '../layout/layoutConstants'
 
-type UserTab = 'overview' | 'checkin' | 'usage' | 'settings'
+type UserTab = 'overview' | 'plan' | 'checkin' | 'usage' | 'settings'
 type SlideDirection = 'prev' | 'next'
 
 const TABS: { key: UserTab; label: string; icon: typeof Bell }[] = [
   { key: 'overview', label: '概览', icon: Bell },
+  { key: 'plan', label: '个人计划', icon: Target },
   { key: 'checkin', label: '打卡', icon: CalendarDays },
   { key: 'usage', label: '用量', icon: Gauge },
   { key: 'settings', label: '设置', icon: Settings },
@@ -59,7 +62,13 @@ export function UserCenter() {
     useAuth()
   const { confirm } = useAppConfirm()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<UserTab>('overview')
+  const location = useLocation()
+  const initialTab =
+    (location.state as { tab?: UserTab } | null)?.tab &&
+    TABS.some((t) => t.key === (location.state as { tab?: UserTab }).tab)
+      ? (location.state as { tab: UserTab }).tab
+      : 'overview'
+  const [tab, setTab] = useState<UserTab>(initialTab)
   const [enterClass, setEnterClass] = useState('')
   const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [editingNickname, setEditingNickname] = useState(false)
@@ -526,9 +535,36 @@ export function UserCenter() {
                   ))}
                 </div>
               </div>
+              {user.proficiencyOnboarding &&
+                user.proficiencyOnboarding.status !== 'completed' && (
+                  <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                    <p className="text-sm font-medium text-neutral-800">还未完成英语能力测评</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      完成后可获得个人写作提升计划，也可在使用指南中继续。
+                    </p>
+                    <Link
+                      to="/proficiency-test"
+                      className="mt-3 inline-flex text-xs font-medium text-neutral-900 underline underline-offset-2"
+                    >
+                      {user.proficiencyOnboarding.status === 'in_progress'
+                        ? '继续测评'
+                        : '开始测评'}
+                    </Link>
+                  </div>
+                )}
               <div className="mt-5">
                 <AnnouncementsPanel />
               </div>
+            </div>
+
+            <div
+              ref={(node) => {
+                paneRefs.current.plan = node
+              }}
+              className={tabPaneClass(tab === 'plan')}
+              aria-hidden={tab !== 'plan'}
+            >
+              <PersonalPlanPanel />
             </div>
 
             <div

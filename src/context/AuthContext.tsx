@@ -109,7 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profile = await authApi.fetchUserProfile()
       applyAccessFromProfile(profile, setRoles, setPermissions)
       setUser(profile)
-      return { mustChangePassword: false, redirectTo }
+      const nextRedirect =
+        profile.proficiencyOnboarding?.shouldShowOnboarding === true
+          ? '/proficiency-test'
+          : redirectTo
+      return { mustChangePassword: false, redirectTo: nextRedirect }
     },
     [],
   )

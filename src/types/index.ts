@@ -69,6 +69,8 @@ export interface UserProfile {
   roles?: AuthRole[]
   /** $.data.permissions — 当前用户权限码（去重） */
   permissions?: string[]
+  /** 能力测评引导状态（红点 / 首登引导） */
+  proficiencyOnboarding?: import('./proficiencyTest').ProficiencyOnboardingBrief
 }
 
 export interface AuthSession {

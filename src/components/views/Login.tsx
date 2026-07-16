@@ -136,11 +136,13 @@ export function Login() {
 
       const nextPath = result.mustChangePassword
         ? '/change-password'
-        : result.redirectTo === '/admin'
-          ? '/admin'
-          : from && from !== '/login' && !from.startsWith('/admin')
-            ? from
-            : result.redirectTo
+        : result.redirectTo === '/proficiency-test'
+          ? '/proficiency-test'
+          : result.redirectTo === '/admin'
+            ? '/admin'
+            : from && from !== '/login' && !from.startsWith('/admin')
+              ? from
+              : result.redirectTo
       navigate(nextPath, { replace: true })
     } catch (err) {
       if (isApiError(err)) {

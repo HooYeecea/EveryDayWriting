@@ -11,9 +11,14 @@ const MAIN_ROUTES = APP_ROUTES.filter((route) => route.key !== 'user-center')
 const FOCUS_LOCK_HINT = '专注写作中，请先结束或停止计时后再切换页面'
 
 export function MobileBottomNav() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { navigationLocked } = useWritingFocus()
   const { alert } = useAppAlert()
+  const showGuideRedDot = Boolean(
+    isAuthenticated &&
+      user?.proficiencyOnboarding?.showGuideRedDot &&
+      user.proficiencyOnboarding.status !== 'completed',
+  )
 
   const guardNavClick = (targetPath: string, event: MouseEvent) => {
     if (navigationLocked && targetPath !== DEFAULT_PATH) {
@@ -70,7 +75,12 @@ export function MobileBottomNav() {
             >
               {({ isActive }) => (
                 <>
-                  <Icon size={20} strokeWidth={isActive ? 2 : 1.75} />
+                  <span className="relative">
+                    <Icon size={20} strokeWidth={isActive ? 2 : 1.75} />
+                    {item.key === 'usage-guide' && showGuideRedDot && (
+                      <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                  </span>
                   <span className="truncate">{item.label}</span>
                 </>
               )}

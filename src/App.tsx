@@ -6,6 +6,7 @@ import { AdminLayout } from './components/admin/AdminLayout'
 import { AdminPageSwitcher } from './components/admin/AdminPageSwitcher'
 import { AuthRouteTransition, isAuthPath } from './components/auth/AuthRouteTransition'
 import { ChangePassword } from './components/views/ChangePassword'
+import { ProficiencyTestPage } from './components/views/ProficiencyTest'
 import { useAuth } from './context/AuthContext'
 import { useWritingFocus } from './context/WritingFocusContext'
 import { DEFAULT_PATH, isAppPath } from './config/routes'
@@ -56,6 +57,10 @@ function App() {
 
   if (location.pathname === '/change-password') {
     return <Navigate to={homePath} replace />
+  }
+
+  if (location.pathname === '/proficiency-test') {
+    return <ProficiencyTestPage />
   }
 
   if (location.pathname === '/') {

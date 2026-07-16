@@ -31,9 +31,14 @@ export function Sidebar({
   onToggleCollapse,
   onClose,
 }: SidebarProps) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { navigationLocked } = useWritingFocus()
   const { alert } = useAppAlert()
+  const showGuideRedDot = Boolean(
+    isAuthenticated &&
+      user?.proficiencyOnboarding?.showGuideRedDot &&
+      user.proficiencyOnboarding.status !== 'completed',
+  )
 
   const guardNavClick = (targetPath: string, event: MouseEvent) => {
     if (navigationLocked && targetPath !== DEFAULT_PATH) {
@@ -150,11 +155,16 @@ export function Sidebar({
             >
               {({ isActive }) => (
                 <>
-                  <Icon
-                    size={18}
-                    strokeWidth={isActive ? 2 : 1.75}
-                    className={isActive ? 'text-neutral-800' : 'text-neutral-400'}
-                  />
+                  <span className="relative shrink-0">
+                    <Icon
+                      size={18}
+                      strokeWidth={isActive ? 2 : 1.75}
+                      className={isActive ? 'text-neutral-800' : 'text-neutral-400'}
+                    />
+                    {item.key === 'usage-guide' && showGuideRedDot && (
+                      <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                  </span>
                   <span
                     className={`overflow-hidden whitespace-nowrap transition-[opacity,width] duration-300 ease-out ${
                       collapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'

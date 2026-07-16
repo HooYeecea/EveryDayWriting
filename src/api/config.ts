@@ -88,6 +88,23 @@ export const API_PATHS = {
   assessment: {
     stats: '/assessment/stats',
   },
+  proficiencyTest: {
+    status: '/proficiency-test/status',
+    start: '/proficiency-test/start',
+    skip: '/proficiency-test/skip',
+    dismissRedDot: '/proficiency-test/dismiss-red-dot',
+    selfAssessmentQuestions: '/proficiency-test/self-assessment-questions',
+    selfAssessment: (testId: string) => `/proficiency-test/${testId}/self-assessment`,
+    objectiveQuestions: (testId: string) => `/proficiency-test/${testId}/objective-questions`,
+    objectiveAnswers: (testId: string) => `/proficiency-test/${testId}/objective-answers`,
+    writingPrompt: (testId: string) => `/proficiency-test/${testId}/writing-prompt`,
+    writing: (testId: string) => `/proficiency-test/${testId}/writing`,
+    evaluationPayload: (testId: string) => `/proficiency-test/${testId}/evaluation-payload`,
+    complete: (testId: string) => `/proficiency-test/${testId}/complete`,
+    result: (testId: string) => `/proficiency-test/${testId}/result`,
+    plan: '/proficiency-test/plan',
+    planProgress: '/proficiency-test/plan/progress',
+  },
   admin: {
     users: '/admin/users',
     userById: (id: string) => `/admin/users/${id}`,
