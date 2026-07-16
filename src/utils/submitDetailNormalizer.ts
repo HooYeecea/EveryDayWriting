@@ -1,10 +1,12 @@
 import type {
+  GrammarCheckResult,
   GrammarSuggestion,
   IterationSibling,
   ParagraphFeedbackItem,
   StructureOverall,
   StructureResult,
   StructureSubScores,
+  VocabularyCheckResult,
   VocabularySuggestion,
   WritingSubmitDetail,
   WritingSubmitListItem,
@@ -116,13 +118,18 @@ function normalizeStructureSubScores(raw: unknown): StructureSubScores {
 
 function normalizeStructureOverall(raw: unknown): StructureOverall {
   const data = (raw ?? {}) as Record<string, unknown>
-  const arr = (key: string): string[] => {
-    const value = data[key]
-    return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+  const arr = (...keys: string[]): string[] => {
+    for (const key of keys) {
+      const value = data[key]
+      if (Array.isArray(value)) {
+        return value.filter((v): v is string => typeof v === 'string')
+      }
+    }
+    return []
   }
   return {
-    strengths: arr('strengths'),
-    weaknesses: arr('weaknesses'),
+    strengths: arr('strengths', 'Strengths'),
+    weaknesses: arr('weaknesses', 'Weaknesses'),
     summary: pickString(data, 'summary', 'Summary'),
   }
 }
@@ -130,9 +137,9 @@ function normalizeStructureOverall(raw: unknown): StructureOverall {
 function normalizeParagraphFeedback(raw: unknown): ParagraphFeedbackItem | null {
   if (!raw || typeof raw !== 'object') return null
   const item = raw as Record<string, unknown>
-  const index = Number(item.paragraphIndex ?? item.ParagraphIndex ?? -1)
-  if (index < 0) return null
-  const feedback = pickString(item, 'feedback', 'Feedback')
+  const index = Number(item.paragraphIndex ?? item.ParagraphIndex ?? item.index ?? item.Index ?? -1)
+  if (index < 0 || !Number.isFinite(index)) return null
+  const feedback = pickString(item, 'feedback', 'Feedback', 'comment', 'Comment', 'text', 'Text')
   if (!feedback) return null
   return { paragraphIndex: index, feedback }
 }
@@ -154,6 +161,46 @@ export function normalizeStructureResult(raw: unknown): StructureResult | null {
         .filter((item): item is ParagraphFeedbackItem => item !== null)
     })(),
   }
+}
+
+/** 规范化 localStorage 中的语法检查结果，保证 errors 始终为数组 */
+export function normalizeGrammarCheckResult(raw: unknown): GrammarCheckResult | null {
+  if (!raw || typeof raw !== 'object' || typeof raw === 'string') return null
+  const data = raw as Record<string, unknown>
+  const errors = normalizeSuggestionList(
+    data.errors ?? data.Errors,
+    (item) => {
+      const normalized = normalizeGrammarSuggestion(item)
+      if (!normalized) return null
+      return {
+        id: normalized.id,
+        original: normalized.original,
+        correction: normalized.correction,
+        reason: normalized.reason,
+      }
+    },
+  )
+  return { errors }
+}
+
+/** 规范化 localStorage 中的词汇建议结果，保证 suggestions 始终为数组 */
+export function normalizeVocabularyCheckResult(raw: unknown): VocabularyCheckResult | null {
+  if (!raw || typeof raw !== 'object' || typeof raw === 'string') return null
+  const data = raw as Record<string, unknown>
+  const suggestions = normalizeSuggestionList(
+    data.suggestions ?? data.Suggestions,
+    (item) => {
+      const normalized = normalizeVocabularySuggestion(item)
+      if (!normalized) return null
+      return {
+        id: normalized.id,
+        original: normalized.original,
+        suggestion: normalized.suggestion,
+        context: normalized.context,
+      }
+    },
+  )
+  return { suggestions }
 }
 
 export function normalizeWritingSubmitDetail(raw: unknown): WritingSubmitDetail {

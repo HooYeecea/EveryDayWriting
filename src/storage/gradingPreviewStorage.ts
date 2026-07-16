@@ -1,4 +1,9 @@
 import type { GrammarCheckResult, StructureResult, VocabularyCheckResult } from '../types'
+import {
+  normalizeGrammarCheckResult,
+  normalizeStructureResult,
+  normalizeVocabularyCheckResult,
+} from '../utils/submitDetailNormalizer'
 
 const GRADING_PREVIEW_KEY = 'ew_grading_preview'
 const MAX_ENTRIES = 50
@@ -58,6 +63,14 @@ export function parseAiProxyContent<T>(content: string): T | string {
   return content
 }
 
+function normalizeStageContent(key: GradingStageKey, value: unknown): unknown {
+  if (typeof value === 'string') return value
+  if (key === 'structure') return normalizeStructureResult(value) ?? value
+  if (key === 'grammar') return normalizeGrammarCheckResult(value) ?? value
+  if (key === 'vocabulary') return normalizeVocabularyCheckResult(value) ?? value
+  return value
+}
+
 function readAll(): GradingPreviewMap {
   try {
     const raw = localStorage.getItem(GRADING_PREVIEW_KEY)
@@ -83,7 +96,7 @@ export function saveGradingPreview(
   const filtered: Partial<Record<GradingStageKey, unknown>> = {}
   for (const [key, value] of Object.entries(contents)) {
     if (value !== undefined && value !== null) {
-      filtered[key as GradingStageKey] = value
+      filtered[key as GradingStageKey] = normalizeStageContent(key as GradingStageKey, value)
     }
   }
 

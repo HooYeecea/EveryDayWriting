@@ -18,6 +18,11 @@ import { useAppAlert } from '../../context/AppAlertContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { loadGradingPreview } from '../../storage/gradingPreviewStorage'
 import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
+import {
+  normalizeGrammarCheckResult,
+  normalizeStructureResult,
+  normalizeVocabularyCheckResult,
+} from '../../utils/submitDetailNormalizer'
 import type {
   GrammarCheckResult,
   GrammarErrorItem,
@@ -55,11 +60,6 @@ function formatTime(time: string) {
   return new Date(time).toLocaleString()
 }
 
-/** 判断是否为结构化对象（非字符串） */
-function isStructured<T>(value: unknown): value is T {
-  return value !== null && value !== undefined && typeof value !== 'string'
-}
-
 /** 兼容 AI 返回的逐段点评字段名差异 */
 function normalizeParagraphFb(raw: unknown): { index: number; text: string } | null {
   if (!raw || typeof raw !== 'object') return null
@@ -80,23 +80,20 @@ function normalizeParagraphFb(raw: unknown): { index: number; text: string } | n
 
 /** 从 grading preview 中提取 grammar 结构化数据 */
 function extractGrammarPreview(preview: ReturnType<typeof loadGradingPreview>): GrammarCheckResult | null {
-  if (!preview?.grammar) return null
-  if (isStructured<GrammarCheckResult>(preview.grammar)) return preview.grammar
-  return null
+  if (!preview?.grammar || typeof preview.grammar === 'string') return null
+  return normalizeGrammarCheckResult(preview.grammar)
 }
 
 /** 从 grading preview 中提取 vocabulary 结构化数据 */
 function extractVocabPreview(preview: ReturnType<typeof loadGradingPreview>): VocabularyCheckResult | null {
-  if (!preview?.vocabulary) return null
-  if (isStructured<VocabularyCheckResult>(preview.vocabulary)) return preview.vocabulary
-  return null
+  if (!preview?.vocabulary || typeof preview.vocabulary === 'string') return null
+  return normalizeVocabularyCheckResult(preview.vocabulary)
 }
 
 /** 从 grading preview 中提取 structure 结构化数据 */
 function extractStructurePreview(preview: ReturnType<typeof loadGradingPreview>): StructureResult | null {
-  if (!preview?.structure) return null
-  if (isStructured<StructureResult>(preview.structure)) return preview.structure
-  return null
+  if (!preview?.structure || typeof preview.structure === 'string') return null
+  return normalizeStructureResult(preview.structure)
 }
 
 /** 从 grading preview 中提取旧版 markdown 字符串（兼容） */
@@ -215,7 +212,8 @@ export function WritingRecords() {
   const [draftShellMinH, setDraftShellMinH] = useState<number | undefined>()
   const [submitShellMinH, setSubmitShellMinH] = useState<number | undefined>()
 
-  const selectRecord = (id: string) => {
+  const selectRecord = (id: string, nextTab?: RecordTab) => {
+    if (nextTab) setTab(nextTab)
     setSelectedId(id)
     setMobileShowDetail(true)
   }
@@ -252,9 +250,7 @@ export function WritingRecords() {
     if (!state?.selectedId) return
     setSelectedId(state.selectedId)
     setMobileShowDetail(true)
-    if (state.tab) {
-      setTab(state.tab)
-    }
+    setTab(state.tab ?? 'submits')
   }, [location.state])
 
   const selectedSubmitGroup = submits.find(
@@ -557,7 +553,7 @@ export function WritingRecords() {
                   <button
                     key={record.id}
                     type="button"
-                    onClick={() => selectRecord(record.id)}
+                    onClick={() => selectRecord(record.id, 'saves')}
                     className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors duration-150 ${
                       tab === 'saves' && selectedId === record.id
                         ? 'border-l-neutral-900 bg-neutral-100'
@@ -591,7 +587,7 @@ export function WritingRecords() {
                   <button
                     key={record.iterationGroupId ?? record.id}
                     type="button"
-                    onClick={() => selectRecord(record.id)}
+                    onClick={() => selectRecord(record.id, 'submits')}
                     className={`mb-0.5 w-full rounded-r-lg border-l-2 py-2.5 pl-3 pr-3 text-left transition-colors duration-150 ${
                       tab === 'submits' &&
                       (selectedSubmitGroup?.id === record.id ||
@@ -963,14 +959,14 @@ export function WritingRecords() {
                         <div key={key} className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2">
                           <p className="text-[10px] text-neutral-400">{label}</p>
                           <p className="mt-0.5 text-lg font-semibold text-neutral-800">
-                            {structurePreview.subScores[key]}
+                            {structurePreview.subScores?.[key] ?? '—'}
                           </p>
                         </div>
                       ))}
                     </div>
 
                     {/* 优势 & 不足 */}
-                    {structurePreview.overall.strengths.length > 0 && (
+                    {(structurePreview.overall?.strengths?.length ?? 0) > 0 && (
                       <div className="mt-4">
                         <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
                           <Check size={12} /> 优势
@@ -985,7 +981,7 @@ export function WritingRecords() {
                         </ul>
                       </div>
                     )}
-                    {structurePreview.overall.weaknesses.length > 0 && (
+                    {(structurePreview.overall?.weaknesses?.length ?? 0) > 0 && (
                       <div className="mt-3">
                         <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
                           <AlertTriangle size={12} /> 待改进
@@ -1002,7 +998,7 @@ export function WritingRecords() {
                     )}
 
                     {/* 总评摘要 */}
-                    {structurePreview.overall.summary && (
+                    {structurePreview.overall?.summary && (
                       <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5">
                         <p className="text-xs font-medium text-neutral-500">总体评价</p>
                         <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
@@ -1013,7 +1009,7 @@ export function WritingRecords() {
 
                     {/* 逐段点评 */}
                     {(() => {
-                      const pbs = structurePreview.paragraphFeedback
+                      const pbs = (structurePreview.paragraphFeedback ?? [])
                         .map(normalizeParagraphFb)
                         .filter((v): v is NonNullable<typeof v> => v !== null)
                       if (pbs.length === 0) return null
