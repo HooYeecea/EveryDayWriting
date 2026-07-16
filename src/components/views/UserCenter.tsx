@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Calendar,
@@ -28,6 +28,10 @@ import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
 import { PersonalPlanPanel } from '../user/PersonalPlanPanel'
 import { PrivacySettingsPanel } from '../user/PrivacySettingsPanel'
 import { TokenUsagePanel } from '../user/TokenUsagePanel'
+import {
+  USER_TAB_LOADING_MIN_HEIGHT,
+  UserTabContentGate,
+} from '../user/UserTabContentGate'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
 import { resolveAssetUrl } from '../../utils/assetUrl'
 import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
@@ -48,6 +52,14 @@ const TABS: { key: UserTab; label: string; icon: typeof Bell }[] = [
   { key: 'usage', label: '用量', icon: Gauge },
   { key: 'settings', label: '设置', icon: Settings },
 ]
+
+const TAB_LOADING_LABELS: Record<UserTab, string> = {
+  overview: '加载概览…',
+  plan: '加载个人计划…',
+  checkin: '加载打卡数据…',
+  usage: '加载用量数据…',
+  settings: '加载设置…',
+}
 
 function tabPaneClass(active: boolean): string {
   // 非激活页用 opacity:0（勿用 visibility:hidden，日历层会用 visibility:visible 穿透）
@@ -70,6 +82,8 @@ export function UserCenter() {
       : 'overview'
   const [tab, setTab] = useState<UserTab>(initialTab)
   const [visitedTabs, setVisitedTabs] = useState<Set<UserTab>>(() => new Set([initialTab]))
+  const [readyTabs, setReadyTabs] = useState<Set<UserTab>>(() => new Set())
+  const [settingsReadyParts, setSettingsReadyParts] = useState({ ai: false, privacy: false })
   const [enterClass, setEnterClass] = useState('')
   const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [editingNickname, setEditingNickname] = useState(false)
@@ -89,15 +103,35 @@ export function UserCenter() {
   const paneRefs = useRef<Partial<Record<UserTab, HTMLDivElement | null>>>({})
   const pendingDirRef = useRef<SlideDirection | null>(null)
 
+  const markTabReady = useCallback((key: UserTab) => {
+    setReadyTabs((prev) => {
+      if (prev.has(key)) return prev
+      const next = new Set(prev)
+      next.add(key)
+      return next
+    })
+  }, [])
+
+  const markSettingsPartReady = useCallback((part: 'ai' | 'privacy') => {
+    setSettingsReadyParts((prev) => {
+      if (prev[part]) return prev
+      return { ...prev, [part]: true }
+    })
+  }, [])
+
   const selectTab = (next: UserTab) => {
     if (next === tab) return
     const from = TABS.findIndex((item) => item.key === tab)
     const to = TABS.findIndex((item) => item.key === next)
     const direction: SlideDirection = to > from ? 'next' : 'prev'
-    const toHeight = paneRefs.current[next]?.offsetHeight ?? 0
 
-    // 高度一步到位（不做跟随滑动的高度过渡，避免动画过程中微抖）
-    if (toHeight > 0) setViewportHeight(toHeight)
+    if (next === 'overview' || readyTabs.has(next)) {
+      const toHeight = paneRefs.current[next]?.offsetHeight ?? 0
+      if (toHeight > 0) setViewportHeight(toHeight)
+    } else {
+      // 首次进入：先稳住加载态高度，避免空壳→内容撑开抖动
+      setViewportHeight(USER_TAB_LOADING_MIN_HEIGHT)
+    }
 
     setVisitedTabs((prev) => {
       if (prev.has(next)) return prev
@@ -119,23 +153,30 @@ export function UserCenter() {
     const cls = direction === 'next' ? 'user-tab-enter-next' : 'user-tab-enter-prev'
     const el = panelRef.current
     if (el) {
-      // 同向连续切换时靠 reflow 重启动画，避免先清空 class 造成“闪一下”
       el.classList.remove('user-tab-enter-next', 'user-tab-enter-prev')
       void el.offsetWidth
       el.classList.add(cls)
     }
     setEnterClass(cls)
 
-    const settled = paneRefs.current[tab]?.offsetHeight ?? 0
-    if (settled > 0) setViewportHeight(settled)
-  }, [tab])
+    if (tab === 'overview' || readyTabs.has(tab)) {
+      const settled = paneRefs.current[tab]?.offsetHeight ?? 0
+      if (settled > 0) setViewportHeight(settled)
+    } else {
+      setViewportHeight(USER_TAB_LOADING_MIN_HEIGHT)
+    }
+  }, [tab, readyTabs])
 
-  // 公告异步加载 / 展开折叠等会使当前页高度变化；同步视口，避免 overflow:hidden 裁切内容
+  // 当前 Tab 就绪或内容高度变化时同步视口
   useLayoutEffect(() => {
     const pane = paneRefs.current[tab]
     if (!pane) return
 
     const syncHeight = () => {
+      if (tab !== 'overview' && !readyTabs.has(tab)) {
+        setViewportHeight(USER_TAB_LOADING_MIN_HEIGHT)
+        return
+      }
       const next = pane.offsetHeight
       if (next > 0) setViewportHeight(next)
     }
@@ -144,7 +185,13 @@ export function UserCenter() {
     const observer = new ResizeObserver(syncHeight)
     observer.observe(pane)
     return () => observer.disconnect()
-  }, [tab])
+  }, [tab, readyTabs])
+
+  useLayoutEffect(() => {
+    if (settingsReadyParts.ai && settingsReadyParts.privacy) {
+      markTabReady('settings')
+    }
+  }, [markTabReady, settingsReadyParts.ai, settingsReadyParts.privacy])
 
   const showAdminEntry =
     hasUserRole(roles) && canAccessAdmin(roles, permissions)
@@ -554,7 +601,9 @@ export function UserCenter() {
                   </div>
                 )}
               <div className="mt-5">
-                {visitedTabs.has('overview') && <AnnouncementsPanel />}
+                {visitedTabs.has('overview') && (
+                  <AnnouncementsPanel onReady={() => markTabReady('overview')} />
+                )}
               </div>
             </div>
 
@@ -565,7 +614,14 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'plan')}
               aria-hidden={tab !== 'plan'}
             >
-              {visitedTabs.has('plan') && <PersonalPlanPanel />}
+              {visitedTabs.has('plan') && (
+                <UserTabContentGate
+                  ready={readyTabs.has('plan')}
+                  loadingLabel={TAB_LOADING_LABELS.plan}
+                >
+                  <PersonalPlanPanel onReady={() => markTabReady('plan')} />
+                </UserTabContentGate>
+              )}
             </div>
 
             <div
@@ -575,7 +631,15 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'checkin')}
               aria-hidden={tab !== 'checkin'}
             >
-              {visitedTabs.has('checkin') && <WritingCheckInPanel />}
+              {visitedTabs.has('checkin') && (
+                <UserTabContentGate
+                  ready={readyTabs.has('checkin')}
+                  loadingLabel={TAB_LOADING_LABELS.checkin}
+                  minHeight={360}
+                >
+                  <WritingCheckInPanel onReady={() => markTabReady('checkin')} />
+                </UserTabContentGate>
+              )}
             </div>
 
             <div
@@ -585,7 +649,14 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'usage')}
               aria-hidden={tab !== 'usage'}
             >
-              {visitedTabs.has('usage') && <TokenUsagePanel />}
+              {visitedTabs.has('usage') && (
+                <UserTabContentGate
+                  ready={readyTabs.has('usage')}
+                  loadingLabel={TAB_LOADING_LABELS.usage}
+                >
+                  <TokenUsagePanel onReady={() => markTabReady('usage')} />
+                </UserTabContentGate>
+              )}
             </div>
 
             <div
@@ -596,32 +667,38 @@ export function UserCenter() {
               aria-hidden={tab !== 'settings'}
             >
               {visitedTabs.has('settings') && (
-              <div className="space-y-5">
-                {showAdminEntry && (
-                  <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Shield size={18} className="text-neutral-500" />
-                          <h3 className="text-sm font-medium text-neutral-900">管理后台</h3>
+                <UserTabContentGate
+                  ready={readyTabs.has('settings')}
+                  loadingLabel={TAB_LOADING_LABELS.settings}
+                  minHeight={320}
+                >
+                  <div className="space-y-5">
+                    {showAdminEntry && (
+                      <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Shield size={18} className="text-neutral-500" />
+                              <h3 className="text-sm font-medium text-neutral-900">管理后台</h3>
+                            </div>
+                            <p className="mt-2 text-sm text-neutral-400">
+                              你同时拥有管理员角色，可以进入后台进行运营与系统配置。
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
+                            className="shrink-0 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
+                          >
+                            进入后台
+                          </button>
                         </div>
-                        <p className="mt-2 text-sm text-neutral-400">
-                          你同时拥有管理员角色，可以进入后台进行运营与系统配置。
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
-                        className="shrink-0 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
-                      >
-                        进入后台
-                      </button>
-                    </div>
-                  </section>
-                )}
-                <AiAssistPanel />
-                <PrivacySettingsPanel />
-              </div>
+                      </section>
+                    )}
+                    <AiAssistPanel onReady={() => markSettingsPartReady('ai')} />
+                    <PrivacySettingsPanel onReady={() => markSettingsPartReady('privacy')} />
+                  </div>
+                </UserTabContentGate>
               )}
             </div>
           </div>

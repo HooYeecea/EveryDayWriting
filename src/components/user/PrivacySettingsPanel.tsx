@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Shield } from 'lucide-react'
 import { getAgreementStatus } from '../../api/agreements'
 import { deleteAiMemory } from '../../api/privacy'
 import type { AgreementStatusItem } from '../../api/agreements'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 
-export function PrivacySettingsPanel() {
+export function PrivacySettingsPanel({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [agreements, setAgreements] = useState<AgreementStatusItem[]>([])
   const [loading, setLoading] = useState(true)
   const [clearing, setClearing] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const readyReportedRef = useRef(false)
 
   useEffect(() => {
     getAgreementStatus()
@@ -19,6 +20,12 @@ export function PrivacySettingsPanel() {
       .catch((err) => setError(err instanceof Error ? err.message : '加载协议状态失败'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (loading || readyReportedRef.current) return
+    readyReportedRef.current = true
+    onReady?.()
+  }, [loading, onReady])
 
   const handleClearAiMemory = async () => {
     const ok = await confirm({

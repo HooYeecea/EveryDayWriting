@@ -1,9 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Gauge } from 'lucide-react'
 import { getTokenBudget, getTokenUsageDetails, getTokenUsageSummary, setTokenBudget } from '../../api/tokenUsage'
 import type { TokenBudgetStatus, TokenUsageDetailItem, TokenUsageSummary } from '../../types'
 
-export function TokenUsagePanel() {
+export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
   const [summary, setSummary] = useState<TokenUsageSummary | null>(null)
   const [budget, setBudget] = useState<TokenBudgetStatus | null>(null)
   const [details, setDetails] = useState<TokenUsageDetailItem[]>([])
@@ -12,6 +12,7 @@ export function TokenUsagePanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const readyReportedRef = useRef(false)
 
   const load = () => {
     setLoading(true)
@@ -32,6 +33,12 @@ export function TokenUsagePanel() {
   useEffect(() => {
     load()
   }, [])
+
+  useEffect(() => {
+    if (loading || readyReportedRef.current) return
+    readyReportedRef.current = true
+    onReady?.()
+  }, [loading, onReady])
 
   const handleSaveBudget = async (event: FormEvent) => {
     event.preventDefault()
@@ -61,7 +68,14 @@ export function TokenUsagePanel() {
         <h3 className="text-sm font-medium text-neutral-900">Token 用量</h3>
       </div>
 
-      {loading && <p className="mt-4 text-sm text-neutral-400">加载中…</p>}
+      {loading && (
+        <div
+          className="mt-4 flex min-h-[200px] flex-col items-center justify-center gap-2 text-sm text-neutral-400"
+          role="status"
+        >
+          加载中…
+        </div>
+      )}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       {summary && budget && !loading && (

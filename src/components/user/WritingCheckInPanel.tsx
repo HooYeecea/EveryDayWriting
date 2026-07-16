@@ -260,11 +260,12 @@ function slideEnterClass(direction: SlideDirection | null): string {
   return ''
 }
 
-export function WritingCheckInPanel() {
+export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) {
   const today = useMemo(() => new Date(), [])
   const todayKey = useMemo(() => toDateKey(today), [today])
   const calendarCache = useRef(new Map<string, CheckInCalendar>())
   const calendarRequestSeq = useRef(0)
+  const readyReportedRef = useRef(false)
   const shellRef = useRef<HTMLDivElement>(null)
   const yearInnerRef = useRef<HTMLDivElement>(null)
   const monthInnerRef = useRef<HTMLDivElement>(null)
@@ -630,13 +631,21 @@ export function WritingCheckInPanel() {
       setCalendar(calendarData)
       setLoadedKey(fetchKey)
     } catch {
-      // 保留占位结构，避免切换时布局塌陷
+      // 失败也结束首屏等待，避免 Tab 门禁一直转圈
+      if (requestSeq !== calendarRequestSeq.current) return
+      setLoadedKey(fetchKey)
     }
   }, [cacheMonth, getCachedYearCalendars, viewMode, viewMonth, viewWeekStart, viewYear])
 
   useEffect(() => {
     void loadCalendar()
   }, [loadCalendar])
+
+  useEffect(() => {
+    if (initialLoading || !isSynced || readyReportedRef.current) return
+    readyReportedRef.current = true
+    onReady?.()
+  }, [initialLoading, isSynced, onReady])
 
   const switchViewMode = (mode: CalendarViewMode) => {
     if (mode === viewMode) return
