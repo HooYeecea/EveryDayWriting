@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, BarChart3, Check, ClipboardList, Clock, FileText, Lightbulb, LogIn, PenLine, RotateCcw, Sparkles, Wand2, AlertTriangle } from 'lucide-react'
 import {
@@ -33,6 +33,7 @@ import type {
   WritingDraft,
   WritingDraftListItem,
   WritingSubmitDetail,
+  WritingSubmitListItem,
 } from '../../types'
 import {
   MAIN_CONTENT_X_CLASS,
@@ -183,7 +184,7 @@ export function WritingRecords() {
   const locationState = (location.state as RecordsLocationState | null) ?? null
   const [tab, setTab] = useState<RecordTab>(locationState?.tab ?? 'saves')
   const [saves, setSaves] = useState<WritingDraftListItem[]>([])
-  const [submits, setSubmits] = useState<GroupedSubmitListItem[]>([])
+  const [submitItemsRaw, setSubmitItemsRaw] = useState<WritingSubmitListItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(locationState?.selectedId ?? null)
   const [submitDetail, setSubmitDetail] = useState<WritingSubmitDetail | null>(null)
   const [_submitDetailLoading, setSubmitDetailLoading] = useState(false)
@@ -197,6 +198,14 @@ export function WritingRecords() {
   const [activeKeyword, setActiveKeyword] = useState('')
   const [searchFields, setSearchFields] = useState<RecordSearchField[]>(
     DEFAULT_RECORD_SEARCH_FIELDS,
+  )
+
+  const submits = useMemo(
+    () =>
+      groupSubmitListItems(
+        filterSubmitsBySearchFields(submitItemsRaw, activeKeyword, searchFields),
+      ),
+    [submitItemsRaw, activeKeyword, searchFields],
   )
 
   const [deleting, setDeleting] = useState(false)
@@ -282,12 +291,7 @@ export function WritingRecords() {
           page: 1,
           pageSize: 100,
         })
-        const filtered = filterSubmitsBySearchFields(
-          result.items,
-          activeKeyword,
-          searchFields,
-        )
-        setSubmits(groupSubmitListItems(filtered))
+        setSubmitItemsRaw(result.items)
       }
       setSelectedId(null)
       setMobileShowDetail(false)
@@ -337,36 +341,50 @@ export function WritingRecords() {
     setSearchFields([...DEFAULT_RECORD_SEARCH_FIELDS])
   }, [tab])
 
-  useEffect(() => {
-    if (!isAuthenticated) return
+  const isRecordsActive = location.pathname === '/records'
+  const serverKeyword = needsServerKeyword(activeKeyword, searchFields)
+    ? activeKeyword
+    : undefined
 
+  // 仅当前页激活时拉草稿；不再依赖 location.key（侧栏切换会误触发）
+  useEffect(() => {
+    if (!isAuthenticated || !isRecordsActive) return
+
+    let cancelled = false
     setSavesLoading(true)
     getDrafts(1, 100)
-      .then((result) => setSaves(result.items))
-      .finally(() => setSavesLoading(false))
-  }, [isAuthenticated, location.key])
+      .then((result) => {
+        if (!cancelled) setSaves(result.items)
+      })
+      .finally(() => {
+        if (!cancelled) setSavesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, isRecordsActive])
 
+  // 仅服务端 keyword 变化时重拉；字段勾选由本地 useMemo 过滤
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || !isRecordsActive) return
 
+    let cancelled = false
     setSubmitsLoading(true)
     getSubmittedWritings({
-      keyword: needsServerKeyword(activeKeyword, searchFields)
-        ? activeKeyword
-        : undefined,
+      keyword: serverKeyword,
       page: 1,
       pageSize: 100,
     })
       .then((result) => {
-        const filtered = filterSubmitsBySearchFields(
-          result.items,
-          activeKeyword,
-          searchFields,
-        )
-        setSubmits(groupSubmitListItems(filtered))
+        if (!cancelled) setSubmitItemsRaw(result.items)
       })
-      .finally(() => setSubmitsLoading(false))
-  }, [isAuthenticated, activeKeyword, searchFields, location.key])
+      .finally(() => {
+        if (!cancelled) setSubmitsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, isRecordsActive, serverKeyword])
 
   useEffect(() => {
     if (!selectedId) {

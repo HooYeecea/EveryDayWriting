@@ -1,14 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
 import { useLocation } from 'react-router-dom'
-import { APP_ROUTES } from '../../config/routes'
+import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
 
 function routeIndex(pathname: string): number {
   return APP_ROUTES.findIndex((route) => route.path === pathname)
 }
 
 /**
- * 用户端主内容区切换：页面保持挂载（避免写作内容丢失），
- * 按侧栏顺序做方向性滑动 + 淡入，替代 display:none 硬切。
+ * 用户端主内容区切换：
+ * - `/writing` 始终挂载，避免写作内容丢失
+ * - 其它页首次访问再挂载，之后保活（保留退出动画与二次进入状态）
  */
 export function AppPageSwitcher() {
   const { pathname } = useLocation()
@@ -19,6 +20,18 @@ export function AppPageSwitcher() {
   const [exitingPath, setExitingPath] = useState<string | null>(null)
   const [exitClass, setExitClass] = useState('')
   const exitTimerRef = useRef<number | null>(null)
+  const [mountedPaths, setMountedPaths] = useState<Set<string>>(
+    () => new Set([DEFAULT_PATH, pathname]),
+  )
+
+  useEffect(() => {
+    setMountedPaths((prev) => {
+      if (prev.has(pathname)) return prev
+      const next = new Set(prev)
+      next.add(pathname)
+      return next
+    })
+  }, [pathname])
 
   useLayoutEffect(() => {
     if (isFirstNavRef.current) {
@@ -76,6 +89,9 @@ export function AppPageSwitcher() {
   return (
     <div className="app-page-shell">
       {APP_ROUTES.map(({ path, key, element }) => {
+        const shouldMount = mountedPaths.has(path)
+        if (!shouldMount) return null
+
         const isActive = pathname === path
         const isExiting = exitingPath === path
         const paneClass = [

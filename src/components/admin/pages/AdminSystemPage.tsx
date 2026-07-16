@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Activity, Database, HardDrive, MemoryStick, Server } from 'lucide-react'
 import { getAdminSystemInfo, type AdminSystemInfo } from '../../../api/admin'
 import { useAuth } from '../../../context/AuthContext'
@@ -35,7 +36,9 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export function AdminSystemPage() {
+  const { pathname } = useLocation()
   const { permissions } = useAuth()
+  const pageActive = pathname === '/admin/system'
   const canView = hasPermission(permissions, 'monitor:view')
   const [data, setData] = useState<AdminSystemInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,7 +66,7 @@ export function AdminSystemPage() {
   const { refreshNow, resetTimer } = useAutoRefresh(
     () => load(true),
     AUTO_REFRESH_MS,
-    canView && data != null,
+    canView && data != null && pageActive,
   )
 
   useEffect(() => {

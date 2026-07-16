@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Calendar,
@@ -69,6 +69,7 @@ export function UserCenter() {
       ? (location.state as { tab: UserTab }).tab
       : 'overview'
   const [tab, setTab] = useState<UserTab>(initialTab)
+  const [visitedTabs, setVisitedTabs] = useState<Set<UserTab>>(() => new Set([initialTab]))
   const [enterClass, setEnterClass] = useState('')
   const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [editingNickname, setEditingNickname] = useState(false)
@@ -97,6 +98,13 @@ export function UserCenter() {
 
     // 高度一步到位（不做跟随滑动的高度过渡，避免动画过程中微抖）
     if (toHeight > 0) setViewportHeight(toHeight)
+
+    setVisitedTabs((prev) => {
+      if (prev.has(next)) return prev
+      const nextSet = new Set(prev)
+      nextSet.add(next)
+      return nextSet
+    })
 
     pendingDirRef.current = direction
     setTab(next)
@@ -165,13 +173,6 @@ export function UserCenter() {
     observer.observe(measure)
     return () => observer.disconnect()
   }, [showAdminEntry, user?.nickname, user?.vipLevel])
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-    void refreshProfile().catch(() => {
-      // 统计刷新失败不影响页面展示
-    })
-  }, [isAuthenticated, refreshProfile])
 
   const handleLogout = async () => {
     await logout()
@@ -553,7 +554,7 @@ export function UserCenter() {
                   </div>
                 )}
               <div className="mt-5">
-                <AnnouncementsPanel />
+                {visitedTabs.has('overview') && <AnnouncementsPanel />}
               </div>
             </div>
 
@@ -564,7 +565,7 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'plan')}
               aria-hidden={tab !== 'plan'}
             >
-              <PersonalPlanPanel />
+              {visitedTabs.has('plan') && <PersonalPlanPanel />}
             </div>
 
             <div
@@ -574,7 +575,7 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'checkin')}
               aria-hidden={tab !== 'checkin'}
             >
-              <WritingCheckInPanel />
+              {visitedTabs.has('checkin') && <WritingCheckInPanel />}
             </div>
 
             <div
@@ -584,7 +585,7 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'usage')}
               aria-hidden={tab !== 'usage'}
             >
-              <TokenUsagePanel />
+              {visitedTabs.has('usage') && <TokenUsagePanel />}
             </div>
 
             <div
@@ -594,6 +595,7 @@ export function UserCenter() {
               className={tabPaneClass(tab === 'settings')}
               aria-hidden={tab !== 'settings'}
             >
+              {visitedTabs.has('settings') && (
               <div className="space-y-5">
                 {showAdminEntry && (
                   <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
@@ -620,6 +622,7 @@ export function UserCenter() {
                 <AiAssistPanel />
                 <PrivacySettingsPanel />
               </div>
+              )}
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ function routeIndex(pathname: string, permissions: string[]): number {
 }
 
 /**
- * 管理端主内容区切换：页面保持挂载，按侧栏可见菜单顺序做方向性滑动 + 淡入。
+ * 管理端主内容区切换：首次访问再挂载，之后保活并做方向性滑动。
  */
 export function AdminPageSwitcher() {
   const { pathname } = useLocation()
@@ -22,6 +22,16 @@ export function AdminPageSwitcher() {
   const [exitingPath, setExitingPath] = useState<string | null>(null)
   const [exitClass, setExitClass] = useState('')
   const exitTimerRef = useRef<number | null>(null)
+  const [mountedPaths, setMountedPaths] = useState<Set<string>>(() => new Set([pathname]))
+
+  useEffect(() => {
+    setMountedPaths((prev) => {
+      if (prev.has(pathname)) return prev
+      const next = new Set(prev)
+      next.add(pathname)
+      return next
+    })
+  }, [pathname])
 
   useLayoutEffect(() => {
     if (isFirstNavRef.current) {
@@ -79,6 +89,8 @@ export function AdminPageSwitcher() {
   return (
     <div className="app-page-shell">
       {visibleRoutes.map(({ path, key, element }) => {
+        if (!mountedPaths.has(path)) return null
+
         const isActive = pathname === path
         const isExiting = exitingPath === path
         const paneClass = [

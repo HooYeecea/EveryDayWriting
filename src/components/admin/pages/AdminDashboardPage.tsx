@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type AnimationEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Area,
   AreaChart,
@@ -92,7 +92,9 @@ function StatCard({
 }
 
 export function AdminDashboardPage() {
+  const { pathname } = useLocation()
   const { permissions } = useAuth()
+  const pageActive = pathname === '/admin'
   const canView = hasPermission(permissions, 'dashboard:view')
   const links = getVisibleAdminRoutes(permissions).filter(
     (route) => route.path !== '/admin' && route.path !== '/admin/system',
@@ -156,7 +158,7 @@ export function AdminDashboardPage() {
   const { refreshNow, resetTimer } = useAutoRefresh(
     () => load('silent'),
     AUTO_REFRESH_MS,
-    canView && data != null,
+    canView && data != null && pageActive,
   )
 
   useEffect(() => {
