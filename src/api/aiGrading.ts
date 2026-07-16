@@ -12,9 +12,15 @@ export interface PreSubmitGradingResult {
   stageContents: Partial<Record<GradingStageKey, unknown>>
 }
 
+type GradingTask = { purpose: GradingStageKey; enabled: boolean; label: string }
+
+type TaskOutcome =
+  | { ok: true; task: GradingTask; gradingSessionId?: string; parsed?: unknown }
+  | { ok: false; task: GradingTask }
+
 /**
  * 提交前运行已启用的 AI 批改任务，累积到同一个 gradingSession。
- * 各 purpose 的 AI 返回内容会被解析为对应的结构化类型。
+ * 首个任务创建会话；其余任务并行追加（后端要求共享 gradingSessionId）。
  */
 export async function runPreSubmitGrading(content: string): Promise<PreSubmitGradingResult> {
   const settings = loadAiAssistSettings()
@@ -28,19 +34,22 @@ export async function runPreSubmitGrading(content: string): Promise<PreSubmitGra
     return { completedTasks: [], failedTasks: [], stageContents: {} }
   }
 
-  const tasks: Array<{ purpose: GradingStageKey; enabled: boolean; label: string }> = [
+  const tasks: GradingTask[] = [
     { purpose: 'grammar', enabled: settings.postSubmitReview, label: '语法检查' },
     { purpose: 'structure', enabled: settings.postSubmitStructure, label: '结构评分' },
     { purpose: 'vocabulary', enabled: settings.postSubmitSuggestions, label: '提升建议' },
   ]
 
-  let gradingSessionId: string | undefined
+  const enabledTasks = tasks.filter((task) => task.enabled)
+  if (enabledTasks.length === 0) {
+    return { completedTasks: [], failedTasks: [], stageContents: {} }
+  }
+
   const completedTasks: string[] = []
   const failedTasks: string[] = []
   const stageContents: Partial<Record<GradingStageKey, unknown>> = {}
 
-  for (const task of tasks) {
-    if (!task.enabled) continue
+  const runTask = async (task: GradingTask, gradingSessionId?: string): Promise<TaskOutcome> => {
     try {
       const result = await callAiProxy(
         task.purpose,
@@ -52,29 +61,65 @@ export async function runPreSubmitGrading(content: string): Promise<PreSubmitGra
         },
         hasOwnKey ? settings.encryptedKey : undefined,
       )
-      if (result.gradingSessionId) {
-        gradingSessionId = result.gradingSessionId
-      }
+
+      let parsed: unknown
       if (result.content?.trim()) {
-        // 解析 JSON，兼容旧版 markdown
-        const parsed = parseAiProxyContent<
+        parsed = parseAiProxyContent<
           GrammarCheckResult | StructureResult | VocabularyCheckResult
         >(result.content.trim())
-        stageContents[task.purpose] = parsed
         if (import.meta.env.DEV) {
           console.debug(
             `[aiGrading] ${task.purpose} 解析结果:`,
             typeof parsed === 'string' ? 'string (markdown 兼容)' : 'object',
-            typeof parsed === 'object' ? Object.keys(parsed) : parsed.slice(0, 120),
+            typeof parsed === 'object' && parsed ? Object.keys(parsed) : String(parsed).slice(0, 120),
           )
         }
       } else {
         console.warn(`[aiGrading] ${task.purpose} 返回空内容`)
       }
-      completedTasks.push(task.label)
+
+      return { ok: true, task, gradingSessionId: result.gradingSessionId, parsed }
     } catch (err) {
       console.warn(`[aiGrading] ${task.purpose} 失败`, err)
-      failedTasks.push(task.label)
+      return { ok: false, task }
+    }
+  }
+
+  const applyOutcome = (outcome: TaskOutcome) => {
+    if (outcome.ok) {
+      if (outcome.parsed !== undefined) {
+        stageContents[outcome.task.purpose] = outcome.parsed
+      }
+      completedTasks.push(outcome.task.label)
+    } else {
+      failedTasks.push(outcome.task.label)
+    }
+  }
+
+  // 后端：不传 gradingSessionId 会新建会话；传了则追加到同一会话。
+  // 因此先跑一个任务拿到 sessionId，其余已启用任务并行追加。
+  let gradingSessionId: string | undefined
+  let nextIndex = 0
+
+  while (nextIndex < enabledTasks.length && !gradingSessionId) {
+    const outcome = await runTask(enabledTasks[nextIndex])
+    nextIndex += 1
+    applyOutcome(outcome)
+    if (outcome.ok && outcome.gradingSessionId) {
+      gradingSessionId = outcome.gradingSessionId
+    }
+  }
+
+  const remaining = enabledTasks.slice(nextIndex)
+  if (remaining.length > 0) {
+    const outcomes = await Promise.all(
+      remaining.map((task) => runTask(task, gradingSessionId)),
+    )
+    for (const outcome of outcomes) {
+      applyOutcome(outcome)
+      if (!gradingSessionId && outcome.ok && outcome.gradingSessionId) {
+        gradingSessionId = outcome.gradingSessionId
+      }
     }
   }
 
