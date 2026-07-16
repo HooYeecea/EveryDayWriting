@@ -104,12 +104,14 @@ export function AdminModal({
   onClose,
   children,
   footer,
+  size = 'md',
 }: {
   open: boolean
   title: string
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  size?: 'md' | 'lg'
 }) {
   if (!open) return null
   return (
@@ -120,7 +122,11 @@ export function AdminModal({
         aria-label="关闭弹层"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl border border-neutral-200 bg-white shadow-xl sm:rounded-2xl">
+      <div
+        className={`relative z-10 flex max-h-[90vh] w-full flex-col rounded-t-2xl border border-neutral-200 bg-white shadow-xl sm:rounded-2xl ${
+          size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
+        }`}
+      >
         <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
           <h3 className="font-sans text-sm font-semibold text-neutral-900">{title}</h3>
           <button

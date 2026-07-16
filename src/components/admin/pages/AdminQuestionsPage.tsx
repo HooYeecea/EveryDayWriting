@@ -25,6 +25,7 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { QuestionPreviewCard } from '../QuestionPreviewCard'
 
 const EXAM_TYPES = ['', 'CET4', 'CET6', 'IELTS', 'TOEFL', 'Postgraduate', 'General']
 const EXAM_LABELS: Record<string, string> = {
@@ -44,14 +45,6 @@ const STEP_LABELS: Record<number, string> = {
   5: '短写作',
 }
 const AI_COUNTS = [1, 5, 10, 20] as const
-
-function prettyJson(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
-    return String(value ?? '')
-  }
-}
 
 export function AdminQuestionsPage() {
   const { confirm } = useAppConfirm()
@@ -489,20 +482,22 @@ export function AdminQuestionsPage() {
                 <p className="text-xs font-medium text-neutral-500">
                   预览（{aiPreview.length} 题）— 仅预览，未入库
                 </p>
-                {aiPreview.map((q, index) => (
-                  <div
-                    key={`${q.questionType}-${index}`}
-                    className="rounded-xl border border-neutral-100 bg-neutral-50 p-3"
-                  >
-                    <p className="text-sm font-medium text-neutral-800">
-                      #{index + 1} · {EXAM_LABELS[q.examType] ?? q.examType} · {q.questionType} ·
-                      难度{q.difficulty}
-                    </p>
-                    <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-neutral-600">
-                      {prettyJson({ content: q.content, answer: q.answer })}
-                    </pre>
-                  </div>
-                ))}
+                <div className="grid gap-3">
+                  {aiPreview.map((q, index) => (
+                    <QuestionPreviewCard
+                      key={`${q.questionType}-${index}`}
+                      index={index + 1}
+                      questionType={q.questionType}
+                      examType={q.examType}
+                      difficulty={q.difficulty}
+                      stepNumber={q.stepNumber}
+                      content={q.content}
+                      answer={q.answer}
+                      compact
+                      showRawToggle
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </AdminCard>
@@ -716,6 +711,7 @@ export function AdminQuestionsPage() {
       <AdminModal
         open={detailOpen}
         title="题目详情"
+        size="lg"
         onClose={() => {
           setDetailOpen(false)
           setDetail(null)
@@ -737,49 +733,34 @@ export function AdminQuestionsPage() {
             加载详情…
           </div>
         ) : (
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-3 text-xs text-neutral-500 sm:grid-cols-3">
               <p>
-                考试类型：
-                <span className="text-neutral-800">
-                  {EXAM_LABELS[detail.examType] ?? detail.examType}
+                状态：
+                <span className="ml-1 font-medium text-neutral-800">
+                  {detail.isEnabled ? '启用' : '禁用'}
                 </span>
               </p>
               <p>
-                题型：
-                <span className="text-neutral-800">{detail.questionType}</span>
+                使用：
+                <span className="ml-1 font-medium text-neutral-800">{detail.usageCount} 次</span>
               </p>
-              <p>
+              <p className="col-span-2 sm:col-span-1">
                 步骤：
-                <span className="text-neutral-800">
+                <span className="ml-1 font-medium text-neutral-800">
                   {detail.stepNumber} · {STEP_LABELS[detail.stepNumber] ?? ''}
                 </span>
               </p>
-              <p>
-                难度：
-                <span className="text-neutral-800">{detail.difficulty}</span>
-              </p>
-              <p>
-                状态：
-                <span className="text-neutral-800">{detail.isEnabled ? '启用' : '禁用'}</span>
-              </p>
-              <p>
-                使用次数：
-                <span className="text-neutral-800">{detail.usageCount}</span>
-              </p>
             </div>
-            <div>
-              <p className="mb-1 text-xs font-medium text-neutral-500">Content</p>
-              <pre className="max-h-52 overflow-auto rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-[11px] text-neutral-700">
-                {prettyJson(detail.content)}
-              </pre>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-medium text-neutral-500">Answer</p>
-              <pre className="max-h-40 overflow-auto rounded-lg border border-neutral-100 bg-neutral-50 p-3 font-mono text-[11px] text-neutral-700">
-                {prettyJson(detail.answer)}
-              </pre>
-            </div>
+            <QuestionPreviewCard
+              questionType={detail.questionType}
+              examType={detail.examType}
+              difficulty={detail.difficulty}
+              stepNumber={detail.stepNumber}
+              content={detail.content}
+              answer={detail.answer}
+              showRawToggle
+            />
           </div>
         )}
       </AdminModal>
