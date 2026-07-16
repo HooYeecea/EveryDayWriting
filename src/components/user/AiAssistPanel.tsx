@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Key, Sparkles, Zap } from 'lucide-react'
 import { getAiConfig, submitAiKey } from '../../api/ai'
 import type { AiConfig, AiProviderBrief } from '../../types'
@@ -15,7 +15,7 @@ function formatTokens(n: number): string {
   return String(n)
 }
 
-export function AiAssistPanel() {
+export function AiAssistPanel({ onReady }: { onReady?: () => void } = {}) {
   const [config, setConfig] = useState<AiConfig | null>(null)
   const [providerId, setProviderId] = useState('')
   const [modelId, setModelId] = useState('')
@@ -25,6 +25,7 @@ export function AiAssistPanel() {
   const [savingKey, setSavingKey] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const readyReportedRef = useRef(false)
 
   const selectedProvider = config?.providers.find((item) => item.id === providerId)
   const freeQuota = config?.freeQuota
@@ -54,6 +55,12 @@ export function AiAssistPanel() {
       .catch((err) => setError(err instanceof Error ? err.message : '加载 AI 配置失败'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (loading || readyReportedRef.current) return
+    readyReportedRef.current = true
+    onReady?.()
+  }, [loading, onReady])
 
   const handleProviderChange = (value: string) => {
     setProviderId(value)

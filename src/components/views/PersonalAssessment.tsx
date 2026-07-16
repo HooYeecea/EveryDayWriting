@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { getAssessmentStats, type AssessmentPeriod } from '../../api/assessment'
 import type { AssessmentStats } from '../../types'
+import { useAuth } from '../../context/AuthContext'
+import { useReportReady } from '../../hooks/useReportReady'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
 const PERIOD_OPTIONS: { value: AssessmentPeriod; label: string }[] = [
@@ -11,20 +13,39 @@ const PERIOD_OPTIONS: { value: AssessmentPeriod; label: string }[] = [
   { value: '90d', label: '近 90 天' },
 ]
 
-export function PersonalAssessment() {
+export function PersonalAssessment({ onReady }: { onReady?: () => void } = {}) {
+  const { isAuthenticated } = useAuth()
   const [period, setPeriod] = useState<AssessmentPeriod>('all')
   const [stats, setStats] = useState<AssessmentStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  useReportReady(!loading, onReady)
+
   useEffect(() => {
+    if (!isAuthenticated) {
+      setStats(null)
+      setLoading(false)
+      setError('')
+      return
+    }
+    let cancelled = false
     setLoading(true)
     setError('')
     getAssessmentStats(period)
-      .then(setStats)
-      .catch((err) => setError(err instanceof Error ? err.message : '加载失败'))
-      .finally(() => setLoading(false))
-  }, [period])
+      .then((data) => {
+        if (!cancelled) setStats(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : '加载失败')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [period, isAuthenticated])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

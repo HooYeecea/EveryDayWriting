@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Activity, Database, HardDrive, MemoryStick, Server } from 'lucide-react'
 import { getAdminSystemInfo, type AdminSystemInfo } from '../../../api/admin'
 import { useAuth } from '../../../context/AuthContext'
@@ -12,6 +13,7 @@ import {
   AdminPageBody,
   AdminPageHeader,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const AUTO_REFRESH_MS = 10_000
 
@@ -34,8 +36,10 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function AdminSystemPage() {
+export function AdminSystemPage({ onReady }: { onReady?: () => void } = {}) {
+  const { pathname } = useLocation()
   const { permissions } = useAuth()
+  const pageActive = pathname === '/admin/system'
   const canView = hasPermission(permissions, 'monitor:view')
   const [data, setData] = useState<AdminSystemInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,7 +67,7 @@ export function AdminSystemPage() {
   const { refreshNow, resetTimer } = useAutoRefresh(
     () => load(true),
     AUTO_REFRESH_MS,
-    canView && data != null,
+    canView && data != null && pageActive,
   )
 
   useEffect(() => {
@@ -76,6 +80,8 @@ export function AdminSystemPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial / permission gate only
   }, [canView])
+
+  useReportReady(!loading, onReady)
 
   if (!canView) {
     return (

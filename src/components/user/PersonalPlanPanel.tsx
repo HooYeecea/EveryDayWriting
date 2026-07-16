@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Loader2, Target, ArrowRight } from 'lucide-react'
 import { getStudyPlan } from '../../api/proficiencyTest'
 import { isApiError } from '../../api/request'
 import type { StudyPlanResponse } from '../../types/proficiencyTest'
 
-export function PersonalPlanPanel() {
+export function PersonalPlanPanel({ onReady }: { onReady?: () => void } = {}) {
   const [plan, setPlan] = useState<StudyPlanResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [missing, setMissing] = useState(false)
+  const reportedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -36,9 +37,15 @@ export function PersonalPlanPanel() {
     }
   }, [])
 
+  useEffect(() => {
+    if (loading || reportedRef.current) return
+    reportedRef.current = true
+    onReady?.()
+  }, [loading, onReady])
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-400">
+      <div className="flex min-h-[280px] items-center justify-center gap-2 py-16 text-sm text-neutral-400">
         <Loader2 size={16} className="animate-spin" />
         加载个人计划…
       </div>

@@ -2,13 +2,16 @@ import { BookOpen, HelpCircle, MessageCircle, Mic, Target, Zap, ArrowRight } fro
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useProficiencyGuideRedDot } from '../../hooks/useProficiencyGuideRedDot'
+import { useReportReady } from '../../hooks/useReportReady'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
-export function UsageGuide() {
+export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated } = useAuth()
   const onboarding = user?.proficiencyOnboarding
   const showGuideRedDot = useProficiencyGuideRedDot()
   const showTestEntry = isAuthenticated && showGuideRedDot
+
+  useReportReady(true, onReady)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

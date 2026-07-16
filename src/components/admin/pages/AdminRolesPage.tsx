@@ -25,8 +25,9 @@ import {
   adminInputClass,
 } from '../AdminUi'
 import { AdminActionMenu } from '../AdminActionMenu'
+import { useReportReady } from '../../../hooks/useReportReady'
 
-export function AdminRolesPage() {
+export function AdminRolesPage({ onReady }: { onReady?: () => void } = {}) {
   const { refreshAccess } = useAuth()
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminRoleItem[]>([])
@@ -72,6 +73,8 @@ export function AdminRolesPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const openDetail = async (roleId: string) => {
     setError('')

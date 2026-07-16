@@ -21,6 +21,8 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { BrandLoading } from '../../brand/BrandLoading'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const PURPOSE_LABELS: Record<string, string> = {
   structure: '结构分析',
@@ -37,7 +39,7 @@ const PURPOSE_LABELS: Record<string, string> = {
 
 type ViewMode = 'list' | 'edit' | 'history' | 'test'
 
-export function AdminPromptsPage() {
+export function AdminPromptsPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminPromptListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +55,7 @@ export function AdminPromptsPage() {
   const [testResult, setTestResult] = useState<AdminPromptTestResult | null>(null)
   const [testLoading, setTestLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [viewBusy, setViewBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -71,7 +74,11 @@ export function AdminPromptsPage() {
     void load()
   }, [load])
 
+  useReportReady(!loading, onReady)
+
   const openEdit = async (id: string) => {
+    setViewBusy(true)
+    setError('')
     try {
       const d = await getAdminPrompt(id)
       setDetail(d)
@@ -82,10 +89,14 @@ export function AdminPromptsPage() {
       setViewMode('edit')
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取详情失败')
+    } finally {
+      setViewBusy(false)
     }
   }
 
   const openHistory = async (id: string) => {
+    setViewBusy(true)
+    setError('')
     try {
       const data = await getAdminPromptHistory(id)
       setHistoryItems(data.items)
@@ -93,10 +104,14 @@ export function AdminPromptsPage() {
       setViewMode('history')
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取历史失败')
+    } finally {
+      setViewBusy(false)
     }
   }
 
   const openTest = async (id: string) => {
+    setViewBusy(true)
+    setError('')
     try {
       const d = await getAdminPrompt(id)
       setDetail(d)
@@ -106,6 +121,8 @@ export function AdminPromptsPage() {
       setViewMode('test')
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取详情失败')
+    } finally {
+      setViewBusy(false)
     }
   }
 
@@ -175,9 +192,12 @@ export function AdminPromptsPage() {
         <AdminPageHeader title="AI Prompt 模板" description="在线修改所有 AI 功能的 System Prompt，修改后即时生效" />
         <AdminPageBody>
           {error ? <div className="mb-4"><AdminError message={error} /></div> : null}
+          {viewBusy ? (
+            <BrandLoading label="打开模板…" minHeight={280} />
+          ) : (
           <AdminCard className="overflow-hidden p-0 sm:p-0">
             {loading ? (
-              <AdminEmpty message="加载中…" />
+              <BrandLoading label="加载模板列表…" minHeight={240} className="rounded-none border-0 shadow-none" />
             ) : items.length === 0 ? (
               <AdminEmpty message="暂无模板" />
             ) : (
@@ -210,6 +230,7 @@ export function AdminPromptsPage() {
               </ul>
             )}
           </AdminCard>
+          )}
         </AdminPageBody>
       </div>
     )

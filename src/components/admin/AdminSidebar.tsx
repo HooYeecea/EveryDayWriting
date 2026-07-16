@@ -4,6 +4,7 @@ import { getVisibleAdminRoutes } from '../../config/adminRoutes'
 import { DEFAULT_PATH } from '../../config/routes'
 import { useAuth } from '../../context/AuthContext'
 import { hasUserRole } from '../../utils/roles'
+import { EwLogo } from '../brand/EwLogo'
 import {
   PANEL_FOOTER_CLASS,
   PANEL_HEADER_CLASS,
@@ -26,7 +27,7 @@ export function AdminSidebar({
   onToggleCollapse,
   onClose,
 }: AdminSidebarProps) {
-  const { roles, permissions, logout, user } = useAuth()
+  const { roles, permissions, logout } = useAuth()
   const navigate = useNavigate()
   const canReturnToUser = hasUserRole(roles)
   const visibleRoutes = getVisibleAdminRoutes(permissions)
@@ -56,22 +57,25 @@ export function AdminSidebar({
                   : 'translate-x-0 opacity-100'
               }`}
             >
-              <h1 className={`${PANEL_TITLE_CLASS} whitespace-nowrap`}>管理后台</h1>
-              <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>
-                {user?.nickname || user?.email || 'Administrator'}
-              </p>
+              <div className="flex items-center gap-2.5">
+                <EwLogo className="h-8 w-8 shrink-0" />
+                <div className="min-w-0">
+                  <h1 className={`${PANEL_TITLE_CLASS} whitespace-nowrap`}>管理后台</h1>
+                  <p className={`${PANEL_SUBTITLE_CLASS} truncate`}>Everyday Writing</p>
+                </div>
+              </div>
             </div>
-            <p
-              className={`absolute inset-0 hidden items-center justify-center text-sm font-semibold tracking-tight text-neutral-900 transition-[opacity,transform] duration-300 ease-out lg:flex ${
+            <div
+              className={`absolute inset-0 hidden items-center justify-center transition-[opacity,transform] duration-300 ease-out lg:flex ${
                 collapsed
                   ? 'translate-x-0 opacity-100'
                   : 'lg:pointer-events-none lg:translate-x-1 lg:opacity-0'
               }`}
-              title="管理后台"
+              title="Everyday Writing Admin"
               aria-hidden={!collapsed}
             >
-              管
-            </p>
+              <EwLogo className="h-8 w-8" />
+            </div>
           </div>
           {onClose && (
             <button

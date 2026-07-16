@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentType } from 'react'
 import type { MenuKey } from '../types'
 import { UserCenter } from '../components/views/UserCenter'
 import { StartWriting } from '../components/views/StartWriting'
@@ -7,12 +7,16 @@ import { PersonalVocabulary } from '../components/views/PersonalVocabulary'
 import { PersonalAssessment } from '../components/views/PersonalAssessment'
 import { UsageGuide } from '../components/views/UsageGuide'
 
+export type AppPageProps = {
+  onReady?: () => void
+}
+
 export interface AppRoute {
   key: MenuKey
   path: string
   label: string
   icon: 'user' | 'pen' | 'clipboard' | 'book' | 'chart' | 'help'
-  element: ReactNode
+  component: ComponentType<AppPageProps>
 }
 
 export const DEFAULT_PATH = '/writing'
@@ -23,42 +27,42 @@ export const APP_ROUTES: AppRoute[] = [
     path: '/user-center',
     label: '用户中心',
     icon: 'user',
-    element: <UserCenter />,
+    component: UserCenter,
   },
   {
     key: 'start-writing',
     path: '/writing',
     label: '开始写作',
     icon: 'pen',
-    element: <StartWriting />,
+    component: StartWriting,
   },
   {
     key: 'writing-records',
     path: '/records',
     label: '写作记录',
     icon: 'clipboard',
-    element: <WritingRecords />,
+    component: WritingRecords,
   },
   {
     key: 'personal-vocabulary',
     path: '/vocabulary',
     label: '个人词库',
     icon: 'book',
-    element: <PersonalVocabulary />,
+    component: PersonalVocabulary,
   },
   {
     key: 'personal-assessment',
     path: '/assessment',
     label: '个人测评',
     icon: 'chart',
-    element: <PersonalAssessment />,
+    component: PersonalAssessment,
   },
   {
     key: 'usage-guide',
     path: '/guide',
     label: '使用指南',
     icon: 'help',
-    element: <UsageGuide />,
+    component: UsageGuide,
   },
 ]
 

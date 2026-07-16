@@ -16,8 +16,9 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
-export function AdminTopicTypesPage() {
+export function AdminTopicTypesPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminTopicTypeItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +42,8 @@ export function AdminTopicTypesPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const handleCreate = async () => {
     if (!name.trim()) return

@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { AppBootLoading } from './components/brand/BrandLoading'
 import { Layout } from './components/layout/Layout'
 import { AppPageSwitcher } from './components/layout/AppPageSwitcher'
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -22,30 +23,31 @@ import {
   isAdminOnly,
 } from './utils/roles'
 
-function AppLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafafa] text-sm text-neutral-400">
-      加载中…
-    </div>
-  )
-}
-
 function App() {
   const location = useLocation()
   const { mustChangePassword, isLoading, roles, permissions, isAuthenticated, refreshAccess } =
     useAuth()
   const { navigationLocked } = useWritingFocus()
   const homePath = getDefaultHomePath(roles, permissions)
+  const wasOnAdminRef = useRef(false)
 
   useEffect(() => {
-    if (!isAuthenticated || !isAdminPath(location.pathname)) return
-    void refreshAccess().catch(() => {
-      // 权限刷新失败不影响当前页渲染
-    })
+    if (!isAuthenticated) {
+      wasOnAdminRef.current = false
+      return
+    }
+    const onAdmin = isAdminPath(location.pathname)
+    // 从用户端进入管理端时刷新一次权限；管理端子路由间切换不重复请求
+    if (onAdmin && !wasOnAdminRef.current) {
+      void refreshAccess().catch(() => {
+        // 权限刷新失败不影响当前页渲染
+      })
+    }
+    wasOnAdminRef.current = onAdmin
   }, [isAuthenticated, location.pathname, refreshAccess])
 
   if (isLoading) {
-    return <AppLoading />
+    return <AppBootLoading />
   }
 
   if (mustChangePassword && getToken()) {

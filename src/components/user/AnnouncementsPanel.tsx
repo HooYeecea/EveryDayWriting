@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Bell, ChevronDown } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, ChevronDown, Loader2 } from 'lucide-react'
 import {
   countUnreadAnnouncements,
   getAnnouncements,
@@ -13,11 +13,12 @@ const PRIORITY_LABELS: Record<string, string> = {
   Normal: '普通',
 }
 
-export function AnnouncementsPanel() {
+export function AnnouncementsPanel({ onReady }: { onReady?: () => void } = {}) {
   const [items, setItems] = useState<AnnouncementItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
+  const reportedRef = useRef(false)
 
   useEffect(() => {
     getAnnouncements()
@@ -25,6 +26,12 @@ export function AnnouncementsPanel() {
       .catch((err) => setError(err instanceof Error ? err.message : '加载公告失败'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (loading || reportedRef.current) return
+    reportedRef.current = true
+    onReady?.()
+  }, [loading, onReady])
 
   const unreadCount = countUnreadAnnouncements(items)
 
@@ -63,13 +70,22 @@ export function AnnouncementsPanel() {
         )}
       </div>
 
-      {loading && <p className="mt-4 text-sm text-neutral-400">加载中…</p>}
+      {loading && (
+        <div
+          className="mt-4 flex min-h-[140px] flex-col items-center justify-center gap-2 text-sm text-neutral-400"
+          role="status"
+        >
+          <Loader2 size={18} className="animate-spin text-neutral-300" />
+          加载公告…
+        </div>
+      )}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       {!loading && !error && items.length === 0 && (
         <p className="mt-4 text-sm text-neutral-400">暂无公告</p>
       )}
 
+      {!loading && (
       <ul className="mt-4 space-y-3">
         {items.map((item) => {
           const expanded = expandedIds.has(item.id)
@@ -116,6 +132,7 @@ export function AnnouncementsPanel() {
           )
         })}
       </ul>
+      )}
     </section>
   )
 }

@@ -9,6 +9,7 @@ import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingP
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
 import { isApiError } from '../../api/request'
 import { useAuth } from '../../context/AuthContext'
+import { useReportReady } from '../../hooks/useReportReady'
 import { getMockRandomTopic } from '../../data/mockTopics'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
 import { isTypingAnimationEnabled, setTypingAnimationEnabled } from '../../storage/typingAnimationStorage'
@@ -65,7 +66,7 @@ function draftToTopic(draft: { topicId: number | null; topic: string }): Writing
   }
 }
 
-export function StartWriting() {
+export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -88,6 +89,9 @@ export function StartWriting() {
   const [topicTypeFilter, setTopicTypeFilter] = useState<string | undefined>(undefined)
   const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null)
   const [iterateBaselineSnapshot, setIterateBaselineSnapshot] = useState<string | null>(null)
+  const [initialLoading, setInitialLoading] = useState(true)
+
+  useReportReady(!initialLoading, onReady)
   const submitLockRef = useRef(false)
   const preserveWritingSessionRef = useRef(false)
   const draftIdRef = useRef<string | undefined>(undefined)
@@ -231,14 +235,20 @@ export function StartWriting() {
     iterateBaselineSnapshot === currentSubmitSnapshot
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated) {
+      setInitialLoading(false)
+      return
+    }
 
     let cancelled = false
 
     async function initWritingPage() {
       if (preserveWritingSessionRef.current && !draftIdParam && !iterateFromParam) {
+        if (!cancelled) setInitialLoading(false)
         return
       }
+
+      setInitialLoading(true)
 
       try {
         if (iterateFromParam) {
@@ -328,6 +338,8 @@ export function StartWriting() {
         } catch (err) {
           console.warn('[StartWriting] 加载草稿失败后拉取题目失败，保留 mock 题目', err)
         }
+      } finally {
+        if (!cancelled) setInitialLoading(false)
       }
     }
 

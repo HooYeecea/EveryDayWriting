@@ -25,8 +25,9 @@ import {
   AdminPrimaryButton,
 } from '../AdminUi'
 import { AdminActionMenu } from '../AdminActionMenu'
+import { useReportReady } from '../../../hooks/useReportReady'
 
-export function AdminUsersPage() {
+export function AdminUsersPage({ onReady }: { onReady?: () => void } = {}) {
   const { permissions, user: currentUser, refreshAccess } = useAuth()
   const canDetail = hasPermission(permissions, 'user:detail')
   const canBan = hasPermission(permissions, 'user:ban')
@@ -69,6 +70,8 @@ export function AdminUsersPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const openDetail = async (id: string) => {
     setDetailLoading(true)

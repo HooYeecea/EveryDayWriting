@@ -18,8 +18,9 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
-export function AdminCheckInTiersPage() {
+export function AdminCheckInTiersPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminCheckInTierItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +45,8 @@ export function AdminCheckInTiersPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const handleCreate = async () => {
     if (!name.trim()) return

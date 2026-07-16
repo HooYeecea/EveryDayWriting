@@ -2,15 +2,46 @@ import { API_PATHS } from './config'
 import { get, post } from './request'
 import type { AiConfig, AiProxyResult, ChatMessage, FreeQuotaInfo, SuggestionChatHistory } from '../types'
 
-export async function getAiConfig(): Promise<AiConfig> {
-  return get<AiConfig>(API_PATHS.ai.config)
+const AI_CONFIG_TTL_MS = 60_000
+let aiConfigCache: AiConfig | null = null
+let aiConfigCachedAt = 0
+let aiConfigInflight: Promise<AiConfig> | null = null
+
+/** 带短时缓存与 inflight 去重，避免写作辅助与用户中心设置重复打接口 */
+export async function getAiConfig(options?: { force?: boolean }): Promise<AiConfig> {
+  const fresh = Date.now() - aiConfigCachedAt < AI_CONFIG_TTL_MS
+  if (!options?.force && aiConfigCache && fresh) {
+    return aiConfigCache
+  }
+  if (!options?.force && aiConfigInflight) {
+    return aiConfigInflight
+  }
+
+  aiConfigInflight = get<AiConfig>(API_PATHS.ai.config)
+    .then((data) => {
+      aiConfigCache = data
+      aiConfigCachedAt = Date.now()
+      return data
+    })
+    .finally(() => {
+      aiConfigInflight = null
+    })
+
+  return aiConfigInflight
+}
+
+export function invalidateAiConfigCache() {
+  aiConfigCache = null
+  aiConfigCachedAt = 0
 }
 
 export async function submitAiKey(
   providerId: string,
   apiKey: string,
 ): Promise<{ encryptedKey: string }> {
-  return post(API_PATHS.ai.key, { providerId, apiKey })
+  const result = await post<{ encryptedKey: string }>(API_PATHS.ai.key, { providerId, apiKey })
+  invalidateAiConfigCache()
+  return result
 }
 
 export async function callAiProxy(

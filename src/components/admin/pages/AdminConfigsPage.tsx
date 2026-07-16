@@ -17,6 +17,7 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
 const FREE_CHANNEL_MANAGED_KEYS = new Set([
   'free_enabled',
@@ -28,7 +29,7 @@ function isFreeEnabled(value: string | undefined): boolean {
   return (value ?? '').trim().toLowerCase() === 'true'
 }
 
-export function AdminConfigsPage() {
+export function AdminConfigsPage({ onReady }: { onReady?: () => void } = {}) {
   const [items, setItems] = useState<AdminConfigItem[]>([])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -98,6 +99,8 @@ export function AdminConfigsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const otherItems = useMemo(
     () => items.filter((item) => !FREE_CHANNEL_MANAGED_KEYS.has(item.key)),

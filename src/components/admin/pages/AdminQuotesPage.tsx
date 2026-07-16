@@ -16,8 +16,9 @@ import {
   AdminPageHeader,
   AdminPrimaryButton,
 } from '../AdminUi'
+import { useReportReady } from '../../../hooks/useReportReady'
 
-export function AdminQuotesPage() {
+export function AdminQuotesPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<AdminQuoteItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +42,8 @@ export function AdminQuotesPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useReportReady(!loading, onReady)
 
   const handleCreate = async () => {
     if (!content.trim()) return

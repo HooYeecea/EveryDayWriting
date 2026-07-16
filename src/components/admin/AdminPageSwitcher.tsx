@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
 import { useLocation } from 'react-router-dom'
+import { BrandContentGate } from '../brand/BrandLoading'
 import { getVisibleAdminRoutes } from '../../config/adminRoutes'
 import { useAuth } from '../../context/AuthContext'
 
@@ -9,7 +10,9 @@ function routeIndex(pathname: string, permissions: string[]): number {
 }
 
 /**
- * 管理端主内容区切换：页面保持挂载，按侧栏可见菜单顺序做方向性滑动 + 淡入。
+ * 管理端主内容区切换：
+ * - 首次访问再挂载，之后保活
+ * - 首次进入某页时展示品牌加载态，页面 onReady 后再呈现内容
  */
 export function AdminPageSwitcher() {
   const { pathname } = useLocation()
@@ -22,6 +25,26 @@ export function AdminPageSwitcher() {
   const [exitingPath, setExitingPath] = useState<string | null>(null)
   const [exitClass, setExitClass] = useState('')
   const exitTimerRef = useRef<number | null>(null)
+  const [mountedPaths, setMountedPaths] = useState<Set<string>>(() => new Set([pathname]))
+  const [readyPaths, setReadyPaths] = useState<Set<string>>(() => new Set())
+
+  const markPageReady = useCallback((path: string) => {
+    setReadyPaths((prev) => {
+      if (prev.has(path)) return prev
+      const next = new Set(prev)
+      next.add(path)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    setMountedPaths((prev) => {
+      if (prev.has(pathname)) return prev
+      const next = new Set(prev)
+      next.add(pathname)
+      return next
+    })
+  }, [pathname])
 
   useLayoutEffect(() => {
     if (isFirstNavRef.current) {
@@ -78,9 +101,12 @@ export function AdminPageSwitcher() {
 
   return (
     <div className="app-page-shell">
-      {visibleRoutes.map(({ path, key, element }) => {
+      {visibleRoutes.map(({ path, key, label, component: Page }) => {
+        if (!mountedPaths.has(path)) return null
+
         const isActive = pathname === path
         const isExiting = exitingPath === path
+        const ready = readyPaths.has(path)
         const paneClass = [
           'app-page-pane',
           isActive ? 'app-page-pane--active' : '',
@@ -98,7 +124,13 @@ export function AdminPageSwitcher() {
             aria-hidden={!isActive}
             onAnimationEnd={isActive ? clearEnterClass : undefined}
           >
-            {element}
+            <BrandContentGate
+              ready={ready}
+              loadingLabel={`加载${label}…`}
+              minHeight={420}
+            >
+              <Page onReady={() => markPageReady(path)} />
+            </BrandContentGate>
           </div>
         )
       })}
