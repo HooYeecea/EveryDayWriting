@@ -276,7 +276,7 @@ export function AdminQuestionsPage() {
       title: '写入题库',
       message: `确认将预览中的 ${aiPreview.length} 道题写入题库？`,
       confirmLabel: '写入',
-      variant: 'info',
+      variant: 'default',
     })
     if (!ok) return
 
