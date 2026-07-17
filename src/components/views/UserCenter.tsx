@@ -101,8 +101,10 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   const panelRef = useRef<HTMLDivElement>(null)
   const headerRowRef = useRef<HTMLDivElement>(null)
   const headerTitleRef = useRef<HTMLDivElement>(null)
-  const headerActionsRef = useRef<HTMLDivElement>(null)
   const tabsMeasureRef = useRef<HTMLDivElement>(null)
+  const actionsMeasureRef = useRef<HTMLDivElement>(null)
+  /** Tab 下移时的视口宽度；变窄过程中即使内容区变宽也不得回到顶栏 */
+  const tabsBelowAtViewportRef = useRef<number | null>(null)
   const paneRefs = useRef<Partial<Record<UserTab, HTMLDivElement | null>>>({})
   const pendingDirRef = useRef<SlideDirection | null>(null)
 
@@ -199,29 +201,55 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   const showAdminEntry =
     hasUserRole(roles) && canAccessAdmin(roles, permissions)
 
-  // 顶栏横向放不下完整菜单（文字即将换行/挤压）时，立刻切到下方布局，不留断点缓冲
+  // 顶栏放不下完整菜单时切到下方；用「完整操作区」测量 + 视口锁定，避免侧栏/断点让内容区变宽时又跳回顶栏
   useLayoutEffect(() => {
     const row = headerRowRef.current
     const title = headerTitleRef.current
-    const actions = headerActionsRef.current
-    const measure = tabsMeasureRef.current
-    if (!row || !title || !actions || !measure) return
+    const tabsMeasure = tabsMeasureRef.current
+    const actionsMeasure = actionsMeasureRef.current
+    if (!row || !title || !tabsMeasure || !actionsMeasure) return
+
+    const GAPS = 32
+    const ROW_UNLOCK = 48
+    const VIEWPORT_UNLOCK = 96
 
     const syncTabsPlacement = () => {
-      const gaps = 32
-      const available = row.clientWidth - title.offsetWidth - actions.offsetWidth - gaps
-      const needed = measure.scrollWidth
-      // 变窄：立刻切下方；变宽：留一点回滞，避免图标文案切换导致来回跳
-      setTabsBelow((prev) => (prev ? needed > available + 48 : needed > available))
+      const needed =
+        title.offsetWidth + actionsMeasure.scrollWidth + tabsMeasure.scrollWidth + GAPS
+      const rowWidth = row.clientWidth
+      const viewport = window.innerWidth
+
+      setTabsBelow((prev) => {
+        if (!prev) {
+          if (rowWidth < needed) {
+            tabsBelowAtViewportRef.current = viewport
+            return true
+          }
+          return false
+        }
+
+        const droppedAt = tabsBelowAtViewportRef.current ?? viewport
+        const canReturn =
+          viewport >= droppedAt + VIEWPORT_UNLOCK && rowWidth >= needed + ROW_UNLOCK
+        if (canReturn) {
+          tabsBelowAtViewportRef.current = null
+          return false
+        }
+        return true
+      })
     }
 
     syncTabsPlacement()
     const observer = new ResizeObserver(syncTabsPlacement)
     observer.observe(row)
     observer.observe(title)
-    observer.observe(actions)
-    observer.observe(measure)
-    return () => observer.disconnect()
+    observer.observe(tabsMeasure)
+    observer.observe(actionsMeasure)
+    window.addEventListener('resize', syncTabsPlacement)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', syncTabsPlacement)
+    }
   }, [showAdminEntry, user?.nickname, user?.vipLevel])
 
   const handleLogout = async () => {
@@ -388,6 +416,24 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
             </span>
           ))}
         </div>
+        {/* 始终按桌面完整文案测量，避免 sm/lg 缩短按钮后「可用宽度」虚增 */}
+        <div
+          ref={actionsMeasureRef}
+          className="pointer-events-none fixed left-0 top-0 -z-10 flex w-max items-center gap-2 opacity-0"
+          aria-hidden
+        >
+          {showAdminEntry && (
+            <span className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs">
+              <Shield size={12} />
+              管理后台
+            </span>
+          )}
+          <span className="rounded-lg border px-3 py-1.5 text-xs">退出登录</span>
+          <span className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs">
+            <LogOut size={12} />
+            全部退出
+          </span>
+        </div>
 
         <div className="px-4 sm:px-6 lg:px-8">
           <div
@@ -412,7 +458,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               <div className="min-w-0 flex-1" aria-hidden />
             )}
 
-            <div ref={headerActionsRef} className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               {showAdminEntry && (
                 <button
                   type="button"
@@ -421,7 +467,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                   title="管理后台"
                 >
                   <Shield size={12} />
-                  <span className={tabsBelow ? 'sr-only' : 'hidden sm:inline'}>管理后台</span>
+                  <span className="hidden sm:inline">管理后台</span>
                 </button>
               )}
               <button
@@ -429,14 +475,8 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                 onClick={() => void handleLogout()}
                 className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
               >
-                {tabsBelow ? (
-                  '退出'
-                ) : (
-                  <>
-                    <span className="sm:hidden">退出</span>
-                    <span className="hidden sm:inline">退出登录</span>
-                  </>
-                )}
+                <span className="sm:hidden">退出</span>
+                <span className="hidden sm:inline">退出登录</span>
               </button>
               <button
                 type="button"
