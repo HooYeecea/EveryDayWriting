@@ -17,7 +17,7 @@ import { VocabularySelectionAdd } from '../vocabulary/VocabularySelectionAdd'
 import { useAuth } from '../../context/AuthContext'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
-import { loadGradingPreview } from '../../storage/gradingPreviewStorage'
+import { loadGradingPreview, gradingPreviewFromAiResults, mergeGradingPreview } from '../../storage/gradingPreviewStorage'
 import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
 import {
   normalizeGrammarCheckResult,
@@ -817,11 +817,14 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         </div>
                       </div>
                     ) : (() => {
-            const gradingPreview = loadGradingPreview(submitDetail.id)
+            const gradingPreview = mergeGradingPreview(
+              gradingPreviewFromAiResults(submitDetail.aiResults),
+              loadGradingPreview(submitDetail.id),
+            )
             const grammarSuggestions = submitDetail.grammarSuggestions ?? []
             const vocabularySuggestions = submitDetail.vocabularySuggestions ?? []
 
-            // 新版结构化数据（grading preview 优先，兼容旧版 markdown）
+            // 新版结构化数据（服务端 aiResults 优先，兼容本机 preview / 旧版 markdown）
             const grammarPreview = extractGrammarPreview(gradingPreview)
             const vocabPreview = extractVocabPreview(gradingPreview)
             const structurePreview = extractStructurePreview(gradingPreview)

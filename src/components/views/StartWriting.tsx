@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, RotateCcw, Wand2 } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
-import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
+import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
 import { runPreSubmitGrading } from '../../api/aiGrading'
 import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingPreviewStorage'
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
@@ -595,11 +595,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     try {
       const settings = loadAiAssistSettings()
       const hasOwnKey = Boolean(settings.encryptedKey && settings.providerId && settings.modelId)
+      const aiCheckEnabled = settings.postSubmitReview
+      const aiStructureEnabled = settings.postSubmitStructure
+      const aiSuggestionEnabled = settings.postSubmitSuggestions
       const hasAiTasks =
         (hasOwnKey || true) && // 免费通道始终可用（无 Key 时服务端自动选择）
-        (settings.postSubmitReview || settings.postSubmitStructure || settings.postSubmitSuggestions)
+        (aiCheckEnabled || aiStructureEnabled || aiSuggestionEnabled)
 
-      let gradingSessionId: string | undefined
       let completedTasks: string[] = []
       let failedTasks: string[] = []
       let stageContents: Partial<Record<GradingStageKey, unknown>> = {}
@@ -607,7 +609,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       if (hasAiTasks) {
         setSubmitPhase('grading')
         const grading = await runPreSubmitGrading(content)
-        gradingSessionId = grading.gradingSessionId
         completedTasks = grading.completedTasks
         failedTasks = grading.failedTasks
         stageContents = grading.stageContents
@@ -615,23 +616,36 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
       setSubmitPhase('submitting')
 
+      const persistAiResults = async (submitId: string) => {
+        if (!submitId || Object.keys(stageContents).length === 0) return
+        saveGradingPreview(submitId, stageContents)
+        try {
+          await persistSubmitAiResults(submitId, stageContents, {
+            providerId: hasOwnKey ? settings.providerId : 'free',
+            modelId: hasOwnKey ? settings.modelId : 'free',
+          })
+        } catch (err) {
+          console.warn('[StartWriting] AI 批改结果落库失败，已保留本机预览', err)
+        }
+      }
+
       if (iterateFromId) {
         const result = await iterateSubmit(iterateFromId, {
           title: title.trim(),
           content,
-          gradingSessionId,
+          aiCheckEnabled,
+          aiStructureEnabled,
+          aiSuggestionEnabled,
         })
 
-        if (result.id && Object.keys(stageContents).length > 0) {
-          saveGradingPreview(result.id, stageContents)
-        }
+        await persistAiResults(result.id)
 
         const aiSuccess =
           completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
         const aiFailed =
           failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
         const aiViewHint =
-          completedTasks.length > 0 && gradingSessionId
+          completedTasks.length > 0
             ? ' 可前往写作记录查看 AI 批改结果。'
             : ''
         const stats =
@@ -660,11 +674,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         title: title.trim(),
         content,
         draftId,
-        gradingSessionId,
+        aiCheckEnabled,
+        aiStructureEnabled,
+        aiSuggestionEnabled,
       })
-      if (result.id && Object.keys(stageContents).length > 0) {
-        saveGradingPreview(result.id, stageContents)
-      }
+      await persistAiResults(result.id)
       setDraftId(undefined)
       setDraftUpdatedAt(undefined)
       setWordCount(undefined)
@@ -675,7 +689,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       const aiFailed =
         failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
       const aiViewHint =
-        completedTasks.length > 0 && gradingSessionId
+        completedTasks.length > 0
           ? ' 可前往写作记录查看 AI 批改结果。'
           : ''
 

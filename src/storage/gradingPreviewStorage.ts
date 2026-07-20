@@ -114,3 +114,60 @@ export function saveGradingPreview(
 export function loadGradingPreview(submitId: string): GradingPreview | null {
   return readAll()[submitId] ?? null
 }
+
+const GRADING_PURPOSES: GradingStageKey[] = ['grammar', 'structure', 'vocabulary']
+
+function isGradingStageKey(value: string): value is GradingStageKey {
+  return (GRADING_PURPOSES as string[]).includes(value)
+}
+
+/**
+ * 从详情接口的 aiResults 还原为与 localStorage 相同的预览结构。
+ * 同一 purpose 取最新一条（假定调用方已按 createdAt 降序，或在此再比一次）。
+ */
+export function gradingPreviewFromAiResults(
+  results: Array<{ purpose: string; resultContent: string; createdAt?: string }> | undefined,
+): GradingPreview | null {
+  if (!results?.length) return null
+
+  const sorted = [...results].sort((a, b) => {
+    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return tb - ta
+  })
+
+  const contents: Partial<Record<GradingStageKey, unknown>> = {}
+  for (const item of sorted) {
+    if (!isGradingStageKey(item.purpose)) continue
+    if (contents[item.purpose] !== undefined) continue
+    if (!item.resultContent?.trim()) continue
+    contents[item.purpose] = normalizeStageContent(
+      item.purpose,
+      parseAiProxyContent(item.resultContent.trim()),
+    )
+  }
+
+  if (Object.keys(contents).length === 0) return null
+
+  return {
+    ...contents,
+    savedAt: sorted[0]?.createdAt || new Date().toISOString(),
+  } as GradingPreview
+}
+
+/** API 优先，缺失字段再用 localStorage 兜底（兼容旧提交） */
+export function mergeGradingPreview(
+  fromApi: GradingPreview | null,
+  fromLocal: GradingPreview | null,
+): GradingPreview | null {
+  if (!fromApi && !fromLocal) return null
+  if (!fromApi) return fromLocal
+  if (!fromLocal) return fromApi
+
+  return {
+    grammar: fromApi.grammar ?? fromLocal.grammar,
+    structure: fromApi.structure ?? fromLocal.structure,
+    vocabulary: fromApi.vocabulary ?? fromLocal.vocabulary,
+    savedAt: fromApi.savedAt || fromLocal.savedAt,
+  }
+}
