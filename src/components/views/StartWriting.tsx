@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RefreshCw, RotateCcw, Wand2 } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
-import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, saveWritingDraft, submitWriting } from '../../api/writing'
+import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
 import { runPreSubmitGrading } from '../../api/aiGrading'
 import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingPreviewStorage'
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
@@ -78,6 +78,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const [content, setContent] = useState('')
   const [draftId, setDraftId] = useState<string | undefined>()
   const [iterateFromId, setIterateFromId] = useState<string | undefined>()
+  const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | undefined>()
   const [wordCount, setWordCount] = useState<number | undefined>()
   const [wordLimit, setWordLimit] = useState<number | undefined>()
   const [editorKey, setEditorKey] = useState(0)
@@ -94,12 +95,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   useReportReady(!initialLoading, onReady)
   const submitLockRef = useRef(false)
   const preserveWritingSessionRef = useRef(false)
-  const draftIdRef = useRef<string | undefined>(undefined)
-  const draftUpdatedAtRef = useRef<string | undefined>(undefined)
-  const autoSaveTimerRef = useRef<number | null>(null)
-  const autoSaveInFlightRef = useRef<Promise<void> | null>(null)
-  const lastAutoSavedHashRef = useRef<string>('')
-  const isSavingRef = useRef(false)
   const pageRef = useRef<HTMLDivElement>(null)
   const topicPanelRef = useRef<HTMLDivElement>(null)
   const topicHeightRef = useRef<number>(loadTopicPanelHeight() ?? getTopicPanelMinHeight())
@@ -111,36 +106,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   )
   const [isResizingTopic, setIsResizingTopic] = useState(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
-
-  const bindDraftIdentity = (id: string, updatedAt?: string) => {
-    draftIdRef.current = id
-    setDraftId(id)
-    if (updatedAt !== undefined) {
-      draftUpdatedAtRef.current = updatedAt
-    }
-  }
-
-  const clearDraftIdentity = () => {
-    draftIdRef.current = undefined
-    draftUpdatedAtRef.current = undefined
-    setDraftId(undefined)
-    lastAutoSavedHashRef.current = ''
-  }
-
-  /** 取消尚未触发的定时器，并等待进行中的自动保存结束，避免与手动保存竞态建重。 */
-  const flushPendingAutoSave = async () => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-      autoSaveTimerRef.current = null
-    }
-    if (autoSaveInFlightRef.current) {
-      try {
-        await autoSaveInFlightRef.current
-      } catch {
-        // 静默：手动保存会继续处理
-      }
-    }
-  }
 
   const clampTopicHeight = (height: number) => {
     const minHeight = getTopicPanelMinHeight()
@@ -258,7 +223,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
             preserveWritingSessionRef.current = true
             setIterateFromId(submit.id)
-            clearDraftIdentity()
+            setDraftId(undefined)
+            setDraftUpdatedAt(undefined)
             setTopic({
               id: submit.topicId,
               type: submit.topicType,
@@ -289,8 +255,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             const draft = await loadDraftById(draftIdParam)
             if (cancelled) return
 
-            bindDraftIdentity(draft.id, draft.updatedAt)
-            lastAutoSavedHashRef.current = `${draft.title}||${draft.content}`
+            setDraftId(draft.id)
+            setDraftUpdatedAt(draft.updatedAt)
             setTopic(draftToTopic(draft))
             setTitle(draft.title)
             setContent(draft.content)
@@ -310,8 +276,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         if (cancelled) return
 
         if (draft) {
-          bindDraftIdentity(draft.id, draft.updatedAt)
-          lastAutoSavedHashRef.current = `${draft.title}||${draft.content}`
+          setDraftId(draft.id)
+          setDraftUpdatedAt(draft.updatedAt)
           setTopic(draftToTopic(draft))
           setTitle(draft.title)
           setContent(draft.content)
@@ -365,6 +331,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   // ── 自动保存：localStorage + 服务器 ──
+  const autoSaveTimerRef = useRef<number | null>(null)
+  const lastAutoSavedHashRef = useRef<string>('')
   const localStorageKey = topic ? `auto_save_draft_${topic.id}` : 'auto_save_draft_0'
 
   // 恢复 localStorage 中的草稿（页面刷新/崩溃后）
@@ -385,7 +353,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 内容变化 → localStorage（即时写入，刷新可恢复）
+  // 内容变化 → localStorage（500ms 防抖）
   useEffect(() => {
     if (!isAuthenticated) return
     try {
@@ -395,7 +363,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     } catch { /* ignore */ }
   }, [title, content, isAuthenticated, localStorageKey])
 
-  // 服务器自动保存（停止输入 3s 后触发）
+  // 服务器自动保存（停止输入 3s 后触发，或每 30s 强制触发一次）
   useEffect(() => {
     if (!isAuthenticated || !topic || topic.id === 0) return
 
@@ -404,43 +372,28 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
 
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      if (isSavingRef.current || isEditorEmpty(content)) return
-
-      const topicId = topic.id
-      const topicTitle = topic.title
-      const saveTitle = title
-      const saveContent = content
-
-      const task = (async () => {
+    autoSaveTimerRef.current = window.setTimeout(async () => {
+      if (!isEditorEmpty(content)) {
         try {
           const result = await autoSaveDraft({
-            topicId,
-            topic: topicTitle,
-            title: saveTitle || undefined,
-            content: saveContent || undefined,
+            topicId: topic.id,
+            topic: topic.title,
+            title: title || undefined,
+            content: content || undefined,
           })
-          // 手动保存已抢先绑定草稿时，不再用 autosave 结果覆盖
-          if (isSavingRef.current && draftIdRef.current) return
-
           lastAutoSavedHashRef.current = hash
-          bindDraftIdentity(result.id, result.updatedAt)
+          // 静默成功，不设置 feedback
+          if (!draftId) setDraftId(result.id)
         } catch {
           // 静默失败，不打扰用户
         }
-      })()
-
-      autoSaveInFlightRef.current = task
-      void task.finally(() => {
-        if (autoSaveInFlightRef.current === task) {
-          autoSaveInFlightRef.current = null
-        }
-      })
+      }
     }, 3000)
 
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, content, topic, isAuthenticated])
 
   // 页面关闭前紧急写入 localStorage
@@ -467,8 +420,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
   const handleChangeTopic = async () => {
     setSubmittedSnapshot(null)
-    // 换题后不再沿用旧草稿 id，避免 autosave 按新 topicId 建一条、手动保存又更新旧草稿
-    clearDraftIdentity()
     if (isAuthenticated) {
       try {
         const next = await getRandomTopic(topicTypeFilter)
@@ -493,8 +444,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   })
 
   const applySaveResult = (result: DraftSaveResult, createdNew = false) => {
-    bindDraftIdentity(result.id, result.updatedAt)
-    lastAutoSavedHashRef.current = `${title}||${content}`
+    setDraftId(result.id)
+    setDraftUpdatedAt(result.updatedAt)
     if (result.wordCount !== undefined) setWordCount(result.wordCount)
     if (result.wordLimit !== undefined) setWordLimit(result.wordLimit)
 
@@ -514,7 +465,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     preserveWritingSessionRef.current = false
     setTitle('')
     setContent('')
-    clearDraftIdentity()
+    setDraftId(undefined)
+    setDraftUpdatedAt(undefined)
     setIterateFromId(undefined)
     setSubmittedSnapshot(null)
     setIterateBaselineSnapshot(null)
@@ -556,27 +508,18 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       return
     }
 
-    isSavingRef.current = true
     setIsSaving(true)
     setFeedback(null)
 
     const payload = buildSavePayload()
 
     try {
-      // 先等自动保存落地并绑定 draftId，避免无 id 时再 create 一条
-      await flushPendingAutoSave()
-
-      const previousDraftId = draftIdRef.current
-      const result = await saveWritingDraft(
-        previousDraftId,
-        payload,
-        draftUpdatedAtRef.current,
-      )
+      const previousDraftId = draftId
+      const result = await saveWritingDraft(draftId, payload, draftUpdatedAt)
       const createdNew = Boolean(previousDraftId && previousDraftId !== result.id)
       applySaveResult(result, createdNew)
     } catch (err) {
-      if (isApiError(err) && err.code === 409 && draftIdRef.current) {
-        const conflictDraftId = draftIdRef.current
+      if (isApiError(err) && err.code === 409 && draftId) {
         const conflict = err.data as DraftConflictData | null
         const overwrite = await confirm({
           title: '保存冲突',
@@ -593,7 +536,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
         if (overwrite) {
           try {
-            const result = await saveWritingDraft(conflictDraftId, payload)
+            const result = await saveWritingDraft(draftId, payload)
             applySaveResult(result)
             return
           } catch (retryErr) {
@@ -608,7 +551,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         if (conflict) {
           setTitle(conflict.title)
           setContent(conflict.content)
-          bindDraftIdentity(conflictDraftId, conflict.updatedAt)
+          setDraftUpdatedAt(conflict.updatedAt)
           setEditorKey((key) => key + 1)
           setFeedback({ tone: 'info', message: '已加载其他设备的最新内容' })
         } else {
@@ -622,7 +565,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         message: err instanceof Error ? err.message : '保存失败',
       })
     } finally {
-      isSavingRef.current = false
       setIsSaving(false)
     }
   }
@@ -653,11 +595,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     try {
       const settings = loadAiAssistSettings()
       const hasOwnKey = Boolean(settings.encryptedKey && settings.providerId && settings.modelId)
+      const aiCheckEnabled = settings.postSubmitReview
+      const aiStructureEnabled = settings.postSubmitStructure
+      const aiSuggestionEnabled = settings.postSubmitSuggestions
       const hasAiTasks =
         (hasOwnKey || true) && // 免费通道始终可用（无 Key 时服务端自动选择）
-        (settings.postSubmitReview || settings.postSubmitStructure || settings.postSubmitSuggestions)
+        (aiCheckEnabled || aiStructureEnabled || aiSuggestionEnabled)
 
-      let gradingSessionId: string | undefined
       let completedTasks: string[] = []
       let failedTasks: string[] = []
       let stageContents: Partial<Record<GradingStageKey, unknown>> = {}
@@ -665,7 +609,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       if (hasAiTasks) {
         setSubmitPhase('grading')
         const grading = await runPreSubmitGrading(content)
-        gradingSessionId = grading.gradingSessionId
         completedTasks = grading.completedTasks
         failedTasks = grading.failedTasks
         stageContents = grading.stageContents
@@ -673,23 +616,36 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
       setSubmitPhase('submitting')
 
+      const persistAiResults = async (submitId: string) => {
+        if (!submitId || Object.keys(stageContents).length === 0) return
+        saveGradingPreview(submitId, stageContents)
+        try {
+          await persistSubmitAiResults(submitId, stageContents, {
+            providerId: hasOwnKey ? settings.providerId : 'free',
+            modelId: hasOwnKey ? settings.modelId : 'free',
+          })
+        } catch (err) {
+          console.warn('[StartWriting] AI 批改结果落库失败，已保留本机预览', err)
+        }
+      }
+
       if (iterateFromId) {
         const result = await iterateSubmit(iterateFromId, {
           title: title.trim(),
           content,
-          gradingSessionId,
+          aiCheckEnabled,
+          aiStructureEnabled,
+          aiSuggestionEnabled,
         })
 
-        if (result.id && Object.keys(stageContents).length > 0) {
-          saveGradingPreview(result.id, stageContents)
-        }
+        await persistAiResults(result.id)
 
         const aiSuccess =
           completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
         const aiFailed =
           failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
         const aiViewHint =
-          completedTasks.length > 0 && gradingSessionId
+          completedTasks.length > 0
             ? ' 可前往写作记录查看 AI 批改结果。'
             : ''
         const stats =
@@ -717,13 +673,14 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         topic: topicToPrompt(topic),
         title: title.trim(),
         content,
-        draftId: draftIdRef.current,
-        gradingSessionId,
+        draftId,
+        aiCheckEnabled,
+        aiStructureEnabled,
+        aiSuggestionEnabled,
       })
-      if (result.id && Object.keys(stageContents).length > 0) {
-        saveGradingPreview(result.id, stageContents)
-      }
-      clearDraftIdentity()
+      await persistAiResults(result.id)
+      setDraftId(undefined)
+      setDraftUpdatedAt(undefined)
       setWordCount(undefined)
       setWordLimit(undefined)
 
@@ -732,7 +689,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       const aiFailed =
         failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
       const aiViewHint =
-        completedTasks.length > 0 && gradingSessionId
+        completedTasks.length > 0
           ? ' 可前往写作记录查看 AI 批改结果。'
           : ''
 

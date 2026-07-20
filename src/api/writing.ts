@@ -1,11 +1,22 @@
 import { API_PATHS } from './config'
 import { del, get, isApiError, post, put } from './request'
-import { normalizeSubmitListItem, normalizeWritingSubmitDetail } from '../utils/submitDetailNormalizer'
+import type { GradingStageKey } from '../storage/gradingPreviewStorage'
+import {
+  normalizeGrammarCheckResult,
+  normalizeStructureResult,
+  normalizeSubmitListItem,
+  normalizeVocabularyCheckResult,
+  normalizeWritingSubmitDetail,
+} from '../utils/submitDetailNormalizer'
 import type {
+  CreateAiResultPayload,
   DraftSaveResult,
+  GrammarSuggestion,
   IterationResult,
   PaginatedResult,
   SubmitResult,
+  VocabularySuggestion,
+  WritingAiResultItem,
   WritingDraft,
   WritingDraftListItem,
   WritingSavePayload,
@@ -116,7 +127,116 @@ export async function deleteSubmit(id: string): Promise<void> {
 
 export async function iterateSubmit(
   id: string,
-  payload: { content: string; title?: string; gradingSessionId?: string },
+  payload: {
+    content: string
+    title?: string
+    gradingSessionId?: string
+    aiCheckEnabled?: boolean
+    aiStructureEnabled?: boolean
+    aiSuggestionEnabled?: boolean
+  },
 ): Promise<IterationResult> {
   return post<IterationResult>(API_PATHS.writings.submitIterate(id), payload)
+}
+
+export async function saveSubmitAiResult(
+  submitId: string,
+  payload: CreateAiResultPayload,
+): Promise<WritingAiResultItem> {
+  return post<WritingAiResultItem>(API_PATHS.writings.submitAiResults(submitId), payload)
+}
+
+function serializeResultContent(value: unknown): string {
+  if (typeof value === 'string') return value
+  return JSON.stringify(value)
+}
+
+function buildAiResultPayload(
+  purpose: GradingStageKey,
+  content: unknown,
+  meta: { providerId: string; modelId: string },
+): CreateAiResultPayload {
+  const payload: CreateAiResultPayload = {
+    purpose,
+    resultContent: serializeResultContent(content),
+    providerId: meta.providerId,
+    modelId: meta.modelId,
+  }
+
+  if (purpose === 'structure') {
+    const structure = typeof content === 'string' ? null : normalizeStructureResult(content)
+    if (structure) {
+      if (Number.isFinite(structure.score)) {
+        payload.aiScore = Math.round(structure.score)
+      }
+      const summary = structure.overall?.summary?.trim()
+      if (summary) payload.aiEvaluation = summary
+    }
+  }
+
+  if (purpose === 'grammar') {
+    const grammar = typeof content === 'string' ? null : normalizeGrammarCheckResult(content)
+    if (grammar?.errors?.length) {
+      payload.grammarSuggestions = grammar.errors.map(
+        (item): GrammarSuggestion => ({
+          id: item.id,
+          original: item.original,
+          correction: item.correction,
+          reason: item.reason,
+        }),
+      )
+    }
+  }
+
+  if (purpose === 'vocabulary') {
+    const vocab = typeof content === 'string' ? null : normalizeVocabularyCheckResult(content)
+    if (vocab?.suggestions?.length) {
+      payload.vocabularySuggestions = vocab.suggestions.map(
+        (item): VocabularySuggestion => ({
+          id: item.id,
+          original: item.original,
+          suggestion: item.suggestion,
+          context: item.context,
+        }),
+      )
+    }
+  }
+
+  return payload
+}
+
+/**
+ * 将提交前批改得到的各阶段结果写入服务端 WritingAiResults。
+ * 单条失败不阻断其余阶段；全部失败时抛出最后一个错误。
+ */
+export async function persistSubmitAiResults(
+  submitId: string,
+  stageContents: Partial<Record<GradingStageKey, unknown>>,
+  meta?: { providerId?: string; modelId?: string },
+): Promise<void> {
+  const entries = (Object.entries(stageContents) as [GradingStageKey, unknown][]).filter(
+    ([, value]) => value !== undefined && value !== null,
+  )
+  if (entries.length === 0) return
+
+  const providerId = meta?.providerId?.trim() || 'free'
+  const modelId = meta?.modelId?.trim() || 'free'
+  const errors: unknown[] = []
+
+  await Promise.all(
+    entries.map(async ([purpose, content]) => {
+      try {
+        await saveSubmitAiResult(submitId, buildAiResultPayload(purpose, content, { providerId, modelId }))
+      } catch (err) {
+        console.warn(`[persistSubmitAiResults] ${purpose} 落库失败`, err)
+        errors.push(err)
+      }
+    }),
+  )
+
+  if (errors.length === entries.length) {
+    throw errors[errors.length - 1] instanceof Error
+      ? errors[errors.length - 1]
+      : new Error('AI 批改结果落库失败')
+  }
 }

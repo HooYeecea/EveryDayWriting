@@ -236,6 +236,18 @@ export interface BrainstormResult {
   outline: string[]
 }
 
+/** 提交详情中的单条 AI 批改原始结果 */
+export interface WritingAiResultItem {
+  id: string
+  submitId: string
+  purpose: string
+  /** AI 返回的原始 JSON 字符串（或旧版 markdown） */
+  resultContent: string
+  providerId: string
+  modelId: string
+  createdAt: string
+}
+
 export interface WritingSubmitDetail {
   id: string
   topicId: number
@@ -251,6 +263,11 @@ export interface WritingSubmitDetail {
   iterationGroupId?: string
   iterationNumber?: number
   iterations?: IterationSibling[]
+  aiCheckEnabled?: boolean
+  aiStructureEnabled?: boolean
+  aiSuggestionEnabled?: boolean
+  /** 服务端持久化的完整 AI 批改（按 purpose） */
+  aiResults?: WritingAiResultItem[]
   submittedAt: string
 }
 
@@ -368,7 +385,22 @@ export interface WritingSubmitPayload {
   title: string
   content: string
   draftId?: string
+  /** @deprecated 后端已改为 WritingAiResults 落库，保留兼容旧代理 */
   gradingSessionId?: string
+  aiCheckEnabled?: boolean
+  aiStructureEnabled?: boolean
+  aiSuggestionEnabled?: boolean
+}
+
+export interface CreateAiResultPayload {
+  purpose: string
+  resultContent: string
+  providerId?: string
+  modelId?: string
+  aiScore?: number
+  aiEvaluation?: string
+  grammarSuggestions?: GrammarSuggestion[]
+  vocabularySuggestions?: VocabularySuggestion[]
 }
 
 export interface AiProxyResult {

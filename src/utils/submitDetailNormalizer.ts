@@ -8,6 +8,7 @@ import type {
   StructureSubScores,
   VocabularyCheckResult,
   VocabularySuggestion,
+  WritingAiResultItem,
   WritingSubmitDetail,
   WritingSubmitListItem,
 } from '../types'
@@ -203,6 +204,24 @@ export function normalizeVocabularyCheckResult(raw: unknown): VocabularyCheckRes
   return { suggestions }
 }
 
+function normalizeAiResultItem(raw: unknown): WritingAiResultItem | null {
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as Record<string, unknown>
+  const id = pickString(item, 'id', 'Id')
+  const purpose = pickString(item, 'purpose', 'Purpose')
+  const resultContent = pickString(item, 'resultContent', 'ResultContent')
+  if (!purpose || !resultContent) return null
+  return {
+    id: id || crypto.randomUUID(),
+    submitId: pickString(item, 'submitId', 'SubmitId'),
+    purpose,
+    resultContent,
+    providerId: pickString(item, 'providerId', 'ProviderId'),
+    modelId: pickString(item, 'modelId', 'ModelId'),
+    createdAt: pickString(item, 'createdAt', 'CreatedAt'),
+  }
+}
+
 export function normalizeWritingSubmitDetail(raw: unknown): WritingSubmitDetail {
   const data = (raw ?? {}) as Record<string, unknown>
 
@@ -239,6 +258,13 @@ export function normalizeWritingSubmitDetail(raw: unknown): WritingSubmitDetail 
     iterations: normalizeSuggestionList(
       data.iterations ?? data.Iterations,
       normalizeIterationSibling,
+    ),
+    aiCheckEnabled: Boolean(data.aiCheckEnabled ?? data.AiCheckEnabled ?? false),
+    aiStructureEnabled: Boolean(data.aiStructureEnabled ?? data.AiStructureEnabled ?? false),
+    aiSuggestionEnabled: Boolean(data.aiSuggestionEnabled ?? data.AiSuggestionEnabled ?? false),
+    aiResults: normalizeSuggestionList(
+      data.aiResults ?? data.AiResults,
+      normalizeAiResultItem,
     ),
     submittedAt: pickString(data, 'submittedAt', 'SubmittedAt'),
   }

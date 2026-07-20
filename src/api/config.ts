@@ -73,6 +73,7 @@ export const API_PATHS = {
     submits: '/writings/submits',
     submitById: (id: string) => `/writings/submits/${id}`,
     submitIterate: (id: string) => `/writings/submits/${id}/iterate`,
+    submitAiResults: (submitId: string) => `/writings/submits/${submitId}/ai-results`,
     suggestionChat: (submitId: string, suggestionId: string) =>
       `/writings/submits/${submitId}/suggestions/${suggestionId}/chat`,
   },
