@@ -1161,10 +1161,10 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   </div>
                 )}
 
-                {/* 无AI结果 */}
+                {/* 未开启 AI 辅助时无批改数据 */}
                 {!hasAnyAiResult && (
                   <p className="mt-4 text-sm text-neutral-400">
-                    暂无 AI 批改内容。在写作页开启「AI 检查与修改」「结构与评分」或「提升建议」后提交，结果会显示在这里。
+                    这篇作文你未开启 AI 辅助功能，该部分为空。
                   </p>
                 )}
               </div>
