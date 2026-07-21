@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { MobileBottomNav } from './MobileBottomNav'
+import { VocabularySelectionAdd } from '../vocabulary/VocabularySelectionAdd'
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
 
@@ -52,7 +53,12 @@ export function Layout({ children }: LayoutProps) {
       />
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#fafafa] pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-        {children}
+        <VocabularySelectionAdd
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          hint=""
+        >
+          {children}
+        </VocabularySelectionAdd>
       </main>
 
       <MobileBottomNav />

@@ -17,6 +17,7 @@ import {
 interface VocabularySelectionAddProps {
   children: ReactNode
   className?: string
+  /** 传空字符串可隐藏底部提示 */
   hint?: string
 }
 
@@ -37,6 +38,9 @@ interface FloatingUiState {
 const FLOATING_WIDTH = 148
 const FLOATING_HEIGHT = 40
 
+/** 表单控件等区域不触发加词库 */
+const IGNORE_SELECTOR = 'input, textarea, select, [data-no-vocab]'
+
 function selectionWithinContainer(selection: Selection, container: HTMLElement): boolean {
   if (selection.rangeCount === 0 || selection.isCollapsed) return false
   const range = selection.getRangeAt(0)
@@ -45,12 +49,20 @@ function selectionWithinContainer(selection: Selection, container: HTMLElement):
   return Boolean(element && container.contains(element))
 }
 
+function selectionInIgnoredArea(selection: Selection): boolean {
+  if (selection.rangeCount === 0) return true
+  const range = selection.getRangeAt(0)
+  const node = range.commonAncestorContainer
+  const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element)
+  return Boolean(element?.closest(IGNORE_SELECTOR))
+}
+
 function extractContextSentence(selection: Selection): string | undefined {
   if (selection.rangeCount === 0) return undefined
   const range = selection.getRangeAt(0)
   const node = range.commonAncestorContainer
   const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element)
-  const block = element?.closest('p, li, dd, h3, h4, h5, .notion-editor')
+  const block = element?.closest('p, li, dd, h3, h4, h5, .notion-editor, [data-vocab-context]')
   const text = block?.textContent?.trim()
   if (!text) return undefined
   return text.length > 500 ? `${text.slice(0, 497)}…` : text
@@ -115,6 +127,7 @@ function resolveFloatingPosition(
 function readSelectionSnapshot(container: HTMLElement): SelectionSnapshot | null {
   const selection = window.getSelection()
   if (!selection || !selectionWithinContainer(selection, container)) return null
+  if (selectionInIgnoredArea(selection)) return null
 
   const word = normalizeSelectedWord(selection.toString())
   if (!word) return null
@@ -242,8 +255,25 @@ export function VocabularySelectionAdd({
     if (!snapshot) return
 
     event.preventDefault()
+    event.stopPropagation()
     suppressMouseUpRef.current = true
     showFloating(snapshot, { x: event.clientX, y: event.clientY })
+  }
+
+  /** 双击：浏览器会先选中词，再打开加词库弹窗 */
+  const handleDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+    if ((event.target as Element | null)?.closest?.(IGNORE_SELECTOR)) return
+
+    const container = containerRef.current
+    if (!container) return
+
+    // 等浏览器 / 编辑器完成双击选词后再读取选区
+    window.setTimeout(() => {
+      const snapshot = readSelectionSnapshot(container)
+      if (!snapshot) return
+      suppressMouseUpRef.current = true
+      openDialog(snapshot)
+    }, 0)
   }
 
   const handleFloatingAction = () => {
@@ -264,9 +294,10 @@ export function VocabularySelectionAdd({
         className={className}
         onMouseUp={handleMouseUp}
         onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
       >
         {children}
-        {hint && <p className="mt-4 text-xs text-neutral-400">{hint}</p>}
+        {hint ? <p className="mt-4 text-xs text-neutral-400">{hint}</p> : null}
       </div>
 
       {floating &&

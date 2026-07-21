@@ -14,7 +14,6 @@ import {
 import { SuggestionChatBox } from '../writing/SuggestionChatBox'
 import { AiMarkdownContent } from '../writing/AiMarkdownContent'
 import { SubmitVersionNav } from '../writing/SubmitVersionNav'
-import { VocabularySelectionAdd } from '../vocabulary/VocabularySelectionAdd'
 import { useAuth } from '../../context/AuthContext'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
@@ -876,7 +875,6 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   selectRecord(id)
                 }}
               >
-              <VocabularySelectionAdd>
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="min-w-0">
                   <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
@@ -1171,7 +1169,9 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   </p>
                 )}
               </div>
-              </VocabularySelectionAdd>
+              <p className="mt-4 text-xs text-neutral-400">
+                选中英文单词或短语后，点击浮层按钮或右键加入个人词库；双击可直接打开添加弹窗。
+              </p>
               </SubmitVersionNav>
               </>
             )
