@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -29,6 +27,7 @@ import {
   type AdminAccessLogTrend,
 } from '../../../api/admin'
 import { useReportReady } from '../../../hooks/useReportReady'
+import { AccessLogGeoHeatMap } from '../AccessLogGeoHeatMap'
 import {
   AdminCard,
   AdminEmpty,
@@ -139,7 +138,8 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
   const [range, setRange] = useState<AccessLogRange>('7d')
   const [overview, setOverview] = useState<AdminAccessLogOverview | null>(null)
   const [trend, setTrend] = useState<AdminAccessLogTrend | null>(null)
-  const [geo, setGeo] = useState<AdminAccessLogGeo | null>(null)
+  const [countryGeo, setCountryGeo] = useState<AdminAccessLogGeo | null>(null)
+  const [provinceGeo, setProvinceGeo] = useState<AdminAccessLogGeo | null>(null)
   const [devices, setDevices] = useState<AdminAccessLogDevices | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState('')
@@ -160,15 +160,17 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
     setStatsLoading(true)
     setStatsError('')
     try {
-      const [overviewData, trendData, geoData, devicesData] = await Promise.all([
+      const [overviewData, trendData, countryData, provinceData, devicesData] = await Promise.all([
         getAdminAccessLogOverview({ range }),
         getAdminAccessLogTrend({ range, granularity: 'day' }),
-        getAdminAccessLogGeo({ range, level: 'city' }),
+        getAdminAccessLogGeo({ range, level: 'country' }),
+        getAdminAccessLogGeo({ range, level: 'province', country: '中国' }),
         getAdminAccessLogDevices({ range }),
       ])
       setOverview(overviewData)
       setTrend(trendData)
-      setGeo(geoData)
+      setCountryGeo(countryData)
+      setProvinceGeo(provinceData)
       setDevices(devicesData)
     } catch (err) {
       setStatsError(err instanceof Error ? err.message : '加载访问统计失败')
@@ -222,15 +224,6 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
     [trend],
   )
 
-  const geoChart = useMemo(
-    () =>
-      (geo?.items ?? []).slice(0, 12).map((item) => ({
-        name: item.name ?? ([item.country, item.city].filter(Boolean).join(' · ') || '未知'),
-        count: item.count,
-      })),
-    [geo],
-  )
-
   const deviceChart = useMemo(
     () =>
       (devices?.byDevice ?? []).map((item) => ({
@@ -244,7 +237,7 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
     () =>
       (devices?.byBrowser ?? []).slice(0, 8).map((item) => ({
         name: item.name,
-        count: item.count,
+        value: item.count,
       })),
     [devices],
   )
@@ -351,8 +344,8 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
           />
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-5">
-          <AdminCard className="lg:col-span-3">
+        <div className="mt-4">
+          <AdminCard>
             <p className="text-sm font-medium text-neutral-800">访问趋势</p>
             <p className="mt-1 text-xs text-neutral-400">按日汇总请求量、登录用户与游客</p>
             {statsLoading ? (
@@ -394,8 +387,10 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
               </div>
             )}
           </AdminCard>
+        </div>
 
-          <AdminCard className="lg:col-span-2">
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <AdminCard>
             <p className="text-sm font-medium text-neutral-800">设备分布</p>
             <p className="mt-1 text-xs text-neutral-400">桌面 / 手机 / 平板</p>
             {statsLoading ? (
@@ -435,56 +430,60 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
               </div>
             )}
           </AdminCard>
-        </div>
-
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <AdminCard>
-            <p className="text-sm font-medium text-neutral-800">地域分布</p>
-            <p className="mt-1 text-xs text-neutral-400">Top 城市（排除内网）</p>
-            {statsLoading ? (
-              <AdminEmpty message="加载中…" />
-            ) : geoChart.length === 0 ? (
-              <AdminEmpty message="暂无地域数据" />
-            ) : (
-              <div className="mt-4 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={geoChart} layout="vertical" margin={{ left: 16, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: '#a3a3a3' }} allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={88}
-                      tick={{ fontSize: 11, fill: '#737373' }}
-                    />
-                    <Tooltip />
-                    <Bar dataKey="count" name="访问量" fill="#404040" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </AdminCard>
 
           <AdminCard>
             <p className="text-sm font-medium text-neutral-800">浏览器分布</p>
-            <p className="mt-1 text-xs text-neutral-400">Top 浏览器</p>
+            <p className="mt-1 text-xs text-neutral-400">按浏览器占比</p>
             {statsLoading ? (
               <AdminEmpty message="加载中…" />
             ) : browserChart.length === 0 ? (
               <AdminEmpty message="暂无浏览器数据" />
             ) : (
-              <div className="mt-4 h-64">
+              <div className="mt-2 h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={browserChart}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#a3a3a3' }} />
-                    <YAxis tick={{ fontSize: 11, fill: '#a3a3a3' }} allowDecimals={false} />
+                  <PieChart>
+                    <Pie
+                      data={browserChart}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={48}
+                      outerRadius={78}
+                      paddingAngle={2}
+                    >
+                      {browserChart.map((_, index) => (
+                        <Cell key={index} fill={CHART_NEUTRALS[index % CHART_NEUTRALS.length]} />
+                      ))}
+                    </Pie>
                     <Tooltip />
-                    <Bar dataKey="count" name="访问量" fill="#525252" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                  </PieChart>
                 </ResponsiveContainer>
+                <div className="mt-1 flex flex-wrap justify-center gap-3 text-xs text-neutral-500">
+                  {browserChart.map((item, index) => (
+                    <span key={item.name} className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-block h-2 w-2 rounded-sm"
+                        style={{ background: CHART_NEUTRALS[index % CHART_NEUTRALS.length] }}
+                      />
+                      {item.name} {item.value}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
+          </AdminCard>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <AdminCard>
+            <p className="text-sm font-medium text-neutral-800">国家热力图</p>
+            <p className="mt-1 text-xs text-neutral-400">颜色越深访问越多，悬停查看数值</p>
+            <AccessLogGeoHeatMap kind="country" geo={countryGeo} loading={statsLoading} />
+          </AdminCard>
+
+          <AdminCard>
+            <p className="text-sm font-medium text-neutral-800">省热力图</p>
+            <p className="mt-1 text-xs text-neutral-400">中国各省访问热度（排除内网）</p>
+            <AccessLogGeoHeatMap kind="province" geo={provinceGeo} loading={statsLoading} />
           </AdminCard>
         </div>
 

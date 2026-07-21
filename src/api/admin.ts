@@ -278,7 +278,7 @@ export async function listAdminAuditLogs(params?: {
 
 export type AccessLogRange = '7d' | '15d' | '1m' | '3m' | '6m'
 export type AccessLogGranularity = 'hour' | 'day' | 'week'
-export type AccessLogGeoLevel = 'country' | 'region' | 'city'
+export type AccessLogGeoLevel = 'country' | 'region' | 'city' | 'province'
 
 export interface AdminAccessLogItem {
   id: string
@@ -344,9 +344,16 @@ export interface AdminAccessLogTrend {
 export interface AdminAccessLogGeo {
   range: AccessLogRange
   level: AccessLogGeoLevel
+  country?: string | null
   since: string
   until: string
-  items: Array<{ name?: string; country?: string; city?: string; count: number }>
+  items: Array<{
+    name?: string
+    code?: string | null
+    country?: string
+    city?: string
+    count: number
+  }>
 }
 
 export interface AdminAccessLogDevices {
@@ -399,6 +406,7 @@ export async function getAdminAccessLogTrend(params?: {
 export async function getAdminAccessLogGeo(params?: {
   range?: AccessLogRange
   level?: AccessLogGeoLevel
+  country?: string
 }): Promise<AdminAccessLogGeo> {
   return get(API_PATHS.admin.accessLogStatsGeo, { params })
 }
