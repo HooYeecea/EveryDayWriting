@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { RefreshCw, RotateCcw, Wand2 } from 'lucide-react'
+import { Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
@@ -105,6 +106,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     () => loadTopicPanelHeight() ?? getTopicPanelMinHeight(),
   )
   const [isResizingTopic, setIsResizingTopic] = useState(false)
+  const [writingFullscreen, setWritingFullscreen] = useState(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
 
   const clampTopicHeight = (height: number) => {
@@ -117,6 +119,22 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   useEffect(() => {
     topicHeightRef.current = topicHeight
   }, [topicHeight])
+
+  useEffect(() => {
+    if (!writingFullscreen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setWritingFullscreen(false)
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [writingFullscreen])
 
   useEffect(() => {
     const syncHeight = () => {
@@ -821,19 +839,35 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           onScroll={handleWritingScroll}
           className={`writing-area-scroll mx-auto w-full min-w-0 max-w-5xl flex-1 overflow-x-hidden overflow-y-auto py-5 sm:py-8 ${MAIN_CONTENT_X_CLASS}`}
         >
-          <div className="writing-sheet flex min-h-full flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white/92 to-neutral-50/55 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]">
-            <div className="shrink-0 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="自定义标题"
-                className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
-              />
+          {writingFullscreen ? (
+            <div className="flex min-h-full items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white/60 px-4 py-16 text-sm text-neutral-400">
+              写作区全屏中…
             </div>
+          ) : (
+            <div className="writing-sheet relative flex min-h-full flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white/92 to-neutral-50/55 pb-12 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]">
+              <div className="shrink-0 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="自定义标题"
+                  className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
+                />
+              </div>
 
-            <NotionEditor key={editorKey} content={content} onChange={setContent} />
-          </div>
+              <NotionEditor key={editorKey} content={content} onChange={setContent} />
+
+              <button
+                type="button"
+                onClick={() => setWritingFullscreen(true)}
+                className="absolute bottom-3 right-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white/95 text-neutral-500 shadow-sm transition-colors hover:bg-neutral-50 hover:text-neutral-800 active:scale-95"
+                title="全屏写作"
+                aria-label="全屏写作"
+              >
+                <Maximize2 size={16} strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className={PANEL_FOOTER_CLASS}>
@@ -915,6 +949,49 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           </div>
         </div>
       </div>
+
+      {writingFullscreen
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex flex-col bg-neutral-100"
+              role="dialog"
+              aria-modal="true"
+              aria-label="全屏写作"
+            >
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
+                <div className="min-w-0">
+                  <p className="font-sans text-sm font-semibold text-neutral-900">专注写作</p>
+                  <p className="mt-0.5 truncate text-xs text-neutral-400">
+                    {topicPrompt || '写作区全屏 · Esc 退出'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWritingFullscreen(false)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
+                >
+                  <X size={14} strokeWidth={1.75} />
+                  退出全屏
+                </button>
+              </div>
+              <div className="writing-fullscreen-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+                <div className="writing-sheet mx-auto flex min-h-full max-w-5xl flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white to-neutral-50/80 shadow-sm">
+                  <div className="shrink-0 border-b border-neutral-100 px-4 pb-3 pt-4 sm:px-5 sm:pb-4 sm:pt-5">
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="自定义标题"
+                      className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
+                    />
+                  </div>
+                  <NotionEditor key={`fs-${editorKey}`} content={content} onChange={setContent} />
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       <WritingAssistPanel />
 

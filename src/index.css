@@ -217,6 +217,29 @@ code, kbd, pre, samp {
   padding-bottom: 2rem;
 }
 
+.writing-fullscreen-scroll .writing-sheet {
+  min-height: 100%;
+}
+
+.writing-fullscreen-scroll .notion-editor {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.875rem 1rem 1.25rem;
+}
+
+.writing-fullscreen-scroll .notion-editor .tiptap,
+.writing-fullscreen-scroll .notion-editor .tiptap.ProseMirror {
+  flex: 1 1 auto;
+  min-height: min(70vh, 40rem);
+  padding-bottom: 3rem;
+}
+
 @media (min-width: 640px) {
   .writing-area-scroll .notion-editor .tiptap {
     min-height: 0;
