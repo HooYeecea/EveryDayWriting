@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type AnimationEvent,
+} from 'react'
 import { useLocation } from 'react-router-dom'
 import { BrandContentGate } from '../brand/BrandLoading'
 import { getVisibleAdminRoutes } from '../../config/adminRoutes'
@@ -129,7 +137,9 @@ export function AdminPageSwitcher() {
               loadingLabel={`加载${label}…`}
               minHeight={420}
             >
-              <Page onReady={() => markPageReady(path)} />
+              <Suspense fallback={null}>
+                <Page onReady={() => markPageReady(path)} />
+              </Suspense>
             </BrandContentGate>
           </div>
         )

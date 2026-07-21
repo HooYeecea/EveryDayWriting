@@ -1,15 +1,168 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fafafa" />
     <title>Everyday Writing - 每日英语写作</title>
+    <style>
+      /* 首屏冷启动壳：不依赖 JS/CSS 包，覆盖白屏空窗 */
+      html,
+      body {
+        margin: 0;
+        background: #fafafa;
+        color: #37352f;
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background: #fafafa;
+        font-family: 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+        transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+          visibility 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      #boot-splash.boot-splash--hide {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #boot-splash .boot-stage {
+        position: relative;
+        display: flex;
+        height: 4rem;
+        width: 4rem;
+        align-items: center;
+        justify-content: center;
+      }
+      #boot-splash .boot-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        border: 1.5px solid rgba(23, 23, 23, 0.12);
+        animation: boot-ring-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+      }
+      #boot-splash .boot-ring--delay {
+        animation-delay: 0.55s;
+      }
+      #boot-splash .boot-mark {
+        position: relative;
+        z-index: 1;
+        height: 2.75rem;
+        width: 2.75rem;
+        animation: boot-mark-breathe 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+      }
+      #boot-splash .boot-label {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: #262626;
+        text-align: center;
+      }
+      #boot-splash .boot-brand {
+        margin: 0.375rem 0 0;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #a3a3a3;
+        text-align: center;
+      }
+      #boot-splash .boot-bar {
+        width: 7.5rem;
+        height: 2px;
+        overflow: hidden;
+        border-radius: 9999px;
+        background: #e5e5e5;
+      }
+      #boot-splash .boot-bar-fill {
+        display: block;
+        height: 100%;
+        width: 40%;
+        border-radius: inherit;
+        background: #171717;
+        animation: boot-bar-slide 1.25s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+      }
+      @keyframes boot-ring-pulse {
+        0% {
+          transform: scale(0.72);
+          opacity: 0.85;
+        }
+        70%,
+        100% {
+          transform: scale(1.18);
+          opacity: 0;
+        }
+      }
+      @keyframes boot-mark-breathe {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        50% {
+          transform: translateY(-2px) scale(1.04);
+        }
+      }
+      @keyframes boot-bar-slide {
+        0% {
+          transform: translateX(-120%);
+        }
+        100% {
+          transform: translateX(320%);
+        }
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@400;500;600;700;900&family=Inconsolata:wght@400;700&display=swap" rel="stylesheet" />
+    <!-- 非阻塞加载字体，避免阻塞首屏绘制 -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=Montserrat:wght@400;500;600;700;900&family=Inconsolata:wght@400;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=Montserrat:wght@400;500;600;700;900&family=Inconsolata:wght@400;700&display=swap"
+      />
+    </noscript>
   </head>
   <body>
+    <div id="boot-splash" role="status" aria-live="polite" aria-label="加载中">
+      <div class="boot-stage" aria-hidden="true">
+        <span class="boot-ring"></span>
+        <span class="boot-ring boot-ring--delay"></span>
+        <svg class="boot-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="10" fill="#171717" />
+          <path
+            d="M11 12h12M11 20h9M11 28h12"
+            stroke="white"
+            stroke-width="2.25"
+            stroke-linecap="round"
+          />
+          <path
+            d="M26 11v14.5c0 1.2.7 2 2 2h1"
+            stroke="white"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path d="M27.5 28.5l2.2 2.2" stroke="white" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </div>
+      <div>
+        <p class="boot-label">加载中…</p>
+        <p class="boot-brand">Everyday Writing</p>
+      </div>
+      <div class="boot-bar" aria-hidden="true"><span class="boot-bar-fill"></span></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

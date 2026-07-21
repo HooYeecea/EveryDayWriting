@@ -1,13 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react'
 import { AppBootLoading } from './components/brand/BrandLoading'
 import { Layout } from './components/layout/Layout'
 import { AppPageSwitcher } from './components/layout/AppPageSwitcher'
-import { AdminLayout } from './components/admin/AdminLayout'
-import { AdminPageSwitcher } from './components/admin/AdminPageSwitcher'
-import { AuthRouteTransition, isAuthPath } from './components/auth/AuthRouteTransition'
-import { ChangePassword } from './components/views/ChangePassword'
-import { ProficiencyTestPage } from './components/views/ProficiencyTest'
 import { useAuth } from './context/AuthContext'
 import { useWritingFocus } from './context/WritingFocusContext'
 import { DEFAULT_PATH, isAppPath } from './config/routes'
@@ -22,6 +17,31 @@ import {
   getDefaultHomePath,
   isAdminOnly,
 } from './utils/roles'
+import { isAuthPath } from './config/authPaths'
+
+const AdminLayout = lazy(() =>
+  import('./components/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
+)
+const AdminPageSwitcher = lazy(() =>
+  import('./components/admin/AdminPageSwitcher').then((m) => ({ default: m.AdminPageSwitcher })),
+)
+const AuthRouteTransition = lazy(() =>
+  import('./components/auth/AuthRouteTransition').then((m) => ({
+    default: m.AuthRouteTransition,
+  })),
+)
+const ChangePassword = lazy(() =>
+  import('./components/views/ChangePassword').then((m) => ({ default: m.ChangePassword })),
+)
+const ProficiencyTestPage = lazy(() =>
+  import('./components/views/ProficiencyTest').then((m) => ({
+    default: m.ProficiencyTestPage,
+  })),
+)
+
+function LazyBoot({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<AppBootLoading />}>{children}</Suspense>
+}
 
 function App() {
   const location = useLocation()
@@ -52,7 +72,11 @@ function App() {
 
   if (mustChangePassword && getToken()) {
     if (location.pathname === '/change-password') {
-      return <ChangePassword />
+      return (
+        <LazyBoot>
+          <ChangePassword />
+        </LazyBoot>
+      )
     }
     return <Navigate to="/change-password" replace />
   }
@@ -62,7 +86,11 @@ function App() {
   }
 
   if (location.pathname === '/proficiency-test') {
-    return <ProficiencyTestPage />
+    return (
+      <LazyBoot>
+        <ProficiencyTestPage />
+      </LazyBoot>
+    )
   }
 
   if (location.pathname === '/') {
@@ -70,7 +98,11 @@ function App() {
   }
 
   if (isAuthPath(location.pathname)) {
-    return <AuthRouteTransition />
+    return (
+      <LazyBoot>
+        <AuthRouteTransition />
+      </LazyBoot>
+    )
   }
 
   if (isAdminPath(location.pathname)) {
@@ -83,9 +115,11 @@ function App() {
     }
 
     return (
-      <AdminLayout>
-        <AdminPageSwitcher />
-      </AdminLayout>
+      <LazyBoot>
+        <AdminLayout>
+          <AdminPageSwitcher />
+        </AdminLayout>
+      </LazyBoot>
     )
   }
 

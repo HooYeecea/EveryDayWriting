@@ -1,15 +1,8 @@
-import type { ComponentType } from 'react'
+import { lazy, type ComponentType } from 'react'
 import type { MenuKey } from '../types'
-import { UserCenter } from '../components/views/UserCenter'
-import { StartWriting } from '../components/views/StartWriting'
-import { WritingRecords } from '../components/views/WritingRecords'
-import { PersonalVocabulary } from '../components/views/PersonalVocabulary'
-import { PersonalAssessment } from '../components/views/PersonalAssessment'
-import { UsageGuide } from '../components/views/UsageGuide'
+import type { AppPageProps } from './appRouteTypes'
 
-export type AppPageProps = {
-  onReady?: () => void
-}
+export type { AppPageProps } from './appRouteTypes'
 
 export interface AppRoute {
   key: MenuKey
@@ -20,6 +13,29 @@ export interface AppRoute {
 }
 
 export const DEFAULT_PATH = '/writing'
+
+const UserCenter = lazy(() =>
+  import('../components/views/UserCenter').then((m) => ({ default: m.UserCenter })),
+)
+const StartWriting = lazy(() =>
+  import('../components/views/StartWriting').then((m) => ({ default: m.StartWriting })),
+)
+const WritingRecords = lazy(() =>
+  import('../components/views/WritingRecords').then((m) => ({ default: m.WritingRecords })),
+)
+const PersonalVocabulary = lazy(() =>
+  import('../components/views/PersonalVocabulary').then((m) => ({
+    default: m.PersonalVocabulary,
+  })),
+)
+const PersonalAssessment = lazy(() =>
+  import('../components/views/PersonalAssessment').then((m) => ({
+    default: m.PersonalAssessment,
+  })),
+)
+const UsageGuide = lazy(() =>
+  import('../components/views/UsageGuide').then((m) => ({ default: m.UsageGuide })),
+)
 
 export const APP_ROUTES: AppRoute[] = [
   {

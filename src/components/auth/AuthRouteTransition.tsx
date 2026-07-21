@@ -1,29 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { isAuthPath, type AuthPath } from '../../config/authPaths'
 import { Login } from '../views/Login'
 import { Register } from '../views/Register'
 import { ForgotPassword } from '../views/ForgotPassword'
 
-const AUTH_ROUTES = {
+const AUTH_ROUTES: Record<AuthPath, ComponentType> = {
   '/login': Login,
   '/register': Register,
   '/forgot-password': ForgotPassword,
-} as const
-
-type AuthPath = keyof typeof AUTH_ROUTES
+}
 
 /** 交叉淡入淡出时长（ms） */
 export const AUTH_TRANSITION_MS = 1000
 
-export function isAuthPath(pathname: string): pathname is AuthPath {
-  return pathname in AUTH_ROUTES
-}
+export { isAuthPath } from '../../config/authPaths'
 
 function AuthPage({ path }: { path: AuthPath }) {
   const Component = AUTH_ROUTES[path]
   return <Component />
 }
-
 export function AuthRouteTransition() {
   const location = useLocation()
   const pathname = location.pathname

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import { lazy, type ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Activity,
@@ -18,23 +18,6 @@ import {
   Users,
   Cpu,
 } from 'lucide-react'
-import { AdminDashboardPage } from '../components/admin/pages/AdminDashboardPage'
-import { AdminSystemPage } from '../components/admin/pages/AdminSystemPage'
-import { AdminUsersPage } from '../components/admin/pages/AdminUsersPage'
-import { AdminAnnouncementsPage } from '../components/admin/pages/AdminAnnouncementsPage'
-import { AdminConfigsPage } from '../components/admin/pages/AdminConfigsPage'
-import { AdminQuotesPage } from '../components/admin/pages/AdminQuotesPage'
-import { AdminCheckInTiersPage } from '../components/admin/pages/AdminCheckInTiersPage'
-import { AdminTopicTypesPage } from '../components/admin/pages/AdminTopicTypesPage'
-import { AdminWritingTopicsPage } from '../components/admin/pages/AdminWritingTopicsPage'
-import { AdminTokenUsagePage } from '../components/admin/pages/AdminTokenUsagePage'
-import { AdminAuditLogsPage } from '../components/admin/pages/AdminAuditLogsPage'
-import { AdminAccessLogsPage } from '../components/admin/pages/AdminAccessLogsPage'
-import { AdminProvidersPage } from '../components/admin/pages/AdminProvidersPage'
-import { AdminRolesPage } from '../components/admin/pages/AdminRolesPage'
-import { AdminAgreementsPage } from '../components/admin/pages/AdminAgreementsPage'
-import { AdminPromptsPage } from '../components/admin/pages/AdminPromptsPage'
-import { AdminQuestionsPage } from '../components/admin/pages/AdminQuestionsPage'
 import { hasPermission } from '../utils/roles'
 
 export type AdminMenuKey =
@@ -118,6 +101,92 @@ export const ADMIN_MENU_GROUPS: AdminMenuGroup[] = [
     routeKeys: ['providers', 'configs', 'access-logs', 'audit-logs'],
   },
 ]
+
+const AdminDashboardPage = lazy(() =>
+  import('../components/admin/pages/AdminDashboardPage').then((m) => ({
+    default: m.AdminDashboardPage,
+  })),
+)
+const AdminSystemPage = lazy(() =>
+  import('../components/admin/pages/AdminSystemPage').then((m) => ({
+    default: m.AdminSystemPage,
+  })),
+)
+const AdminUsersPage = lazy(() =>
+  import('../components/admin/pages/AdminUsersPage').then((m) => ({
+    default: m.AdminUsersPage,
+  })),
+)
+const AdminAnnouncementsPage = lazy(() =>
+  import('../components/admin/pages/AdminAnnouncementsPage').then((m) => ({
+    default: m.AdminAnnouncementsPage,
+  })),
+)
+const AdminConfigsPage = lazy(() =>
+  import('../components/admin/pages/AdminConfigsPage').then((m) => ({
+    default: m.AdminConfigsPage,
+  })),
+)
+const AdminQuotesPage = lazy(() =>
+  import('../components/admin/pages/AdminQuotesPage').then((m) => ({
+    default: m.AdminQuotesPage,
+  })),
+)
+const AdminCheckInTiersPage = lazy(() =>
+  import('../components/admin/pages/AdminCheckInTiersPage').then((m) => ({
+    default: m.AdminCheckInTiersPage,
+  })),
+)
+const AdminTopicTypesPage = lazy(() =>
+  import('../components/admin/pages/AdminTopicTypesPage').then((m) => ({
+    default: m.AdminTopicTypesPage,
+  })),
+)
+const AdminWritingTopicsPage = lazy(() =>
+  import('../components/admin/pages/AdminWritingTopicsPage').then((m) => ({
+    default: m.AdminWritingTopicsPage,
+  })),
+)
+const AdminTokenUsagePage = lazy(() =>
+  import('../components/admin/pages/AdminTokenUsagePage').then((m) => ({
+    default: m.AdminTokenUsagePage,
+  })),
+)
+const AdminAuditLogsPage = lazy(() =>
+  import('../components/admin/pages/AdminAuditLogsPage').then((m) => ({
+    default: m.AdminAuditLogsPage,
+  })),
+)
+const AdminAccessLogsPage = lazy(() =>
+  import('../components/admin/pages/AdminAccessLogsPage').then((m) => ({
+    default: m.AdminAccessLogsPage,
+  })),
+)
+const AdminProvidersPage = lazy(() =>
+  import('../components/admin/pages/AdminProvidersPage').then((m) => ({
+    default: m.AdminProvidersPage,
+  })),
+)
+const AdminRolesPage = lazy(() =>
+  import('../components/admin/pages/AdminRolesPage').then((m) => ({
+    default: m.AdminRolesPage,
+  })),
+)
+const AdminAgreementsPage = lazy(() =>
+  import('../components/admin/pages/AdminAgreementsPage').then((m) => ({
+    default: m.AdminAgreementsPage,
+  })),
+)
+const AdminPromptsPage = lazy(() =>
+  import('../components/admin/pages/AdminPromptsPage').then((m) => ({
+    default: m.AdminPromptsPage,
+  })),
+)
+const AdminQuestionsPage = lazy(() =>
+  import('../components/admin/pages/AdminQuestionsPage').then((m) => ({
+    default: m.AdminQuestionsPage,
+  })),
+)
 
 export const ADMIN_ROUTES: AdminRoute[] = [
   {
@@ -277,14 +346,8 @@ export function getVisibleAdminMenuGroups(permissions: string[]): AdminVisibleMe
   return ADMIN_MENU_GROUPS.map((group) => ({
     key: group.key,
     label: group.label,
-    routes: group.routeKeys
-      .map((routeKey) => byKey.get(routeKey))
-      .filter((route): route is AdminRoute => Boolean(route)),
+    routes: group.routeKeys.map((key) => byKey.get(key)).filter(Boolean) as AdminRoute[],
   })).filter((group) => group.routes.length > 0)
-}
-
-export function getFirstAllowedAdminPath(permissions: string[]): string {
-  return getVisibleAdminRoutes(permissions)[0]?.path ?? ADMIN_DEFAULT_PATH
 }
 
 export function canAccessAdminPath(pathname: string, permissions: string[]): boolean {
@@ -292,4 +355,9 @@ export function canAccessAdminPath(pathname: string, permissions: string[]): boo
   if (!route) return false
   if (!route.permission) return permissions.length > 0
   return hasPermission(permissions, route.permission)
+}
+
+export function getFirstAllowedAdminPath(permissions: string[]): string {
+  const first = getVisibleAdminRoutes(permissions)[0]
+  return first?.path ?? ADMIN_DEFAULT_PATH
 }

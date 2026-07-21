@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from 'react'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type AnimationEvent,
+} from 'react'
 import { useLocation } from 'react-router-dom'
 import { BrandContentGate } from '../brand/BrandLoading'
 import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
@@ -128,7 +136,9 @@ export function AppPageSwitcher() {
               loadingLabel={`加载${label}…`}
               minHeight={420}
             >
-              <Page onReady={() => markPageReady(path)} />
+              <Suspense fallback={null}>
+                <Page onReady={() => markPageReady(path)} />
+              </Suspense>
             </BrandContentGate>
           </div>
         )
