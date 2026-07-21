@@ -445,7 +445,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }, [feedback, localStorageKey])
 
   const handleChangeTopic = async () => {
-    if (draftIdRef.current || iterateFromId) return
+    if (draftIdRef.current || iterateFromId) {
+      setFeedback({
+        tone: 'info',
+        message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
+      })
+      return
+    }
 
     setSubmittedSnapshot(null)
     if (isAuthenticated) {
@@ -463,8 +469,21 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   const handleTopicTypeFilterChange = (value: string | undefined) => {
-    if (draftIdRef.current || iterateFromId) return
+    if (draftIdRef.current || iterateFromId) {
+      setFeedback({
+        tone: 'info',
+        message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
+      })
+      return
+    }
     setTopicTypeFilter(value)
+  }
+
+  const notifyTopicLocked = () => {
+    setFeedback({
+      tone: 'info',
+      message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
+    })
   }
 
   const buildSavePayload = (): WritingSavePayload => ({
@@ -797,7 +816,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-neutral-200 disabled:hover:bg-white disabled:hover:text-neutral-600 disabled:active:scale-100 sm:w-full sm:flex-none'
+    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:w-full sm:flex-none'
 
   // 手机：类型 + 换题横排；桌面：上换题 / 下类型，同宽竖排（收窄以对齐写作区右缘）
   const topicControls = (
@@ -805,20 +824,31 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       <button
         type="button"
         onClick={() => void handleChangeTopic()}
-        disabled={topicLocked}
-        className={`${changeTopicButtonClass} order-2 sm:order-1`}
-        title={topicLocked ? '当前草稿题目已锁定，请重写后再换题' : '换个题目'}
+        aria-disabled={topicLocked}
+        className={`${changeTopicButtonClass} order-2 sm:order-1 ${topicLocked ? 'cursor-not-allowed opacity-45 hover:border-neutral-200 hover:bg-white hover:text-neutral-600 active:scale-100' : ''}`}
+        title={topicLocked ? '当前草稿题目已锁定' : '换个题目'}
       >
         <RefreshCw size={14} className="shrink-0" />
         <span className="truncate">换个题目</span>
       </button>
-      <TopicTypeSelect
-        value={topicTypeFilter}
-        onChange={handleTopicTypeFilterChange}
-        disabled={topicLocked}
-        rootClassName="order-1 sm:order-2 sm:w-full"
-        className="!px-2 sm:!w-full sm:!min-w-0"
-      />
+      <div className={`relative order-1 sm:order-2 sm:w-full ${topicLocked ? 'cursor-not-allowed' : ''}`}>
+        <TopicTypeSelect
+          value={topicTypeFilter}
+          onChange={handleTopicTypeFilterChange}
+          disabled={topicLocked}
+          rootClassName="sm:w-full"
+          className="!px-2 sm:!w-full sm:!min-w-0"
+        />
+        {topicLocked && (
+          <button
+            type="button"
+            className="absolute inset-0 z-10 rounded-lg"
+            aria-label="题目类型已锁定"
+            title="当前草稿题目已锁定"
+            onClick={notifyTopicLocked}
+          />
+        )}
+      </div>
     </div>
   )
 
@@ -841,7 +871,32 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
               </p>
               <div className="min-h-0 min-w-0 flex-1">
                 {hasTopic ? (
-                  <TopicPromptBox fill prompt={topicPrompt} type={topic.type || '题目'} />
+                  <div
+                    className={`h-full min-h-0 ${topicLocked ? 'cursor-default' : ''}`}
+                    onClick={
+                      topicLocked
+                        ? (event) => {
+                            if ((event.target as HTMLElement).closest('button')) return
+                            notifyTopicLocked()
+                          }
+                        : undefined
+                    }
+                    onKeyDown={
+                      topicLocked
+                        ? (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              notifyTopicLocked()
+                            }
+                          }
+                        : undefined
+                    }
+                    role={topicLocked ? 'button' : undefined}
+                    tabIndex={topicLocked ? 0 : undefined}
+                    title={topicLocked ? '当前草稿题目已锁定' : undefined}
+                  >
+                    <TopicPromptBox fill prompt={topicPrompt} type={topic.type || '题目'} />
+                  </div>
                 ) : (
                   <div className="flex h-full min-h-0 w-full items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50/80 px-3 py-2">
                     <p className="text-center text-sm text-neutral-400 sm:text-[15px]">请获取题目</p>
