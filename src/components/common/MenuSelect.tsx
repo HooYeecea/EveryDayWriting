@@ -110,7 +110,7 @@ export function MenuSelect({
           <ul
             ref={listRef}
             role="listbox"
-            className="fixed z-[80] max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-neutral-200 bg-white py-1 font-sans shadow-lg"
+            className="fixed z-[400] max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border border-neutral-200 bg-white py-1 font-sans shadow-lg"
             style={{
               top: menuPos.top,
               left: menuPos.left,
