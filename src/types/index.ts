@@ -96,12 +96,15 @@ export interface WritingDraft {
   topic: string
   title: string
   content: string
+  /** 迭代写作时关联的来源提交 ID */
+  sourceSubmitId?: string | null
   updatedAt: string
 }
 
 export interface WritingDraftListItem {
   id: string
   title: string
+  sourceSubmitId?: string | null
   updatedAt: string
 }
 
@@ -377,6 +380,8 @@ export interface WritingSavePayload {
   topic: string
   title: string
   content: string
+  /** 迭代写作草稿：关联来源提交 */
+  sourceSubmitId?: string | null
 }
 
 export interface WritingSubmitPayload {

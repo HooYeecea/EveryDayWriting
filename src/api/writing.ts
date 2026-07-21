@@ -48,7 +48,12 @@ export async function createDraft(payload: WritingSavePayload): Promise<DraftSav
 
 export async function updateDraft(
   id: string,
-  payload: { title: string; content: string; expectedUpdatedAt?: string },
+  payload: {
+    title: string
+    content: string
+    expectedUpdatedAt?: string
+    sourceSubmitId?: string | null
+  },
 ): Promise<DraftSaveResult> {
   return put<DraftSaveResult>(API_PATHS.writings.draftById(id), payload)
 }
@@ -64,6 +69,7 @@ export async function saveWritingDraft(
         title: payload.title,
         content: payload.content,
         expectedUpdatedAt,
+        ...(payload.sourceSubmitId ? { sourceSubmitId: payload.sourceSubmitId } : {}),
       })
     } catch (err) {
       // 草稿已被删除（提交后清理、手动删除、超出上限被挤掉等）→ 改走新建
@@ -132,6 +138,7 @@ export async function iterateSubmit(
   payload: {
     content: string
     title?: string
+    draftId?: string
     gradingSessionId?: string
     aiCheckEnabled?: boolean
     aiStructureEnabled?: boolean

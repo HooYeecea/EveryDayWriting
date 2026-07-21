@@ -105,6 +105,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const preserveWritingSessionRef = useRef(false)
   const draftIdRef = useRef<string | undefined>(undefined)
   const draftUpdatedAtRef = useRef<string | undefined>(undefined)
+  const iterateFromIdRef = useRef<string | undefined>(undefined)
   /** 串行化自动/手动保存，避免并发创建两条草稿 */
   const draftSaveChainRef = useRef(Promise.resolve())
   const autoSaveTimerRef = useRef<number | null>(null)
@@ -126,6 +127,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     draftIdRef.current = id
     draftUpdatedAtRef.current = updatedAt
     setDraftId(id)
+  }
+
+  const assignIterateFrom = (id: string | undefined) => {
+    iterateFromIdRef.current = id
+    setIterateFromId(id)
   }
 
   const enqueueDraftSave = <T,>(task: () => Promise<T>): Promise<T> => {
@@ -271,7 +277,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             if (cancelled) return
 
             preserveWritingSessionRef.current = true
-            setIterateFromId(submit.id)
+            assignIterateFrom(submit.id)
             assignDraftMeta(undefined, undefined)
             setTopic({
               id: submit.topicId,
@@ -309,10 +315,30 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             setTitle(draft.title)
             setContent(draft.content)
             setSubmittedSnapshot(null)
-            setIterateFromId(undefined)
-            setIterateBaselineSnapshot(null)
+
+            const sourceSubmitId = draft.sourceSubmitId || undefined
+            assignIterateFrom(sourceSubmitId)
+            if (sourceSubmitId) {
+              try {
+                const source = await getSubmittedWritingById(sourceSubmitId)
+                if (cancelled) return
+                setIterateBaselineSnapshot(buildSubmitSnapshot(source.title, source.content))
+                setFeedback({
+                  tone: 'info',
+                  message: `正在基于第 ${source.iterationNumber ?? 1} 版提交进行迭代改进（来自草稿）`,
+                })
+              } catch {
+                setIterateBaselineSnapshot(null)
+                setFeedback({
+                  tone: 'info',
+                  message: '已加载迭代草稿，保存后提交将挂到关联的提交记录',
+                })
+              }
+            } else {
+              setIterateBaselineSnapshot(null)
+              setFeedback(null)
+            }
             setEditorKey((key) => key + 1)
-            setFeedback(null)
             return
           } catch (err) {
             if (cancelled) return
@@ -329,7 +355,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           setTopic(EMPTY_TOPIC)
           setTitle('')
           setContent('')
-          setIterateFromId(undefined)
+          assignIterateFrom(undefined)
           setSubmittedSnapshot(null)
           setIterateBaselineSnapshot(null)
           setWordCount(undefined)
@@ -394,11 +420,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     autoSaveTimerRef.current = window.setTimeout(() => {
       if (isEditorEmpty(content)) return
 
+      const sourceSubmitId = iterateFromIdRef.current
       const payload: WritingSavePayload = {
         topicId: topic.id > 0 ? topic.id : null,
         topic: topicToPrompt(topic),
         title: title.trim(),
         content,
+        ...(sourceSubmitId ? { sourceSubmitId } : {}),
       }
       const snapshotHash = hash
 
@@ -445,7 +473,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }, [feedback, localStorageKey])
 
   const handleChangeTopic = async () => {
-    if (draftIdRef.current || iterateFromId) {
+    if (draftIdRef.current || iterateFromIdRef.current) {
       setFeedback({
         tone: 'info',
         message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
@@ -469,7 +497,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   const handleTopicTypeFilterChange = (value: string | undefined) => {
-    if (draftIdRef.current || iterateFromId) {
+    if (draftIdRef.current || iterateFromIdRef.current) {
       setFeedback({
         tone: 'info',
         message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
@@ -486,12 +514,16 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     })
   }
 
-  const buildSavePayload = (): WritingSavePayload => ({
-    topicId: topic.id > 0 ? topic.id : null,
-    topic: topicToPrompt(topic),
-    title: title.trim(),
-    content,
-  })
+  const buildSavePayload = (): WritingSavePayload => {
+    const sourceSubmitId = iterateFromIdRef.current
+    return {
+      topicId: topic.id > 0 ? topic.id : null,
+      topic: topicToPrompt(topic),
+      title: title.trim(),
+      content,
+      ...(sourceSubmitId ? { sourceSubmitId } : {}),
+    }
+  }
 
   const applySaveResult = (result: DraftSaveResult, createdNew = false) => {
     preserveWritingSessionRef.current = true
@@ -518,7 +550,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     setContent('')
     setTopic(EMPTY_TOPIC)
     assignDraftMeta(undefined, undefined)
-    setIterateFromId(undefined)
+    assignIterateFrom(undefined)
     setSubmittedSnapshot(null)
     setIterateBaselineSnapshot(null)
     setWordCount(undefined)
@@ -703,16 +735,19 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         }
       }
 
-      if (iterateFromId) {
-        const result = await iterateSubmit(iterateFromId, {
+      if (iterateFromIdRef.current) {
+        const sourceSubmitId = iterateFromIdRef.current
+        const result = await iterateSubmit(sourceSubmitId, {
           title: title.trim(),
           content,
+          draftId: draftIdRef.current,
           aiCheckEnabled,
           aiStructureEnabled,
           aiSuggestionEnabled,
         })
 
         await persistAiResults(result.id)
+        assignDraftMeta(undefined, undefined)
 
         const aiSuccess =
           completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
@@ -727,7 +762,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             ? `（${result.wordCount} / ${result.wordLimit} 词）`
             : ''
 
-        setIterateFromId(result.id)
+        assignIterateFrom(result.id)
         preserveWritingSessionRef.current = true
         navigate('/writing', { replace: true })
 

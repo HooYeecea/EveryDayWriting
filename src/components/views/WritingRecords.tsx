@@ -595,6 +595,11 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
                       <Clock size={11} />
                       {formatTime(record.updatedAt)}
+                      {record.sourceSubmitId && (
+                        <span className="rounded bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-500">
+                          迭代中
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}
