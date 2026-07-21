@@ -15,6 +15,7 @@ interface TopicTypeSelectProps {
   className?: string
   /** 外层容器额外 class，桌面端竖排时用 sm:w-full 对齐 */
   rootClassName?: string
+  disabled?: boolean
 }
 
 function buildOptions(types: TopicTypeItem[]): TopicTypeOption[] {
@@ -29,6 +30,7 @@ export function TopicTypeSelect({
   onChange,
   className = '',
   rootClassName = '',
+  disabled = false,
 }: TopicTypeSelectProps) {
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; minWidth: number } | null>(
@@ -165,11 +167,16 @@ export function TopicTypeSelect({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((current) => !current)}
-        className={`flex h-9 w-[5.75rem] items-center justify-between gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 sm:w-auto sm:min-w-[92px] sm:gap-2 sm:px-3 ${className}`}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return
+          setOpen((current) => !current)
+        }}
+        className={`flex h-9 w-[5.75rem] items-center justify-between gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-neutral-200 disabled:hover:bg-white sm:w-auto sm:min-w-[92px] sm:gap-2 sm:px-3 ${className}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="题目类型筛选"
+        title={disabled ? '当前草稿题目已锁定' : undefined}
       >
         <span className={`truncate ${value ? 'font-medium text-neutral-700' : 'text-neutral-300'}`}>
           {value ?? '类型'}

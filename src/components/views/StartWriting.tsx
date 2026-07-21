@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
-import { autoSaveDraft, loadDraftById, loadLatestDraft, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
+import { autoSaveDraft, loadDraftById, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
 import { runPreSubmitGrading } from '../../api/aiGrading'
 import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingPreviewStorage'
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
@@ -54,6 +54,14 @@ function isEditorEmpty(html: string): boolean {
   return text.length === 0
 }
 
+/** 未获取题目时的空状态（刷新后默认） */
+const EMPTY_TOPIC: WritingTopic = {
+  id: 0,
+  type: '',
+  title: '',
+  description: '',
+}
+
 function buildSubmitSnapshot(title: string, content: string) {
   return `${title.trim()}|||${content}`
 }
@@ -74,7 +82,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const draftIdParam = searchParams.get('draftId')
   const iterateFromParam = searchParams.get('iterateFrom')
 
-  const [topic, setTopic] = useState<WritingTopic>(() => getMockRandomTopic())
+  const [topic, setTopic] = useState<WritingTopic>(EMPTY_TOPIC)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [draftId, setDraftId] = useState<string | undefined>()
@@ -99,6 +107,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const draftUpdatedAtRef = useRef<string | undefined>(undefined)
   /** 串行化自动/手动保存，避免并发创建两条草稿 */
   const draftSaveChainRef = useRef(Promise.resolve())
+  const autoSaveTimerRef = useRef<number | null>(null)
+  const lastAutoSavedHashRef = useRef<string>('')
   const pageRef = useRef<HTMLDivElement>(null)
   const topicPanelRef = useRef<HTMLDivElement>(null)
   const topicHeightRef = useRef<number>(loadTopicPanelHeight() ?? getTopicPanelMinHeight())
@@ -234,6 +244,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     Boolean(iterateFromId) &&
     iterateBaselineSnapshot !== null &&
     iterateBaselineSnapshot === currentSubmitSnapshot
+  const hasTopic = Boolean(topicToPrompt(topic).trim())
+  /** 已绑定草稿或迭代提交后锁定题目，禁止更换 */
+  const topicLocked = Boolean(draftId || iterateFromId)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -290,53 +303,46 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             const draft = await loadDraftById(draftIdParam)
             if (cancelled) return
 
+            preserveWritingSessionRef.current = true
             assignDraftMeta(draft.id, draft.updatedAt)
             setTopic(draftToTopic(draft))
             setTitle(draft.title)
             setContent(draft.content)
             setSubmittedSnapshot(null)
+            setIterateFromId(undefined)
+            setIterateBaselineSnapshot(null)
             setEditorKey((key) => key + 1)
+            setFeedback(null)
             return
           } catch (err) {
             if (cancelled) return
             setFeedback({
               tone: 'info',
-              message: err instanceof Error ? err.message : '未找到指定草稿，已尝试加载最新草稿',
+              message: err instanceof Error ? err.message : '未找到指定草稿，请重新获取题目或从写作记录进入',
             })
           }
         }
 
-        const draft = await loadLatestDraft()
-        if (cancelled) return
-
-        if (draft) {
-          assignDraftMeta(draft.id, draft.updatedAt)
-          setTopic(draftToTopic(draft))
-          setTitle(draft.title)
-          setContent(draft.content)
+        // 刷新 / 无 draftId：空白起步，不自动恢复草稿或随机题目
+        if (!cancelled) {
+          assignDraftMeta(undefined, undefined)
+          setTopic(EMPTY_TOPIC)
+          setTitle('')
+          setContent('')
+          setIterateFromId(undefined)
           setSubmittedSnapshot(null)
+          setIterateBaselineSnapshot(null)
+          setWordCount(undefined)
+          setWordLimit(undefined)
           setEditorKey((key) => key + 1)
-          return
-        }
-
-        try {
-          const nextTopic = await getRandomTopic(topicTypeFilter)
-          if (!cancelled) setTopic(nextTopic)
-        } catch (err) {
-          console.warn('[StartWriting] 初始化拉取题目失败，保留 mock 题目', err)
+          lastAutoSavedHashRef.current = ''
         }
       } catch (err) {
         if (cancelled) return
         setFeedback({
           tone: 'error',
-          message: err instanceof Error ? err.message : '加载草稿失败',
+          message: err instanceof Error ? err.message : '加载失败',
         })
-        try {
-          const nextTopic = await getRandomTopic(topicTypeFilter)
-          if (!cancelled) setTopic(nextTopic)
-        } catch (err) {
-          console.warn('[StartWriting] 加载草稿失败后拉取题目失败，保留 mock 题目', err)
-        }
       } finally {
         if (!cancelled) setInitialLoading(false)
       }
@@ -364,29 +370,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   // ── 自动保存：localStorage + 服务器 ──
-  const autoSaveTimerRef = useRef<number | null>(null)
-  const lastAutoSavedHashRef = useRef<string>('')
   const localStorageKey = topic ? `auto_save_draft_${topic.id}` : 'auto_save_draft_0'
 
-  // 恢复 localStorage 中的草稿（页面刷新/崩溃后）
-  useEffect(() => {
-    if (!isAuthenticated) return
-    try {
-      const saved = localStorage.getItem(localStorageKey)
-      if (saved && isEditorEmpty(content)) {
-        const parsed = JSON.parse(saved) as { title: string; content: string }
-        if (parsed.content && !isEditorEmpty(parsed.content)) {
-          setTitle(parsed.title ?? '')
-          setContent(parsed.content)
-          setEditorKey((k) => k + 1)
-          setFeedback({ tone: 'info', message: '已恢复上次编辑内容' })
-        }
-      }
-    } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // 内容变化 → localStorage（500ms 防抖）
+  // 内容变化 → localStorage（仅作会话内备份；刷新后不恢复，避免题目与正文错位）
   useEffect(() => {
     if (!isAuthenticated) return
     try {
@@ -419,6 +405,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       void enqueueDraftSave(async () => {
         try {
           const result = await autoSaveDraft(draftIdRef.current, payload)
+          preserveWritingSessionRef.current = true
           assignDraftMeta(result.id, result.updatedAt)
           lastAutoSavedHashRef.current = snapshotHash
           if (result.wordCount !== undefined) setWordCount(result.wordCount)
@@ -458,20 +445,25 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }, [feedback, localStorageKey])
 
   const handleChangeTopic = async () => {
+    if (draftIdRef.current || iterateFromId) return
+
     setSubmittedSnapshot(null)
     if (isAuthenticated) {
       try {
         const next = await getRandomTopic(topicTypeFilter)
+        preserveWritingSessionRef.current = true
         setTopic(next)
         return
       } catch (err) {
         console.warn('[StartWriting] 换一个题目接口失败，降级为 mock 题目', err)
       }
     }
-    setTopic(getMockRandomTopic(topic.id))
+    preserveWritingSessionRef.current = true
+    setTopic(getMockRandomTopic(topic.id || undefined))
   }
 
   const handleTopicTypeFilterChange = (value: string | undefined) => {
+    if (draftIdRef.current || iterateFromId) return
     setTopicTypeFilter(value)
   }
 
@@ -483,6 +475,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   })
 
   const applySaveResult = (result: DraftSaveResult, createdNew = false) => {
+    preserveWritingSessionRef.current = true
     assignDraftMeta(result.id, result.updatedAt)
     lastAutoSavedHashRef.current = `${title}||${content}`
     if (result.wordCount !== undefined) setWordCount(result.wordCount)
@@ -504,14 +497,20 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     preserveWritingSessionRef.current = false
     setTitle('')
     setContent('')
+    setTopic(EMPTY_TOPIC)
     assignDraftMeta(undefined, undefined)
     setIterateFromId(undefined)
     setSubmittedSnapshot(null)
     setIterateBaselineSnapshot(null)
     setWordCount(undefined)
     setWordLimit(undefined)
+    lastAutoSavedHashRef.current = ''
     setEditorKey((key) => key + 1)
-    setFeedback({ tone: 'info', message: '已开始新写作，保存时将创建新草稿' })
+    setFeedback({ tone: 'info', message: '已开始新写作，请先获取题目' })
+
+    try {
+      localStorage.removeItem(localStorageKey)
+    } catch { /* ignore */ }
 
     if (draftIdParam || iterateFromParam) {
       navigate('/writing', { replace: true })
@@ -520,13 +519,14 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
   const handleRewrite = async () => {
     const hasContent = title.trim().length > 0 || !isEditorEmpty(content)
-    if (hasContent) {
+    const hasBoundDraft = Boolean(draftIdRef.current || iterateFromId)
+    if (hasContent || hasBoundDraft || hasTopic) {
       const confirmed = await confirm({
         title: '确认重写',
         message: (
           <>
-            <p>将清空标题和正文，题目保持不变。</p>
-            <p className="mt-2">下次保存会创建一篇新草稿，当前草稿不会被删除。</p>
+            <p>将清空标题、正文，并解除当前题目与草稿绑定。</p>
+            <p className="mt-2">请重新获取题目后再写；当前草稿仍保留在写作记录中。</p>
           </>
         ),
         confirmLabel: '继续重写',
@@ -540,6 +540,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
   const handleSave = async () => {
     if (!promptLogin()) return
+
+    if (!hasTopic) {
+      setFeedback({ tone: 'error', message: '请先获取题目再保存' })
+      return
+    }
 
     if (isEditorEmpty(content)) {
       setFeedback({ tone: 'error', message: '请先输入正文再保存' })
@@ -617,6 +622,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const handleSubmit = async () => {
     if (!promptLogin()) return
     if (submitLockRef.current || isSubmitting) return
+
+    if (!hasTopic) {
+      setFeedback({ tone: 'error', message: '请先获取题目再提交' })
+      return
+    }
 
     if (isEditorEmpty(content)) {
       setFeedback({ tone: 'error', message: '请先输入正文再提交' })
@@ -764,6 +774,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
   const idleFooterStatus = (() => {
     if (!isAuthenticated) return '登录后可保存和提交'
+    if (!hasTopic) return '请先获取题目'
     if (wordCount !== undefined && wordLimit !== undefined) {
       const mode = draftId ? '编辑中' : '新写作'
       return `${wordCount} / ${wordLimit} 词 · ${mode}`
@@ -772,7 +783,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       if (isIterateUnchanged) return '相对最新版无变化 · 修改后可提交'
       return '迭代改进中 · 提交将创建新版本'
     }
-    if (draftId) return '编辑中 · 保存将更新当前草稿'
+    if (draftId) return '编辑中 · 题目已锁定 · 保存将更新当前草稿'
     return '新写作 · 保存将创建草稿'
   })()
 
@@ -786,18 +797,25 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const topicPrompt = topicToPrompt(topic)
 
   const changeTopicButtonClass =
-    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:w-full sm:flex-none'
+    'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-neutral-200 disabled:hover:bg-white disabled:hover:text-neutral-600 disabled:active:scale-100 sm:w-full sm:flex-none'
 
   // 手机：类型 + 换题横排；桌面：上换题 / 下类型，同宽竖排（收窄以对齐写作区右缘）
   const topicControls = (
     <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-[6.5rem] sm:flex-col sm:items-stretch sm:justify-center sm:gap-2 sm:self-stretch">
-      <button type="button" onClick={handleChangeTopic} className={`${changeTopicButtonClass} order-2 sm:order-1`} title="换个题目">
+      <button
+        type="button"
+        onClick={() => void handleChangeTopic()}
+        disabled={topicLocked}
+        className={`${changeTopicButtonClass} order-2 sm:order-1`}
+        title={topicLocked ? '当前草稿题目已锁定，请重写后再换题' : '换个题目'}
+      >
         <RefreshCw size={14} className="shrink-0" />
         <span className="truncate">换个题目</span>
       </button>
       <TopicTypeSelect
         value={topicTypeFilter}
         onChange={handleTopicTypeFilterChange}
+        disabled={topicLocked}
         rootClassName="order-1 sm:order-2 sm:w-full"
         className="!px-2 sm:!w-full sm:!min-w-0"
       />
@@ -822,7 +840,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 <span className="block">题目</span>
               </p>
               <div className="min-h-0 min-w-0 flex-1">
-                <TopicPromptBox fill prompt={topicPrompt} type={topic.type} />
+                {hasTopic ? (
+                  <TopicPromptBox fill prompt={topicPrompt} type={topic.type || '题目'} />
+                ) : (
+                  <div className="flex h-full min-h-0 w-full items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50/80 px-3 py-2">
+                    <p className="text-center text-sm text-neutral-400 sm:text-[15px]">请获取题目</p>
+                  </div>
+                )}
               </div>
             </div>
             {topicControls}
@@ -935,7 +959,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 onClick={handleRewrite}
                 disabled={isSaving || isSubmitting}
                 className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-4"
-                title="清空标题和正文，下次保存创建新草稿"
+                title={topicLocked ? '清空并解除题目绑定，请重新获取题目' : '清空标题和正文，下次保存创建新草稿'}
               >
                 <RotateCcw size={14} />
                 重写
