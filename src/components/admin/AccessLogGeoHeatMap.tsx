@@ -19,11 +19,10 @@ type GeoFeatureCollection = {
   }>
 }
 
+/** 使用本地静态资源，避免第三方 GeoJSON CDN 403 / 跨域限制 */
 const GEO_URL: Record<HeatMapKind, string> = {
-  // DataV 中国省界（含 adcode）
-  province: 'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
-  // ECharts 世界地图 GeoJSON
-  country: 'https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/json/world.json',
+  province: '/geo/china.json',
+  country: '/geo/world.json',
 }
 
 const REGISTERED = new Set<string>()
@@ -55,7 +54,7 @@ const COUNTRY_NAME_MAP: Record<string, string> = {
   墨西哥: 'Mexico',
   香港: 'China',
   澳门: 'China',
-  台湾: 'China',
+  台湾: 'Taiwan',
 }
 
 const PROVINCE_SUFFIXES = [
@@ -91,9 +90,7 @@ async function ensureMapRegistered(kind: HeatMapKind): Promise<string> {
     for (const feature of geoJson.features) {
       const props = feature.properties
       const rawName = String(props.name ?? '')
-      const adcode = props.adcode != null ? String(props.adcode) : ''
       props.name = toProvinceShortName(rawName)
-      if (adcode) props.adcode = adcode
     }
   }
 
@@ -113,7 +110,6 @@ function buildSeriesData(kind: HeatMapKind, geo: AdminAccessLogGeo | null) {
         return {
           name: toProvinceShortName(rawName),
           value: item.count,
-          code: item.code ?? undefined,
         }
       }
 
@@ -142,6 +138,7 @@ export function AccessLogGeoHeatMap({
 
   useEffect(() => {
     let disposed = false
+    setMapReady(false)
     void (async () => {
       try {
         await ensureMapRegistered(kind)
@@ -161,26 +158,30 @@ export function AccessLogGeoHeatMap({
     }
   }, [kind])
 
+  // 容器始终挂载；等地图数据就绪后再 init，避免 loading 阶段卸载导致图表永不创建
   useEffect(() => {
     const el = hostRef.current
-    if (!el || !mapReady) return
+    if (!el || !mapReady || loading || mapError) return
 
     const chart = echarts.init(el)
     chartRef.current = chart
 
     const onResize = () => chart.resize()
     window.addEventListener('resize', onResize)
+    // 布局稳定后再量一次，防止父级从 hidden/空态切过来时宽高为 0
+    const raf = window.requestAnimationFrame(() => chart.resize())
 
     return () => {
+      window.cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
       chart.dispose()
       chartRef.current = null
     }
-  }, [kind, mapReady])
+  }, [kind, mapReady, loading, mapError])
 
   useEffect(() => {
     const chart = chartRef.current
-    if (!chart || !mapReady) return
+    if (!chart || !mapReady || loading || mapError) return
 
     const mapName = kind === 'province' ? 'access-china' : 'access-world'
     const data = buildSeriesData(kind, geo)
@@ -240,13 +241,29 @@ export function AccessLogGeoHeatMap({
       },
       { notMerge: true },
     )
-  }, [kind, geo, mapReady])
+    chart.resize()
+  }, [kind, geo, mapReady, loading, mapError])
 
-  if (loading) return <AdminEmpty message="加载中…" />
-  if (mapError) return <AdminEmpty message={mapError} />
-  if (!loading && (geo?.items.length ?? 0) === 0) {
-    return <AdminEmpty message="暂无地域数据" />
-  }
+  const emptyData = !loading && (geo?.items.length ?? 0) === 0
 
-  return <div ref={hostRef} className="mt-2 h-72 w-full sm:h-80" />
+  return (
+    <div className="relative mt-2 h-72 w-full sm:h-80">
+      <div ref={hostRef} className="h-full w-full" />
+      {loading || !mapReady ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+          <AdminEmpty message="加载中…" />
+        </div>
+      ) : null}
+      {mapError ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <AdminEmpty message={mapError} />
+        </div>
+      ) : null}
+      {!mapError && emptyData ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <AdminEmpty message="暂无地域数据" />
+        </div>
+      ) : null}
+    </div>
+  )
 }
