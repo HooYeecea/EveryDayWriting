@@ -527,6 +527,7 @@ code, kbd, pre, samp {
   .animate-scale-in,
   .animate-shimmer,
   .animate-pulse-soft,
+  .animate-assist-target-flash,
   .typing-char-animation { animation: none !important; }
 }
 
@@ -618,6 +619,24 @@ code, kbd, pre, samp {
 
 .animate-pulse-soft {
   animation: pulse-soft 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* 写作辅助：从折叠条定位到目标功能时闪两下 */
+@keyframes assist-target-flash {
+  0%,
+  100% {
+    border-color: #e5e5e5;
+    box-shadow: 0 0 0 0 transparent;
+  }
+  45% {
+    border-color: #171717;
+    box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.1);
+    background-color: #f5f5f5;
+  }
+}
+
+.animate-assist-target-flash {
+  animation: assist-target-flash 0.42s cubic-bezier(0.22, 1, 0.36, 1) 2;
 }
 
 /* ── Stagger children helpers ── */

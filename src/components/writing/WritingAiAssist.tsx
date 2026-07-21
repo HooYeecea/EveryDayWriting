@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BarChart3, FileCheck, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
 import { getAiConfig } from '../../api/ai'
 import {
@@ -7,11 +7,25 @@ import {
   type AiAssistSettings,
 } from '../../storage/aiSettingsStorage'
 
+export type AiAssistToggleKey = keyof Pick<
+  AiAssistSettings,
+  'postSubmitReview' | 'postSubmitStructure' | 'postSubmitSuggestions' | 'realtimeAssist'
+>
+
 interface WritingAiAssistProps {
   onSettingsSaved?: (settings: AiAssistSettings) => void
+  /** 从折叠条定位到具体开关时传入；配合 highlightNonce 可重复触发闪动 */
+  highlightKey?: AiAssistToggleKey | null
+  highlightNonce?: number
 }
 
-export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
+const TOGGLE_FLASH_DELAY_MS = 320
+
+export function WritingAiAssist({
+  onSettingsSaved,
+  highlightKey = null,
+  highlightNonce = 0,
+}: WritingAiAssistProps) {
   const [postSubmitReview, setPostSubmitReview] = useState(false)
   const [postSubmitStructure, setPostSubmitStructure] = useState(false)
   const [postSubmitSuggestions, setPostSubmitSuggestions] = useState(false)
@@ -19,6 +33,8 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
   const [hasAiAccess, setHasAiAccess] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [flashingKey, setFlashingKey] = useState<AiAssistToggleKey | null>(null)
+  const rowRefs = useRef<Partial<Record<AiAssistToggleKey, HTMLLabelElement | null>>>({})
 
   useEffect(() => {
     const saved = loadAiAssistSettings()
@@ -36,6 +52,17 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
     })
   }, [])
 
+  useEffect(() => {
+    if (!highlightKey || !highlightNonce) return
+
+    const timer = window.setTimeout(() => {
+      setFlashingKey(highlightKey)
+      rowRefs.current[highlightKey]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, TOGGLE_FLASH_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [highlightKey, highlightNonce])
+
   const handleSave = () => {
     setSaving(true)
     const current = loadAiAssistSettings()
@@ -50,6 +77,19 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
     onSettingsSaved?.(next)
     setMessage('AI 辅助开关已保存')
     setSaving(false)
+  }
+
+  const rowClass = (key: AiAssistToggleKey) =>
+    `flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 ${
+      flashingKey === key ? 'animate-assist-target-flash' : ''
+    }`
+
+  const bindRowRef = (key: AiAssistToggleKey) => (el: HTMLLabelElement | null) => {
+    rowRefs.current[key] = el
+  }
+
+  const clearFlash = (key: AiAssistToggleKey) => {
+    if (flashingKey === key) setFlashingKey(null)
   }
 
   return (
@@ -74,7 +114,11 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
         <div>
           <p className="text-xs font-medium text-neutral-600">提交后辅助</p>
           <div className="mt-2 space-y-2">
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+            <label
+              ref={bindRowRef('postSubmitReview')}
+              className={rowClass('postSubmitReview')}
+              onAnimationEnd={() => clearFlash('postSubmitReview')}
+            >
               <input
                 type="checkbox"
                 checked={postSubmitReview}
@@ -91,7 +135,11 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
                 </p>
               </div>
             </label>
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+            <label
+              ref={bindRowRef('postSubmitStructure')}
+              className={rowClass('postSubmitStructure')}
+              onAnimationEnd={() => clearFlash('postSubmitStructure')}
+            >
               <input
                 type="checkbox"
                 checked={postSubmitStructure}
@@ -108,7 +156,11 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
                 </p>
               </div>
             </label>
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+            <label
+              ref={bindRowRef('postSubmitSuggestions')}
+              className={rowClass('postSubmitSuggestions')}
+              onAnimationEnd={() => clearFlash('postSubmitSuggestions')}
+            >
               <input
                 type="checkbox"
                 checked={postSubmitSuggestions}
@@ -131,7 +183,11 @@ export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
         <div>
           <p className="text-xs font-medium text-neutral-600">写作过程中</p>
           <div className="mt-2">
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+            <label
+              ref={bindRowRef('realtimeAssist')}
+              className={rowClass('realtimeAssist')}
+              onAnimationEnd={() => clearFlash('realtimeAssist')}
+            >
               <input
                 type="checkbox"
                 checked={realtimeAssist}

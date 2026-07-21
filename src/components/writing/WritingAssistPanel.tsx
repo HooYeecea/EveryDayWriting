@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { ASSIST_FEATURES, getAssistFeature, type AssistFeatureId } from './assistConfig'
 import { formatSecondsForRail, WritingTimerAssist } from './WritingTimerAssist'
-import { WritingAiAssist } from './WritingAiAssist'
+import { WritingAiAssist, type AiAssistToggleKey } from './WritingAiAssist'
 import {
   loadAiAssistSettings,
   type AiAssistSettings,
@@ -22,10 +22,7 @@ import {
 
 /** PC 折叠窄条上展示的已开启功能指示 */
 const AI_RAIL_INDICATORS: {
-  key: keyof Pick<
-    AiAssistSettings,
-    'postSubmitReview' | 'postSubmitStructure' | 'postSubmitSuggestions' | 'realtimeAssist'
-  >
+  key: AiAssistToggleKey
   label: string
   icon: LucideIcon
 }[] = [
@@ -349,6 +346,9 @@ interface AssistPanelContentProps {
   headerClose: ReactNode
   onTimerRunningChange: (running: boolean, displaySeconds: number, paused: boolean) => void
   onAiSettingsSaved?: (settings: AiAssistSettings) => void
+  highlightAiKey?: AiAssistToggleKey | null
+  highlightAiNonce?: number
+  highlightTimerNonce?: number
 }
 
 function AssistPanelContent({
@@ -361,6 +361,9 @@ function AssistPanelContent({
   headerClose,
   onTimerRunningChange,
   onAiSettingsSaved,
+  highlightAiKey = null,
+  highlightAiNonce = 0,
+  highlightTimerNonce = 0,
 }: AssistPanelContentProps) {
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
@@ -425,11 +428,18 @@ function AssistPanelContent({
       )}
 
       <div className={showAiDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-        <WritingAiAssist onSettingsSaved={onAiSettingsSaved} />
+        <WritingAiAssist
+          onSettingsSaved={onAiSettingsSaved}
+          highlightKey={highlightAiKey}
+          highlightNonce={highlightAiNonce}
+        />
       </div>
 
       <div className={showTimerDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-        <WritingTimerAssist onRunningChange={onTimerRunningChange} />
+        <WritingTimerAssist
+          onRunningChange={onTimerRunningChange}
+          highlightNonce={highlightTimerNonce}
+        />
       </div>
     </>
   )
@@ -444,6 +454,9 @@ export function WritingAssistPanel() {
   const [timerPaused, setTimerPaused] = useState(false)
   const [timerDisplaySeconds, setTimerDisplaySeconds] = useState(0)
   const [aiSettings, setAiSettings] = useState(loadAiAssistSettings)
+  const [highlightAiKey, setHighlightAiKey] = useState<AiAssistToggleKey | null>(null)
+  const [highlightAiNonce, setHighlightAiNonce] = useState(0)
+  const [highlightTimerNonce, setHighlightTimerNonce] = useState(0)
   const [mobilePosition, setMobilePosition] = useState(getDefaultMobilePanelPosition)
   const [fabPosition, setFabPosition] = useState(
     () => loadStoredFabPosition() ?? getDefaultFabPosition(),
@@ -463,9 +476,17 @@ export function WritingAssistPanel() {
     setAiSettings(settings)
   }, [])
 
-  const openDesktopFeature = useCallback((id: AssistFeatureId) => {
+  const openDesktopAiToggle = useCallback((key: AiAssistToggleKey) => {
     setDesktopExpanded(true)
-    setActiveFeature(id)
+    setActiveFeature('ai-assistant')
+    setHighlightAiKey(key)
+    setHighlightAiNonce((n) => n + 1)
+  }, [])
+
+  const openDesktopTimer = useCallback(() => {
+    setDesktopExpanded(true)
+    setActiveFeature('writing-timer')
+    setHighlightTimerNonce((n) => n + 1)
   }, [])
 
   const panelOpen = isDesktop ? desktopExpanded : mobileOpen
@@ -576,12 +597,21 @@ export function WritingAssistPanel() {
         )}
 
         <div className={showAiDetail && isDesktop ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-          {isDesktop && <WritingAiAssist onSettingsSaved={handleAiSettingsSaved} />}
+          {isDesktop && (
+            <WritingAiAssist
+              onSettingsSaved={handleAiSettingsSaved}
+              highlightKey={highlightAiKey}
+              highlightNonce={highlightAiNonce}
+            />
+          )}
         </div>
 
         {isDesktop && (
           <div className={showTimerDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-            <WritingTimerAssist onRunningChange={handleTimerRunningChange} />
+            <WritingTimerAssist
+              onRunningChange={handleTimerRunningChange}
+              highlightNonce={highlightTimerNonce}
+            />
           </div>
         )}
 
@@ -607,7 +637,7 @@ export function WritingAssistPanel() {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => openDesktopFeature('ai-assistant')}
+                    onClick={() => openDesktopAiToggle(key)}
                     className="rounded-md p-1.5 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
                     aria-label={`打开${label}`}
                     title={label}
@@ -618,7 +648,7 @@ export function WritingAssistPanel() {
                 {timerRunning && (
                   <button
                     type="button"
-                    onClick={() => openDesktopFeature('writing-timer')}
+                    onClick={openDesktopTimer}
                     className={`flex flex-col items-center gap-0.5 rounded-md p-1.5 text-amber-700 transition-colors hover:bg-amber-50 ${
                       timerPaused ? '' : 'animate-pulse-soft'
                     }`}

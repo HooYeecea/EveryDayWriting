@@ -56,9 +56,13 @@ function playAlarmBeep() {
 interface WritingTimerAssistProps {
   /** active：进行中或已暂停；paused：是否处于暂停 */
   onRunningChange?: (active: boolean, displaySeconds: number, paused: boolean) => void
+  /** 从折叠条跳入时触发区块闪动，递增即可重复触发 */
+  highlightNonce?: number
 }
 
-export function WritingTimerAssist({ onRunningChange }: WritingTimerAssistProps) {
+const SECTION_FLASH_DELAY_MS = 320
+
+export function WritingTimerAssist({ onRunningChange, highlightNonce = 0 }: WritingTimerAssistProps) {
   const { setNavigationLocked } = useWritingFocus()
   const { alert } = useAppAlert()
   const alertRef = useRef(alert)
@@ -71,10 +75,23 @@ export function WritingTimerAssist({ onRunningChange }: WritingTimerAssistProps)
   const [status, setStatus] = useState<TimerStatus>('idle')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [remainingSeconds, setRemainingSeconds] = useState(0)
+  const [flashing, setFlashing] = useState(false)
   const alarmTriggeredRef = useRef(false)
   const deadlineMsRef = useRef<number | null>(null)
   const runStartedAtRef = useRef<number | null>(null)
   const baseElapsedRef = useRef(0)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!highlightNonce) return
+
+    const timer = window.setTimeout(() => {
+      setFlashing(true)
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, SECTION_FLASH_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [highlightNonce])
 
   const customSeconds = timePartsToSeconds(customTime)
   const durationSeconds =
@@ -272,7 +289,13 @@ export function WritingTimerAssist({ onRunningChange }: WritingTimerAssistProps)
   }
 
   return (
-    <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+    <section
+      ref={sectionRef}
+      className={`rounded-xl border border-neutral-200 bg-neutral-50 p-4 ${
+        flashing ? 'animate-assist-target-flash' : ''
+      }`}
+      onAnimationEnd={() => setFlashing(false)}
+    >
       <div className="flex items-center gap-2">
         <Timer size={18} className="text-neutral-500" strokeWidth={1.75} />
         <h4 className="text-sm font-medium text-neutral-900">写作计时</h4>
