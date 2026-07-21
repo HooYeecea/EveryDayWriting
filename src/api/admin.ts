@@ -1,5 +1,5 @@
 import { API_PATHS } from './config'
-import { del, get, post, put } from './request'
+import { del, get, post, put, uploadForm } from './request'
 import type { PaginatedData } from './types'
 
 export interface AdminRoleBrief {
@@ -475,6 +475,130 @@ export async function updateAdminTopicType(
 
 export async function deleteAdminTopicType(id: number): Promise<void> {
   await del(API_PATHS.admin.topicTypeById(id))
+}
+
+// ── Writing topics (写作题库) ──
+
+export interface AdminWritingTopicListItem {
+  id: number
+  type: string
+  title: string
+  description: string
+  wordLimit: string
+  isEnabled: boolean
+  createdAt: string
+}
+
+export interface AdminWritingTopicDetail extends AdminWritingTopicListItem {
+  submitCount: number
+}
+
+export interface AdminWritingTopicInput {
+  type: string
+  title: string
+  description: string
+  wordLimit?: string
+  isEnabled?: boolean
+}
+
+export interface AdminWritingTopicGenerateItem {
+  type: string
+  title: string
+  description: string
+  wordLimit: string
+  isEnabled: boolean
+}
+
+export interface AdminWritingTopicGenerateResult {
+  previewOnly: boolean
+  message?: string
+  requestedCount: number
+  generatedCount: number
+  filters: { type: string; wordLimit?: string | null }
+  topics: AdminWritingTopicGenerateItem[]
+  warnings: string[]
+}
+
+export interface AdminWritingTopicBatchResult {
+  total: number
+  success: number
+  failed: number
+  errors: Array<{ index: number; message: string }>
+  successIds: number[]
+}
+
+export async function listAdminWritingTopics(params?: {
+  page?: number
+  pageSize?: number
+  type?: string
+  isEnabled?: boolean
+  keyword?: string
+}): Promise<{
+  items: AdminWritingTopicListItem[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}> {
+  return get(API_PATHS.admin.writingTopics, { params })
+}
+
+export async function getAdminWritingTopic(id: number): Promise<AdminWritingTopicDetail> {
+  return get(API_PATHS.admin.writingTopicById(id))
+}
+
+export async function createAdminWritingTopic(
+  body: AdminWritingTopicInput,
+): Promise<AdminWritingTopicListItem> {
+  return post(API_PATHS.admin.writingTopics, body)
+}
+
+export async function updateAdminWritingTopic(
+  id: number,
+  body: {
+    type?: string
+    title?: string
+    description?: string
+    wordLimit?: string
+    isEnabled?: boolean
+  },
+): Promise<AdminWritingTopicListItem> {
+  return put(API_PATHS.admin.writingTopicById(id), body)
+}
+
+export async function deleteAdminWritingTopic(id: number): Promise<void> {
+  await del(API_PATHS.admin.writingTopicById(id))
+}
+
+export async function batchCreateAdminWritingTopics(
+  topics: AdminWritingTopicInput[],
+): Promise<AdminWritingTopicBatchResult> {
+  return post(API_PATHS.admin.writingTopicsBatch, { topics })
+}
+
+export async function importAdminWritingTopics(
+  file: File,
+): Promise<AdminWritingTopicBatchResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return uploadForm(API_PATHS.admin.writingTopicsImport, formData)
+}
+
+export async function generateAdminWritingTopics(body: {
+  count: 1 | 5 | 10 | 20
+  type?: string
+  wordLimit?: string
+}): Promise<AdminWritingTopicGenerateResult> {
+  return post(API_PATHS.admin.writingTopicsGenerate, body)
+}
+
+export async function downloadWritingTopicsTemplate(): Promise<Blob> {
+  const { getApiBaseUrl } = await import('./config')
+  const base = getApiBaseUrl()
+  const url = `${base}${API_PATHS.admin.writingTopicsTemplate}`
+  const token = (await import('../storage/tokenStorage')).getToken()
+  const resp = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  return resp.blob()
 }
 
 // ── Token usage ──

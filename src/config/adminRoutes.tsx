@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListOrdered,
   MessageSquare,
+  PenLine,
   Quote,
   ScrollText,
   Settings,
@@ -24,6 +25,7 @@ import { AdminConfigsPage } from '../components/admin/pages/AdminConfigsPage'
 import { AdminQuotesPage } from '../components/admin/pages/AdminQuotesPage'
 import { AdminCheckInTiersPage } from '../components/admin/pages/AdminCheckInTiersPage'
 import { AdminTopicTypesPage } from '../components/admin/pages/AdminTopicTypesPage'
+import { AdminWritingTopicsPage } from '../components/admin/pages/AdminWritingTopicsPage'
 import { AdminTokenUsagePage } from '../components/admin/pages/AdminTokenUsagePage'
 import { AdminAuditLogsPage } from '../components/admin/pages/AdminAuditLogsPage'
 import { AdminProvidersPage } from '../components/admin/pages/AdminProvidersPage'
@@ -42,6 +44,7 @@ export type AdminMenuKey =
   | 'quotes'
   | 'checkin-tiers'
   | 'topic-types'
+  | 'writing-topics'
   | 'token-usage'
   | 'audit-logs'
   | 'providers'
@@ -129,6 +132,14 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     label: '题目类型',
     icon: ListOrdered,
     component: AdminTopicTypesPage,
+    permission: 'topic_type:manage',
+  },
+  {
+    key: 'writing-topics',
+    path: '/admin/writing-topics',
+    label: '写作题库',
+    icon: PenLine,
+    component: AdminWritingTopicsPage,
     permission: 'topic_type:manage',
   },
   {
