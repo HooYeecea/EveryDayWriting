@@ -5,6 +5,7 @@ import {
   Bell,
   FileText,
   Gauge,
+  Globe2,
   LayoutDashboard,
   ListOrdered,
   MessageSquare,
@@ -28,6 +29,7 @@ import { AdminTopicTypesPage } from '../components/admin/pages/AdminTopicTypesPa
 import { AdminWritingTopicsPage } from '../components/admin/pages/AdminWritingTopicsPage'
 import { AdminTokenUsagePage } from '../components/admin/pages/AdminTokenUsagePage'
 import { AdminAuditLogsPage } from '../components/admin/pages/AdminAuditLogsPage'
+import { AdminAccessLogsPage } from '../components/admin/pages/AdminAccessLogsPage'
 import { AdminProvidersPage } from '../components/admin/pages/AdminProvidersPage'
 import { AdminRolesPage } from '../components/admin/pages/AdminRolesPage'
 import { AdminAgreementsPage } from '../components/admin/pages/AdminAgreementsPage'
@@ -47,6 +49,7 @@ export type AdminMenuKey =
   | 'writing-topics'
   | 'token-usage'
   | 'audit-logs'
+  | 'access-logs'
   | 'providers'
   | 'roles'
   | 'agreements'
@@ -112,7 +115,7 @@ export const ADMIN_MENU_GROUPS: AdminMenuGroup[] = [
   {
     key: 'system',
     label: '系统与安全',
-    routeKeys: ['providers', 'configs', 'audit-logs'],
+    routeKeys: ['providers', 'configs', 'access-logs', 'audit-logs'],
   },
 ]
 
@@ -236,6 +239,14 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     icon: Settings,
     component: AdminConfigsPage,
     permission: 'config:manage',
+  },
+  {
+    key: 'access-logs',
+    path: '/admin/access-logs',
+    label: '访问记录',
+    icon: Globe2,
+    component: AdminAccessLogsPage,
+    permission: 'access_log:view',
   },
   {
     key: 'audit-logs',

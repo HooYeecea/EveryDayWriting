@@ -274,6 +274,141 @@ export async function listAdminAuditLogs(params?: {
   return get(API_PATHS.admin.auditLogs, { params })
 }
 
+// ── Access Logs ──
+
+export type AccessLogRange = '7d' | '15d' | '1m' | '3m' | '6m'
+export type AccessLogGranularity = 'hour' | 'day' | 'week'
+export type AccessLogGeoLevel = 'country' | 'region' | 'city'
+
+export interface AdminAccessLogItem {
+  id: string
+  createdAt: string
+  ip: string
+  country: string | null
+  region: string | null
+  city: string | null
+  isp: string | null
+  userAgent: string
+  browser: string | null
+  browserName: string | null
+  browserVersion: string | null
+  os: string | null
+  osName: string | null
+  osVersion: string | null
+  deviceType: string | null
+  userId: string | null
+  userEmail: string | null
+  anonymousId: string | null
+  displayName: string | null
+  isAuthenticated: boolean
+  sessionId: string | null
+  path: string | null
+  method: string | null
+  statusCode: number | null
+  durationMs: number | null
+  referer: string | null
+  eventType: string
+}
+
+export interface AdminAccessLogOverview {
+  range: AccessLogRange
+  since: string
+  until: string
+  total: number
+  todayTotal: number
+  uniqueIps: number
+  uniqueUsers: number
+  uniqueGuests: number
+  loginCount: number
+  errorCount: number
+  errorRate: number
+  avgDurationMs: number
+}
+
+export interface AdminAccessLogTrendPoint {
+  time: string
+  total: number
+  authenticated: number
+  guest: number
+  login: number
+}
+
+export interface AdminAccessLogTrend {
+  range: AccessLogRange
+  granularity: AccessLogGranularity
+  since: string
+  until: string
+  points: AdminAccessLogTrendPoint[]
+}
+
+export interface AdminAccessLogGeo {
+  range: AccessLogRange
+  level: AccessLogGeoLevel
+  since: string
+  until: string
+  items: Array<{ name?: string; country?: string; city?: string; count: number }>
+}
+
+export interface AdminAccessLogDevices {
+  range: AccessLogRange
+  since: string
+  until: string
+  byDevice: Array<{ name: string; count: number }>
+  byOs: Array<{ name: string; count: number }>
+  byBrowser: Array<{ name: string; count: number }>
+}
+
+export async function listAdminAccessLogs(params?: {
+  page?: number
+  pageSize?: number
+  from?: string
+  to?: string
+  ip?: string
+  userId?: string
+  anonymousId?: string
+  country?: string
+  city?: string
+  deviceType?: string
+  browserName?: string
+  eventType?: string
+  statusCode?: number
+  path?: string
+  isAuthenticated?: boolean
+}): Promise<PaginatedData<AdminAccessLogItem>> {
+  return get(API_PATHS.admin.accessLogs, { params })
+}
+
+export async function getAdminAccessLog(id: string): Promise<AdminAccessLogItem> {
+  return get(API_PATHS.admin.accessLogById(id))
+}
+
+export async function getAdminAccessLogOverview(
+  params?: { range?: AccessLogRange },
+): Promise<AdminAccessLogOverview> {
+  return get(API_PATHS.admin.accessLogStatsOverview, { params })
+}
+
+export async function getAdminAccessLogTrend(params?: {
+  range?: AccessLogRange
+  granularity?: AccessLogGranularity
+  eventType?: string
+}): Promise<AdminAccessLogTrend> {
+  return get(API_PATHS.admin.accessLogStatsTrend, { params })
+}
+
+export async function getAdminAccessLogGeo(params?: {
+  range?: AccessLogRange
+  level?: AccessLogGeoLevel
+}): Promise<AdminAccessLogGeo> {
+  return get(API_PATHS.admin.accessLogStatsGeo, { params })
+}
+
+export async function getAdminAccessLogDevices(
+  params?: { range?: AccessLogRange },
+): Promise<AdminAccessLogDevices> {
+  return get(API_PATHS.admin.accessLogStatsDevices, { params })
+}
+
 // ── Providers / Models ──
 
 export async function listAdminProviders(): Promise<{
