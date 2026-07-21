@@ -116,6 +116,8 @@ export const API_PATHS = {
     auditLogs: '/admin/audit-logs',
     accessLogs: '/admin/access-logs',
     accessLogById: (id: string) => `/admin/access-logs/${id}`,
+    accessLogSessions: '/admin/access-logs/sessions',
+    accessLogVisitors: '/admin/access-logs/visitors',
     accessLogStatsOverview: '/admin/access-logs/stats/overview',
     accessLogStatsTrend: '/admin/access-logs/stats/trend',
     accessLogStatsGeo: '/admin/access-logs/stats/geo',

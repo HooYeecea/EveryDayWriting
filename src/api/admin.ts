@@ -365,7 +365,58 @@ export interface AdminAccessLogDevices {
   byBrowser: Array<{ name: string; count: number }>
 }
 
-export async function listAdminAccessLogs(params?: {
+export type AccessLogVisitorType = 'user' | 'guest'
+export type AccessLogListView = 'request' | 'session' | 'visitor'
+
+export interface AdminAccessLogSessionItem {
+  sessionId: string
+  startedAt: string
+  endedAt: string
+  requestCount: number
+  errorCount: number
+  userId: string | null
+  userEmail: string | null
+  anonymousId: string | null
+  displayName: string | null
+  isAuthenticated: boolean
+  ip: string
+  country: string | null
+  region: string | null
+  city: string | null
+  deviceType: string | null
+  browserName: string | null
+  osName: string | null
+  topPaths: string[]
+  avgDurationMs: number
+  maxDurationMs: number
+}
+
+export interface AdminAccessLogVisitorItem {
+  visitorKey: string
+  visitorType: AccessLogVisitorType
+  userId: string | null
+  userEmail: string | null
+  anonymousId: string | null
+  displayName: string | null
+  isAuthenticated: boolean
+  firstSeenAt: string
+  lastSeenAt: string
+  requestCount: number
+  sessionCount: number
+  errorCount: number
+  ip: string
+  country: string | null
+  region: string | null
+  city: string | null
+  deviceType: string | null
+  browserName: string | null
+  osName: string | null
+  topPaths: string[]
+  avgDurationMs: number
+  maxDurationMs: number
+}
+
+export type AdminAccessLogListParams = {
   page?: number
   pageSize?: number
   from?: string
@@ -373,6 +424,8 @@ export async function listAdminAccessLogs(params?: {
   ip?: string
   userId?: string
   anonymousId?: string
+  sessionId?: string
+  visitorType?: AccessLogVisitorType
   country?: string
   city?: string
   deviceType?: string
@@ -381,8 +434,26 @@ export async function listAdminAccessLogs(params?: {
   statusCode?: number
   path?: string
   isAuthenticated?: boolean
-}): Promise<PaginatedData<AdminAccessLogItem>> {
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+export async function listAdminAccessLogs(
+  params?: AdminAccessLogListParams,
+): Promise<PaginatedData<AdminAccessLogItem>> {
   return get(API_PATHS.admin.accessLogs, { params })
+}
+
+export async function listAdminAccessLogSessions(
+  params?: Omit<AdminAccessLogListParams, 'sessionId' | 'sort'>,
+): Promise<PaginatedData<AdminAccessLogSessionItem>> {
+  return get(API_PATHS.admin.accessLogSessions, { params })
+}
+
+export async function listAdminAccessLogVisitors(
+  params?: Omit<AdminAccessLogListParams, 'sessionId' | 'sort'>,
+): Promise<PaginatedData<AdminAccessLogVisitorItem>> {
+  return get(API_PATHS.admin.accessLogVisitors, { params })
 }
 
 export async function getAdminAccessLog(id: string): Promise<AdminAccessLogItem> {

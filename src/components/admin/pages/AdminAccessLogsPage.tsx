@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Globe2, MonitorSmartphone, ShieldAlert, Users } from 'lucide-react'
+import { ChevronDown, Globe2, MonitorSmartphone, ShieldAlert, Users } from 'lucide-react'
 import {
   getAdminAccessLog,
   getAdminAccessLogDevices,
@@ -19,12 +19,17 @@ import {
   getAdminAccessLogOverview,
   getAdminAccessLogTrend,
   listAdminAccessLogs,
+  listAdminAccessLogSessions,
+  listAdminAccessLogVisitors,
+  type AccessLogListView,
   type AccessLogRange,
   type AdminAccessLogDevices,
   type AdminAccessLogGeo,
   type AdminAccessLogItem,
   type AdminAccessLogOverview,
+  type AdminAccessLogSessionItem,
   type AdminAccessLogTrend,
+  type AdminAccessLogVisitorItem,
 } from '../../../api/admin'
 import { useReportReady } from '../../../hooks/useReportReady'
 import { AccessLogGeoHeatMap } from '../AccessLogGeoHeatMap'
@@ -49,6 +54,12 @@ const RANGES: { id: AccessLogRange; label: string }[] = [
   { id: '6m', label: '近 6 月' },
 ]
 
+const LIST_VIEWS: { id: AccessLogListView; label: string }[] = [
+  { id: 'request', label: '接口记录' },
+  { id: 'session', label: '按会话' },
+  { id: 'visitor', label: '按访问人' },
+]
+
 const CHART_NEUTRALS = ['#171717', '#404040', '#525252', '#737373', '#a3a3a3', '#d4d4d4']
 
 const DEVICE_LABEL: Record<string, string> = {
@@ -64,6 +75,12 @@ const EVENT_LABEL: Record<string, string> = {
   api_call: '接口',
 }
 
+type LocFields = {
+  country?: string | null
+  region?: string | null
+  city?: string | null
+}
+
 function formatCount(value: number | null | undefined): string {
   if (value == null) return '—'
   return value.toLocaleString('zh-CN')
@@ -75,7 +92,7 @@ function shortTime(value: string): string {
   return value
 }
 
-function locationText(item: Pick<AdminAccessLogItem, 'country' | 'region' | 'city'>): string {
+function locationText(item: LocFields): string {
   return [item.country, item.region, item.city].filter(Boolean).join(' · ') || '—'
 }
 
@@ -87,6 +104,23 @@ function deviceLabel(type: string | null | undefined): string {
 function eventLabel(type: string | null | undefined): string {
   if (!type) return '—'
   return EVENT_LABEL[type] ?? type
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString('zh-CN')
+}
+
+function displayPerson(item: {
+  displayName?: string | null
+  userEmail?: string | null
+  isAuthenticated?: boolean
+}): string {
+  return item.displayName || item.userEmail || (item.isAuthenticated ? '用户' : '游客')
+}
+
+function topPathsText(paths: string[] | null | undefined): string {
+  if (!paths?.length) return '—'
+  return paths.join(' · ')
 }
 
 function StatCard({
@@ -118,6 +152,61 @@ function StatCard({
   )
 }
 
+function RequestRows({
+  items,
+  onOpen,
+  nested,
+}: {
+  items: AdminAccessLogItem[]
+  onOpen: (id: string) => void
+  nested?: boolean
+}) {
+  return (
+    <>
+      {items.map((item) => (
+        <tr
+          key={item.id}
+          className={`cursor-pointer border-b border-neutral-100 last:border-0 hover:bg-neutral-50 ${
+            nested ? 'bg-neutral-50/80' : ''
+          }`}
+          onClick={() => onOpen(item.id)}
+        >
+          <td className={`whitespace-nowrap py-3 text-xs text-neutral-500 ${nested ? 'pl-10 pr-4' : 'px-4'}`}>
+            {formatDateTime(item.createdAt)}
+          </td>
+          <td className="px-4 py-3">
+            <p className="text-neutral-800">{displayPerson(item)}</p>
+            {item.userEmail && item.displayName ? (
+              <p className="text-xs text-neutral-400">{item.userEmail}</p>
+            ) : null}
+          </td>
+          <td className="px-4 py-3">
+            <p className="font-mono text-xs text-neutral-700">{item.ip}</p>
+            <p className="text-xs text-neutral-400">{locationText(item)}</p>
+          </td>
+          <td className="px-4 py-3 text-xs text-neutral-600">
+            <p>{deviceLabel(item.deviceType)}</p>
+            <p className="text-neutral-400">{item.os || item.browser || '—'}</p>
+          </td>
+          <td className="px-4 py-3">
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+              {eventLabel(item.eventType)}
+            </span>
+          </td>
+          <td className="max-w-[220px] truncate px-4 py-3 font-mono text-xs text-neutral-500">
+            {item.method ? `${item.method} ` : ''}
+            {item.path || '—'}
+          </td>
+          <td className="px-4 py-3 text-xs text-neutral-500">
+            {item.statusCode ?? '—'}
+            {item.durationMs != null ? ` · ${item.durationMs}ms` : ''}
+          </td>
+        </tr>
+      ))}
+    </>
+  )
+}
+
 type Filters = {
   ip: string
   country: string
@@ -144,17 +233,36 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState('')
 
+  const [viewMode, setViewMode] = useState<AccessLogListView>('request')
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS)
-  const [items, setItems] = useState<AdminAccessLogItem[]>([])
+  const [requestItems, setRequestItems] = useState<AdminAccessLogItem[]>([])
+  const [sessionItems, setSessionItems] = useState<AdminAccessLogSessionItem[]>([])
+  const [visitorItems, setVisitorItems] = useState<AdminAccessLogVisitorItem[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [listLoading, setListLoading] = useState(true)
   const [listError, setListError] = useState('')
 
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [expandItems, setExpandItems] = useState<AdminAccessLogItem[]>([])
+  const [expandLoading, setExpandLoading] = useState(false)
+  const [expandError, setExpandError] = useState('')
+
   const [detail, setDetail] = useState<AdminAccessLogItem | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+
+  const filterParams = useMemo(
+    () => ({
+      ip: applied.ip || undefined,
+      country: applied.country || undefined,
+      deviceType: applied.deviceType || undefined,
+      eventType: applied.eventType || undefined,
+      path: applied.path || undefined,
+    }),
+    [applied],
+  )
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true)
@@ -182,25 +290,50 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
   const loadList = useCallback(async () => {
     setListLoading(true)
     setListError('')
+    setExpandedKey(null)
+    setExpandItems([])
+    setExpandError('')
     try {
-      const data = await listAdminAccessLogs({
-        page,
-        pageSize: 20,
-        ip: applied.ip || undefined,
-        country: applied.country || undefined,
-        deviceType: applied.deviceType || undefined,
-        eventType: applied.eventType || undefined,
-        path: applied.path || undefined,
-      })
-      setItems(data.items)
-      setTotalPages(data.totalPages || 1)
-      setTotalCount(data.totalCount || 0)
+      if (viewMode === 'session') {
+        const data = await listAdminAccessLogSessions({
+          page,
+          pageSize: 20,
+          ...filterParams,
+        })
+        setSessionItems(data.items)
+        setRequestItems([])
+        setVisitorItems([])
+        setTotalPages(data.totalPages || 1)
+        setTotalCount(data.totalCount || 0)
+      } else if (viewMode === 'visitor') {
+        const data = await listAdminAccessLogVisitors({
+          page,
+          pageSize: 20,
+          ...filterParams,
+        })
+        setVisitorItems(data.items)
+        setRequestItems([])
+        setSessionItems([])
+        setTotalPages(data.totalPages || 1)
+        setTotalCount(data.totalCount || 0)
+      } else {
+        const data = await listAdminAccessLogs({
+          page,
+          pageSize: 20,
+          ...filterParams,
+        })
+        setRequestItems(data.items)
+        setSessionItems([])
+        setVisitorItems([])
+        setTotalPages(data.totalPages || 1)
+        setTotalCount(data.totalCount || 0)
+      }
     } catch (err) {
       setListError(err instanceof Error ? err.message : '加载访问明细失败')
     } finally {
       setListLoading(false)
     }
-  }, [page, applied])
+  }, [page, viewMode, filterParams])
 
   useEffect(() => {
     void loadStats()
@@ -270,6 +403,35 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
     }
   }
 
+  const loadExpand = async (
+    key: string,
+    params: { sessionId?: string; userId?: string; anonymousId?: string },
+  ) => {
+    if (expandedKey === key) {
+      setExpandedKey(null)
+      setExpandItems([])
+      setExpandError('')
+      return
+    }
+    setExpandedKey(key)
+    setExpandLoading(true)
+    setExpandError('')
+    setExpandItems([])
+    try {
+      const data = await listAdminAccessLogs({
+        page: 1,
+        pageSize: 50,
+        order: 'asc',
+        ...params,
+      })
+      setExpandItems(data.items)
+    } catch (err) {
+      setExpandError(err instanceof Error ? err.message : '加载展开明细失败')
+    } finally {
+      setExpandLoading(false)
+    }
+  }
+
   const applyFilters = () => {
     setPage(1)
     setApplied({
@@ -286,6 +448,33 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
     setPage(1)
     setApplied(EMPTY_FILTERS)
   }
+
+  const switchView = (next: AccessLogListView) => {
+    if (next === viewMode) return
+    setViewMode(next)
+    setPage(1)
+  }
+
+  const countLabel =
+    viewMode === 'session'
+      ? `共 ${formatCount(totalCount)} 个会话`
+      : viewMode === 'visitor'
+        ? `共 ${formatCount(totalCount)} 位访问人`
+        : `共 ${formatCount(totalCount)} 条`
+
+  const emptyMessage =
+    viewMode === 'session'
+      ? '暂无会话记录'
+      : viewMode === 'visitor'
+        ? '暂无访问人记录'
+        : '暂无访问记录'
+
+  const listEmpty =
+    viewMode === 'session'
+      ? sessionItems.length === 0
+      : viewMode === 'visitor'
+        ? visitorItems.length === 0
+        : requestItems.length === 0
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -496,12 +685,27 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
         </div>
 
         <AdminCard className="mt-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-medium text-neutral-800">访问明细</p>
-              <p className="mt-1 text-xs text-neutral-400">共 {formatCount(totalCount)} 条</p>
+              <p className="mt-1 text-xs text-neutral-400">{countLabel}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {LIST_VIEWS.map((item) => (
+                  <AdminGhostButton
+                    key={item.id}
+                    className={
+                      viewMode === item.id
+                        ? 'border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
+                        : ''
+                    }
+                    onClick={() => switchView(item.id)}
+                  >
+                    {item.label}
+                  </AdminGhostButton>
+                ))}
+              </div>
               <AdminGhostButton onClick={resetFilters}>重置</AdminGhostButton>
               <AdminPrimaryButton onClick={applyFilters}>筛选</AdminPrimaryButton>
             </div>
@@ -569,9 +773,9 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
         <AdminCard className="mt-4 overflow-hidden p-0 sm:p-0">
           {listLoading ? (
             <AdminEmpty message="加载中…" />
-          ) : items.length === 0 ? (
-            <AdminEmpty message="暂无访问记录" />
-          ) : (
+          ) : listEmpty ? (
+            <AdminEmpty message={emptyMessage} />
+          ) : viewMode === 'request' ? (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-400">
@@ -586,44 +790,211 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="cursor-pointer border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
-                      onClick={() => void openDetail(item.id)}
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-neutral-500">
-                        {new Date(item.createdAt).toLocaleString('zh-CN')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-neutral-800">{item.displayName || item.userEmail || '游客'}</p>
-                        {item.userEmail && item.displayName ? (
-                          <p className="text-xs text-neutral-400">{item.userEmail}</p>
+                  <RequestRows items={requestItems} onOpen={(id) => void openDetail(id)} />
+                </tbody>
+              </table>
+            </div>
+          ) : viewMode === 'session' ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-400">
+                  <tr>
+                    <th className="w-10 px-4 py-3 font-medium" />
+                    <th className="px-4 py-3 font-medium">时间区间</th>
+                    <th className="px-4 py-3 font-medium">访问人</th>
+                    <th className="px-4 py-3 font-medium">IP / 归属地</th>
+                    <th className="px-4 py-3 font-medium">设备</th>
+                    <th className="px-4 py-3 font-medium">请求</th>
+                    <th className="px-4 py-3 font-medium">主要路径</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessionItems.map((item) => {
+                    const open = expandedKey === item.sessionId
+                    return (
+                      <Fragment key={item.sessionId}>
+                        <tr
+                          className="cursor-pointer border-b border-neutral-100 hover:bg-neutral-50"
+                          onClick={() => void loadExpand(item.sessionId, { sessionId: item.sessionId })}
+                        >
+                          <td className="px-4 py-3 text-neutral-400">
+                            <ChevronDown
+                              size={16}
+                              className={`transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}
+                            />
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-neutral-500">
+                            <p>{formatDateTime(item.startedAt)}</p>
+                            <p className="text-neutral-400">→ {formatDateTime(item.endedAt)}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-neutral-800">{displayPerson(item)}</p>
+                            {item.userEmail && item.displayName ? (
+                              <p className="text-xs text-neutral-400">{item.userEmail}</p>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-mono text-xs text-neutral-700">{item.ip || '—'}</p>
+                            <p className="text-xs text-neutral-400">{locationText(item)}</p>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-neutral-600">
+                            <p>{deviceLabel(item.deviceType)}</p>
+                            <p className="text-neutral-400">
+                              {[item.osName, item.browserName].filter(Boolean).join(' · ') || '—'}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-neutral-600">
+                            <p>{formatCount(item.requestCount)} 次</p>
+                            <p className="text-neutral-400">
+                              错误 {formatCount(item.errorCount)}
+                              {item.avgDurationMs != null ? ` · 均 ${Math.round(item.avgDurationMs)}ms` : ''}
+                            </p>
+                          </td>
+                          <td className="max-w-[240px] truncate px-4 py-3 font-mono text-xs text-neutral-500">
+                            {topPathsText(item.topPaths)}
+                          </td>
+                        </tr>
+                        {open ? (
+                          <tr className="border-b border-neutral-100">
+                            <td colSpan={7} className="bg-neutral-50/60 px-0 py-0">
+                              {expandLoading ? (
+                                <div className="px-4 py-3">
+                                  <AdminEmpty message="加载接口明细…" />
+                                </div>
+                              ) : expandError ? (
+                                <div className="px-4 py-3">
+                                  <AdminError message={expandError} />
+                                </div>
+                              ) : expandItems.length === 0 ? (
+                                <div className="px-4 py-3">
+                                  <AdminEmpty message="该会话暂无接口记录" />
+                                </div>
+                              ) : (
+                                <table className="min-w-full text-left text-sm">
+                                  <tbody>
+                                    <RequestRows
+                                      nested
+                                      items={expandItems}
+                                      onOpen={(id) => void openDetail(id)}
+                                    />
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+                          </tr>
                         ) : null}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-mono text-xs text-neutral-700">{item.ip}</p>
-                        <p className="text-xs text-neutral-400">{locationText(item)}</p>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-neutral-600">
-                        <p>{deviceLabel(item.deviceType)}</p>
-                        <p className="text-neutral-400">{item.os || item.browser || '—'}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
-                          {eventLabel(item.eventType)}
-                        </span>
-                      </td>
-                      <td className="max-w-[220px] truncate px-4 py-3 font-mono text-xs text-neutral-500">
-                        {item.method ? `${item.method} ` : ''}
-                        {item.path || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-neutral-500">
-                        {item.statusCode ?? '—'}
-                        {item.durationMs != null ? ` · ${item.durationMs}ms` : ''}
-                      </td>
-                    </tr>
-                  ))}
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-400">
+                  <tr>
+                    <th className="w-10 px-4 py-3 font-medium" />
+                    <th className="px-4 py-3 font-medium">访问人</th>
+                    <th className="px-4 py-3 font-medium">活跃区间</th>
+                    <th className="px-4 py-3 font-medium">IP / 归属地</th>
+                    <th className="px-4 py-3 font-medium">设备</th>
+                    <th className="px-4 py-3 font-medium">量级</th>
+                    <th className="px-4 py-3 font-medium">主要路径</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visitorItems.map((item) => {
+                    const open = expandedKey === item.visitorKey
+                    const drill =
+                      item.visitorType === 'user' && item.userId
+                        ? { userId: String(item.userId) }
+                        : item.anonymousId
+                          ? { anonymousId: item.anonymousId }
+                          : null
+                    return (
+                      <Fragment key={item.visitorKey}>
+                        <tr
+                          className="cursor-pointer border-b border-neutral-100 hover:bg-neutral-50"
+                          onClick={() => {
+                            if (!drill) return
+                            void loadExpand(item.visitorKey, drill)
+                          }}
+                        >
+                          <td className="px-4 py-3 text-neutral-400">
+                            <ChevronDown
+                              size={16}
+                              className={`transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-neutral-800">{displayPerson(item)}</p>
+                              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                                {item.visitorType === 'user' ? '登录' : '游客'}
+                              </span>
+                            </div>
+                            {item.userEmail && item.displayName ? (
+                              <p className="text-xs text-neutral-400">{item.userEmail}</p>
+                            ) : null}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-neutral-500">
+                            <p>{formatDateTime(item.firstSeenAt)}</p>
+                            <p className="text-neutral-400">→ {formatDateTime(item.lastSeenAt)}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-mono text-xs text-neutral-700">{item.ip || '—'}</p>
+                            <p className="text-xs text-neutral-400">{locationText(item)}</p>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-neutral-600">
+                            <p>{deviceLabel(item.deviceType)}</p>
+                            <p className="text-neutral-400">
+                              {[item.osName, item.browserName].filter(Boolean).join(' · ') || '—'}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-neutral-600">
+                            <p>
+                              {formatCount(item.requestCount)} 次 · {formatCount(item.sessionCount)}{' '}
+                              会话
+                            </p>
+                            <p className="text-neutral-400">错误 {formatCount(item.errorCount)}</p>
+                          </td>
+                          <td className="max-w-[240px] truncate px-4 py-3 font-mono text-xs text-neutral-500">
+                            {topPathsText(item.topPaths)}
+                          </td>
+                        </tr>
+                        {open ? (
+                          <tr className="border-b border-neutral-100">
+                            <td colSpan={7} className="bg-neutral-50/60 px-0 py-0">
+                              {expandLoading ? (
+                                <div className="px-4 py-3">
+                                  <AdminEmpty message="加载接口明细…" />
+                                </div>
+                              ) : expandError ? (
+                                <div className="px-4 py-3">
+                                  <AdminError message={expandError} />
+                                </div>
+                              ) : expandItems.length === 0 ? (
+                                <div className="px-4 py-3">
+                                  <AdminEmpty message="该访问人暂无接口记录" />
+                                </div>
+                              ) : (
+                                <table className="min-w-full text-left text-sm">
+                                  <tbody>
+                                    <RequestRows
+                                      nested
+                                      items={expandItems}
+                                      onOpen={(id) => void openDetail(id)}
+                                    />
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -659,8 +1030,8 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
         ) : detail ? (
           <dl className="grid gap-3 sm:grid-cols-2">
             {[
-              ['时间', new Date(detail.createdAt).toLocaleString('zh-CN')],
-              ['访问人', detail.displayName || detail.userEmail || '游客'],
+              ['时间', formatDateTime(detail.createdAt)],
+              ['访问人', displayPerson(detail)],
               ['邮箱', detail.userEmail || '—'],
               ['IP', detail.ip],
               ['归属地', locationText(detail)],
