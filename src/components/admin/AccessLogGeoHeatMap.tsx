@@ -3,6 +3,7 @@ import * as echarts from 'echarts/core'
 import { MapChart } from 'echarts/charts'
 import { TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
+import { Maximize2, Minimize2, X } from 'lucide-react'
 import type { AdminAccessLogGeo } from '../../api/admin'
 import { AdminEmpty } from './AdminUi'
 
@@ -126,15 +127,20 @@ export function AccessLogGeoHeatMap({
   kind,
   geo,
   loading,
+  title,
+  description,
 }: {
   kind: HeatMapKind
   geo: AdminAccessLogGeo | null
   loading?: boolean
+  title: string
+  description?: string
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<echarts.EChartsType | null>(null)
   const [mapError, setMapError] = useState('')
   const [mapReady, setMapReady] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
     let disposed = false
@@ -158,6 +164,20 @@ export function AccessLogGeoHeatMap({
     }
   }, [kind])
 
+  useEffect(() => {
+    if (!fullscreen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false)
+    }
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [fullscreen])
+
   // 容器始终挂载；等地图数据就绪后再 init，避免 loading 阶段卸载导致图表永不创建
   useEffect(() => {
     const el = hostRef.current
@@ -168,7 +188,6 @@ export function AccessLogGeoHeatMap({
 
     const onResize = () => chart.resize()
     window.addEventListener('resize', onResize)
-    // 布局稳定后再量一次，防止父级从 hidden/空态切过来时宽高为 0
     const raf = window.requestAnimationFrame(() => chart.resize())
 
     return () => {
@@ -177,7 +196,7 @@ export function AccessLogGeoHeatMap({
       chart.dispose()
       chartRef.current = null
     }
-  }, [kind, mapReady, loading, mapError])
+  }, [kind, mapReady, loading, mapError, fullscreen])
 
   useEffect(() => {
     const chart = chartRef.current
@@ -217,7 +236,7 @@ export function AccessLogGeoHeatMap({
           },
           textStyle: { color: '#737373', fontSize: 11 },
           itemWidth: 10,
-          itemHeight: 72,
+          itemHeight: fullscreen ? 120 : 72,
         },
         series: [
           {
@@ -242,12 +261,19 @@ export function AccessLogGeoHeatMap({
       { notMerge: true },
     )
     chart.resize()
-  }, [kind, geo, mapReady, loading, mapError])
+  }, [kind, geo, mapReady, loading, mapError, fullscreen])
 
   const emptyData = !loading && (geo?.items.length ?? 0) === 0
+  const canFullscreen = !loading && !mapError && !emptyData
 
-  return (
-    <div className="relative mt-2 h-72 w-full sm:h-80">
+  const mapPane = (
+    <div
+      className={
+        fullscreen
+          ? 'relative min-h-0 flex-1'
+          : 'relative mt-2 h-72 w-full sm:h-80'
+      }
+    >
       <div ref={hostRef} className="h-full w-full" />
       {loading || !mapReady ? (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80">
@@ -264,6 +290,64 @@ export function AccessLogGeoHeatMap({
           <AdminEmpty message="暂无地域数据" />
         </div>
       ) : null}
+    </div>
+  )
+
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-[80] flex flex-col bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3 sm:px-6">
+          <div className="min-w-0">
+            <h3 className="font-sans text-sm font-semibold text-neutral-900">{title}</h3>
+            {description ? (
+              <p className="mt-0.5 text-xs text-neutral-400">{description}</p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFullscreen(false)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50"
+            >
+              <Minimize2 size={14} strokeWidth={1.75} />
+              退出全屏
+            </button>
+            <button
+              type="button"
+              onClick={() => setFullscreen(false)}
+              className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              aria-label="关闭"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 p-4 sm:p-6">{mapPane}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-neutral-800">{title}</p>
+          {description ? (
+            <p className="mt-1 text-xs text-neutral-400">{description}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          disabled={!canFullscreen}
+          onClick={() => setFullscreen(true)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
+          title="全屏查看"
+        >
+          <Maximize2 size={14} strokeWidth={1.75} />
+          全屏
+        </button>
+      </div>
+      {mapPane}
     </div>
   )
 }

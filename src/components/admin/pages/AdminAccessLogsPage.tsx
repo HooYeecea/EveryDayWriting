@@ -475,15 +475,23 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <AdminCard>
-            <p className="text-sm font-medium text-neutral-800">国家热力图</p>
-            <p className="mt-1 text-xs text-neutral-400">颜色越深访问越多，悬停查看数值</p>
-            <AccessLogGeoHeatMap kind="country" geo={countryGeo} loading={statsLoading} />
+            <AccessLogGeoHeatMap
+              kind="country"
+              title="国家热力图"
+              description="颜色越深访问越多，悬停查看数值"
+              geo={countryGeo}
+              loading={statsLoading}
+            />
           </AdminCard>
 
           <AdminCard>
-            <p className="text-sm font-medium text-neutral-800">省热力图</p>
-            <p className="mt-1 text-xs text-neutral-400">中国各省访问热度（排除内网）</p>
-            <AccessLogGeoHeatMap kind="province" geo={provinceGeo} loading={statsLoading} />
+            <AccessLogGeoHeatMap
+              kind="province"
+              title="省热力图"
+              description="中国各省访问热度（排除内网）"
+              geo={provinceGeo}
+              loading={statsLoading}
+            />
           </AdminCard>
         </div>
 
