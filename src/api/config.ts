@@ -69,7 +69,6 @@ export const API_PATHS = {
     drafts: '/writings/drafts',
     draftsLatest: '/writings/drafts/latest',
     draftById: (id: string) => `/writings/drafts/${id}`,
-    draftsAutosave: '/writings/drafts/autosave',
     submits: '/writings/submits',
     submitById: (id: string) => `/writings/submits/${id}`,
     submitIterate: (id: string) => `/writings/submits/${id}/iterate`,

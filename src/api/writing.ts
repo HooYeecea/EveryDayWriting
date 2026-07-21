@@ -80,13 +80,15 @@ export async function deleteDraft(id: string): Promise<void> {
   await del(API_PATHS.writings.draftById(id))
 }
 
-export async function autoSaveDraft(payload: {
-  topicId: number | null
-  topic?: string
-  title?: string
-  content?: string
-}): Promise<{ id: string; updatedAt: string }> {
-  return post(API_PATHS.writings.draftsAutosave, payload)
+/**
+ * 自动保存与手动保存共用同一草稿：有 draftId 则更新，无则创建。
+ * 不再走独立 autosave 接口，避免与手动保存各建一条记录。
+ */
+export async function autoSaveDraft(
+  draftId: string | undefined,
+  payload: WritingSavePayload,
+): Promise<DraftSaveResult> {
+  return saveWritingDraft(draftId, payload)
 }
 
 export async function submitWriting(payload: WritingSubmitPayload): Promise<SubmitResult> {

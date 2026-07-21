@@ -96,6 +96,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   useReportReady(!initialLoading, onReady)
   const submitLockRef = useRef(false)
   const preserveWritingSessionRef = useRef(false)
+  const draftIdRef = useRef<string | undefined>(undefined)
+  const draftUpdatedAtRef = useRef<string | undefined>(undefined)
+  /** 串行化自动/手动保存，避免并发创建两条草稿 */
+  const draftSaveChainRef = useRef(Promise.resolve())
   const pageRef = useRef<HTMLDivElement>(null)
   const topicPanelRef = useRef<HTMLDivElement>(null)
   const topicHeightRef = useRef<number>(loadTopicPanelHeight() ?? getTopicPanelMinHeight())
@@ -108,6 +112,22 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const [isResizingTopic, setIsResizingTopic] = useState(false)
   const [writingFullscreen, setWritingFullscreen] = useState(false)
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
+
+  const assignDraftMeta = (id: string | undefined, updatedAt: string | undefined) => {
+    draftIdRef.current = id
+    draftUpdatedAtRef.current = updatedAt
+    setDraftId(id)
+    setDraftUpdatedAt(updatedAt)
+  }
+
+  const enqueueDraftSave = <T,>(task: () => Promise<T>): Promise<T> => {
+    const next = draftSaveChainRef.current.then(task, task)
+    draftSaveChainRef.current = next.then(
+      () => undefined,
+      () => undefined,
+    )
+    return next
+  }
 
   const clampTopicHeight = (height: number) => {
     const minHeight = getTopicPanelMinHeight()
@@ -241,8 +261,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
             preserveWritingSessionRef.current = true
             setIterateFromId(submit.id)
-            setDraftId(undefined)
-            setDraftUpdatedAt(undefined)
+            assignDraftMeta(undefined, undefined)
             setTopic({
               id: submit.topicId,
               type: submit.topicType,
@@ -273,8 +292,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             const draft = await loadDraftById(draftIdParam)
             if (cancelled) return
 
-            setDraftId(draft.id)
-            setDraftUpdatedAt(draft.updatedAt)
+            assignDraftMeta(draft.id, draft.updatedAt)
             setTopic(draftToTopic(draft))
             setTitle(draft.title)
             setContent(draft.content)
@@ -294,8 +312,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         if (cancelled) return
 
         if (draft) {
-          setDraftId(draft.id)
-          setDraftUpdatedAt(draft.updatedAt)
+          assignDraftMeta(draft.id, draft.updatedAt)
           setTopic(draftToTopic(draft))
           setTitle(draft.title)
           setContent(draft.content)
@@ -381,7 +398,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     } catch { /* ignore */ }
   }, [title, content, isAuthenticated, localStorageKey])
 
-  // 服务器自动保存（停止输入 3s 后触发，或每 30s 强制触发一次）
+  // 服务器自动保存（停止输入 3s 后触发；与手动保存共用同一草稿）
   useEffect(() => {
     if (!isAuthenticated || !topic || topic.id === 0) return
 
@@ -390,22 +407,28 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
 
-    autoSaveTimerRef.current = window.setTimeout(async () => {
-      if (!isEditorEmpty(content)) {
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      if (isEditorEmpty(content)) return
+
+      const payload: WritingSavePayload = {
+        topicId: topic.id > 0 ? topic.id : null,
+        topic: topicToPrompt(topic),
+        title: title.trim(),
+        content,
+      }
+      const snapshotHash = hash
+
+      void enqueueDraftSave(async () => {
         try {
-          const result = await autoSaveDraft({
-            topicId: topic.id,
-            topic: topic.title,
-            title: title || undefined,
-            content: content || undefined,
-          })
-          lastAutoSavedHashRef.current = hash
-          // 静默成功，不设置 feedback
-          if (!draftId) setDraftId(result.id)
+          const result = await autoSaveDraft(draftIdRef.current, payload)
+          assignDraftMeta(result.id, result.updatedAt)
+          lastAutoSavedHashRef.current = snapshotHash
+          if (result.wordCount !== undefined) setWordCount(result.wordCount)
+          if (result.wordLimit !== undefined) setWordLimit(result.wordLimit)
         } catch {
           // 静默失败，不打扰用户
         }
-      }
+      })
     }, 3000)
 
     return () => {
@@ -462,8 +485,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   })
 
   const applySaveResult = (result: DraftSaveResult, createdNew = false) => {
-    setDraftId(result.id)
-    setDraftUpdatedAt(result.updatedAt)
+    assignDraftMeta(result.id, result.updatedAt)
+    lastAutoSavedHashRef.current = `${title}||${content}`
     if (result.wordCount !== undefined) setWordCount(result.wordCount)
     if (result.wordLimit !== undefined) setWordLimit(result.wordLimit)
 
@@ -483,8 +506,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     preserveWritingSessionRef.current = false
     setTitle('')
     setContent('')
-    setDraftId(undefined)
-    setDraftUpdatedAt(undefined)
+    assignDraftMeta(undefined, undefined)
     setIterateFromId(undefined)
     setSubmittedSnapshot(null)
     setIterateBaselineSnapshot(null)
@@ -532,55 +554,62 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     const payload = buildSavePayload()
 
     try {
-      const previousDraftId = draftId
-      const result = await saveWritingDraft(draftId, payload, draftUpdatedAt)
-      const createdNew = Boolean(previousDraftId && previousDraftId !== result.id)
-      applySaveResult(result, createdNew)
-    } catch (err) {
-      if (isApiError(err) && err.code === 409 && draftId) {
-        const conflict = err.data as DraftConflictData | null
-        const overwrite = await confirm({
-          title: '保存冲突',
-          variant: 'warning',
-          message: (
-            <>
-              <p>{err.message}</p>
-              <p className="mt-2">选择「覆盖保存」用当前内容保存；选择「加载最新」获取其他设备的版本。</p>
-            </>
-          ),
-          confirmLabel: '覆盖保存',
-          cancelLabel: '加载最新',
-        })
-
-        if (overwrite) {
-          try {
-            const result = await saveWritingDraft(draftId, payload)
-            applySaveResult(result)
-            return
-          } catch (retryErr) {
-            setFeedback({
-              tone: 'error',
-              message: retryErr instanceof Error ? retryErr.message : '覆盖保存失败',
+      await enqueueDraftSave(async () => {
+        const previousDraftId = draftIdRef.current
+        try {
+          const result = await saveWritingDraft(
+            draftIdRef.current,
+            payload,
+            draftUpdatedAtRef.current,
+          )
+          const createdNew = Boolean(previousDraftId && previousDraftId !== result.id)
+          applySaveResult(result, createdNew)
+        } catch (err) {
+          if (isApiError(err) && err.code === 409 && draftIdRef.current) {
+            const conflict = err.data as DraftConflictData | null
+            const overwrite = await confirm({
+              title: '保存冲突',
+              variant: 'warning',
+              message: (
+                <>
+                  <p>{err.message}</p>
+                  <p className="mt-2">选择「覆盖保存」用当前内容保存；选择「加载最新」获取其他设备的版本。</p>
+                </>
+              ),
+              confirmLabel: '覆盖保存',
+              cancelLabel: '加载最新',
             })
+
+            if (overwrite) {
+              try {
+                const result = await saveWritingDraft(draftIdRef.current, payload)
+                applySaveResult(result)
+              } catch (retryErr) {
+                setFeedback({
+                  tone: 'error',
+                  message: retryErr instanceof Error ? retryErr.message : '覆盖保存失败',
+                })
+              }
+              return
+            }
+
+            if (conflict) {
+              setTitle(conflict.title)
+              setContent(conflict.content)
+              assignDraftMeta(draftIdRef.current, conflict.updatedAt)
+              setEditorKey((key) => key + 1)
+              setFeedback({ tone: 'info', message: '已加载其他设备的最新内容' })
+            } else {
+              setFeedback({ tone: 'error', message: err.message })
+            }
             return
           }
-        }
 
-        if (conflict) {
-          setTitle(conflict.title)
-          setContent(conflict.content)
-          setDraftUpdatedAt(conflict.updatedAt)
-          setEditorKey((key) => key + 1)
-          setFeedback({ tone: 'info', message: '已加载其他设备的最新内容' })
-        } else {
-          setFeedback({ tone: 'error', message: err.message })
+          setFeedback({
+            tone: 'error',
+            message: err instanceof Error ? err.message : '保存失败',
+          })
         }
-        return
-      }
-
-      setFeedback({
-        tone: 'error',
-        message: err instanceof Error ? err.message : '保存失败',
       })
     } finally {
       setIsSaving(false)
@@ -691,14 +720,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         topic: topicToPrompt(topic),
         title: title.trim(),
         content,
-        draftId,
+        draftId: draftIdRef.current,
         aiCheckEnabled,
         aiStructureEnabled,
         aiSuggestionEnabled,
       })
       await persistAiResults(result.id)
-      setDraftId(undefined)
-      setDraftUpdatedAt(undefined)
+      assignDraftMeta(undefined, undefined)
       setWordCount(undefined)
       setWordLimit(undefined)
 
