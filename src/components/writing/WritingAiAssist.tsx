@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react'
 import { BarChart3, FileCheck, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
 import { getAiConfig } from '../../api/ai'
-import { loadAiAssistSettings, saveAiAssistSettings } from '../../storage/aiSettingsStorage'
+import {
+  loadAiAssistSettings,
+  saveAiAssistSettings,
+  type AiAssistSettings,
+} from '../../storage/aiSettingsStorage'
 
-export function WritingAiAssist() {
+interface WritingAiAssistProps {
+  onSettingsSaved?: (settings: AiAssistSettings) => void
+}
+
+export function WritingAiAssist({ onSettingsSaved }: WritingAiAssistProps) {
   const [postSubmitReview, setPostSubmitReview] = useState(false)
   const [postSubmitStructure, setPostSubmitStructure] = useState(false)
   const [postSubmitSuggestions, setPostSubmitSuggestions] = useState(false)
@@ -31,13 +39,15 @@ export function WritingAiAssist() {
   const handleSave = () => {
     setSaving(true)
     const current = loadAiAssistSettings()
-    saveAiAssistSettings({
+    const next = {
       ...current,
       postSubmitReview,
       postSubmitStructure,
       postSubmitSuggestions,
       realtimeAssist,
-    })
+    }
+    saveAiAssistSettings(next)
+    onSettingsSaved?.(next)
     setMessage('AI 辅助开关已保存')
     setSaving(false)
   }

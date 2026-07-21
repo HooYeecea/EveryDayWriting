@@ -1,8 +1,39 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { ChevronLeft, ChevronRight, GripHorizontal, LayoutGrid, X } from 'lucide-react'
+import {
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  FileCheck,
+  GripHorizontal,
+  LayoutGrid,
+  Lightbulb,
+  Timer,
+  Wand2,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { ASSIST_FEATURES, getAssistFeature, type AssistFeatureId } from './assistConfig'
 import { formatSecondsForRail, WritingTimerAssist } from './WritingTimerAssist'
 import { WritingAiAssist } from './WritingAiAssist'
+import {
+  loadAiAssistSettings,
+  type AiAssistSettings,
+} from '../../storage/aiSettingsStorage'
+
+/** PC 折叠窄条上展示的已开启功能指示 */
+const AI_RAIL_INDICATORS: {
+  key: keyof Pick<
+    AiAssistSettings,
+    'postSubmitReview' | 'postSubmitStructure' | 'postSubmitSuggestions' | 'realtimeAssist'
+  >
+  label: string
+  icon: LucideIcon
+}[] = [
+  { key: 'postSubmitReview', label: 'AI 检查与修改', icon: Wand2 },
+  { key: 'postSubmitStructure', label: '结构与评分', icon: BarChart3 },
+  { key: 'postSubmitSuggestions', label: '提升建议', icon: Lightbulb },
+  { key: 'realtimeAssist', label: '实时辅助写作', icon: FileCheck },
+]
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(
@@ -317,6 +348,7 @@ interface AssistPanelContentProps {
   panelOpen: boolean
   headerClose: ReactNode
   onTimerRunningChange: (running: boolean, displaySeconds: number, paused: boolean) => void
+  onAiSettingsSaved?: (settings: AiAssistSettings) => void
 }
 
 function AssistPanelContent({
@@ -328,6 +360,7 @@ function AssistPanelContent({
   panelOpen,
   headerClose,
   onTimerRunningChange,
+  onAiSettingsSaved,
 }: AssistPanelContentProps) {
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
@@ -392,7 +425,7 @@ function AssistPanelContent({
       )}
 
       <div className={showAiDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-        <WritingAiAssist />
+        <WritingAiAssist onSettingsSaved={onAiSettingsSaved} />
       </div>
 
       <div className={showTimerDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
@@ -410,6 +443,7 @@ export function WritingAssistPanel() {
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerPaused, setTimerPaused] = useState(false)
   const [timerDisplaySeconds, setTimerDisplaySeconds] = useState(0)
+  const [aiSettings, setAiSettings] = useState(loadAiAssistSettings)
   const [mobilePosition, setMobilePosition] = useState(getDefaultMobilePanelPosition)
   const [fabPosition, setFabPosition] = useState(
     () => loadStoredFabPosition() ?? getDefaultFabPosition(),
@@ -425,10 +459,20 @@ export function WritingAssistPanel() {
     [],
   )
 
+  const handleAiSettingsSaved = useCallback((settings: AiAssistSettings) => {
+    setAiSettings(settings)
+  }, [])
+
+  const openDesktopFeature = useCallback((id: AssistFeatureId) => {
+    setDesktopExpanded(true)
+    setActiveFeature(id)
+  }, [])
+
   const panelOpen = isDesktop ? desktopExpanded : mobileOpen
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
   const showAiDetail = panelOpen && activeFeature === 'ai-assistant'
+  const enabledAiRailIndicators = AI_RAIL_INDICATORS.filter((item) => aiSettings[item.key])
 
   const openMobile = () => {
     const fabRect = mobileFabRef.current?.getBoundingClientRect()
@@ -454,6 +498,7 @@ export function WritingAssistPanel() {
     timerDisplaySeconds,
     panelOpen: mobileOpen,
     onTimerRunningChange: handleTimerRunningChange,
+    onAiSettingsSaved: handleAiSettingsSaved,
   }
 
   return (
@@ -531,7 +576,7 @@ export function WritingAssistPanel() {
         )}
 
         <div className={showAiDetail && isDesktop ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-          {isDesktop && <WritingAiAssist />}
+          {isDesktop && <WritingAiAssist onSettingsSaved={handleAiSettingsSaved} />}
         </div>
 
         {isDesktop && (
@@ -541,24 +586,54 @@ export function WritingAssistPanel() {
         )}
 
         {!desktopExpanded && (
-          <button
-            type="button"
-            onClick={() => setDesktopExpanded(true)}
-            className="flex h-full w-full flex-col items-center gap-3 py-4 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
-            aria-label="展开写作辅助"
-            title="写作辅助"
-          >
-            <ChevronLeft size={18} />
-            <LayoutGrid size={18} strokeWidth={1.75} />
-            {timerRunning && (
-              <span className="font-mono text-[10px] font-medium text-neutral-600">
-                {formatSecondsForRail(timerDisplaySeconds)}
+          <div className="flex h-full w-full flex-col items-center">
+            <button
+              type="button"
+              onClick={() => setDesktopExpanded(true)}
+              className="flex w-full flex-col items-center gap-3 py-4 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
+              aria-label="展开写作辅助"
+              title="写作辅助"
+            >
+              <ChevronLeft size={18} />
+              <LayoutGrid size={18} strokeWidth={1.75} />
+              <span className="text-[11px] font-medium tracking-wide text-neutral-500 [writing-mode:vertical-rl]">
+                写作辅助
               </span>
+            </button>
+
+            {(enabledAiRailIndicators.length > 0 || timerRunning) && (
+              <div className="flex flex-col items-center gap-2.5 px-1 pb-4">
+                {enabledAiRailIndicators.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => openDesktopFeature('ai-assistant')}
+                    className="rounded-md p-1.5 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                    aria-label={`打开${label}`}
+                    title={label}
+                  >
+                    <Icon size={15} strokeWidth={1.75} />
+                  </button>
+                ))}
+                {timerRunning && (
+                  <button
+                    type="button"
+                    onClick={() => openDesktopFeature('writing-timer')}
+                    className={`flex flex-col items-center gap-0.5 rounded-md p-1.5 text-amber-700 transition-colors hover:bg-amber-50 ${
+                      timerPaused ? '' : 'animate-pulse-soft'
+                    }`}
+                    aria-label="打开写作计时"
+                    title={timerPaused ? '计时已暂停' : '计时中'}
+                  >
+                    <Timer size={15} strokeWidth={1.75} />
+                    <span className="font-mono text-[9px] font-medium leading-none">
+                      {formatSecondsForRail(timerDisplaySeconds)}
+                    </span>
+                  </button>
+                )}
+              </div>
             )}
-            <span className="text-[11px] font-medium tracking-wide text-neutral-500 [writing-mode:vertical-rl]">
-              写作辅助
-            </span>
-          </button>
+          </div>
         )}
       </aside>
 
