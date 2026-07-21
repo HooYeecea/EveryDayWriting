@@ -91,6 +91,15 @@ export function AiAssistPanel({ onReady }: { onReady?: () => void } = {}) {
     }
   }
 
+  const handleClearKey = () => {
+    setError('')
+    setApiKeyInput('')
+    setEncryptedKey('')
+    const current = loadAiAssistSettings()
+    saveAiAssistSettings({ ...current, encryptedKey: '' })
+    setMessage('已清除自有 API Key，将使用平台免费通道')
+  }
+
   const quotaPercent = freeQuota && freeQuota.enabled && freeQuota.dailyTokenLimit > 0
     ? Math.min(100, Math.round((freeQuota.todayTokensUsed / freeQuota.dailyTokenLimit) * 100))
     : 0
@@ -158,10 +167,10 @@ export function AiAssistPanel({ onReady }: { onReady?: () => void } = {}) {
               </div>
               <p className="mt-2 text-xs text-neutral-500">
                 {encryptedKey
-                  ? 'Key 已加密存储。输入新 Key 可替换当前配置。'
+                  ? 'Key 已加密存储。输入新 Key 可替换，或清除后改用平台免费通道。'
                   : '输入你的 LLM API Key，将加密后存储在本地浏览器。拥有自有 Key 的用户不受每日免费额度限制。'}
               </p>
-              <form onSubmit={handleSaveKey} className="mt-2 flex gap-2">
+              <form onSubmit={handleSaveKey} className="mt-2 flex flex-wrap gap-2">
                 <input
                   type="password"
                   value={apiKeyInput}
@@ -176,6 +185,15 @@ export function AiAssistPanel({ onReady }: { onReady?: () => void } = {}) {
                 >
                   {savingKey ? '加密中…' : '加密并保存'}
                 </button>
+                {encryptedKey && (
+                  <button
+                    type="button"
+                    onClick={handleClearKey}
+                    className="shrink-0 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+                  >
+                    清除 Key
+                  </button>
+                )}
               </form>
             </details>
           )}
