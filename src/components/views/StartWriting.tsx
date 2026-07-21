@@ -79,7 +79,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const [content, setContent] = useState('')
   const [draftId, setDraftId] = useState<string | undefined>()
   const [iterateFromId, setIterateFromId] = useState<string | undefined>()
-  const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | undefined>()
   const [wordCount, setWordCount] = useState<number | undefined>()
   const [wordLimit, setWordLimit] = useState<number | undefined>()
   const [editorKey, setEditorKey] = useState(0)
@@ -117,7 +116,6 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     draftIdRef.current = id
     draftUpdatedAtRef.current = updatedAt
     setDraftId(id)
-    setDraftUpdatedAt(updatedAt)
   }
 
   const enqueueDraftSave = <T,>(task: () => Promise<T>): Promise<T> => {
