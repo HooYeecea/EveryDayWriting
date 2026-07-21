@@ -53,6 +53,13 @@ export type AdminMenuKey =
   | 'prompts'
   | 'questions'
 
+export type AdminMenuGroupKey =
+  | 'overview'
+  | 'access'
+  | 'content'
+  | 'topics'
+  | 'system'
+
 export type AdminPageProps = {
   onReady?: () => void
 }
@@ -67,7 +74,47 @@ export interface AdminRoute {
   permission?: string | string[] | null
 }
 
+export interface AdminMenuGroup {
+  key: AdminMenuGroupKey
+  label: string
+  routeKeys: AdminMenuKey[]
+}
+
+export interface AdminVisibleMenuGroup {
+  key: AdminMenuGroupKey
+  label: string
+  routes: AdminRoute[]
+}
+
 export const ADMIN_DEFAULT_PATH = '/admin'
+
+export const ADMIN_MENU_GROUPS: AdminMenuGroup[] = [
+  {
+    key: 'overview',
+    label: '概览',
+    routeKeys: ['dashboard', 'system', 'token-usage'],
+  },
+  {
+    key: 'access',
+    label: '用户与权限',
+    routeKeys: ['users', 'roles'],
+  },
+  {
+    key: 'content',
+    label: '内容运营',
+    routeKeys: ['announcements', 'agreements', 'quotes', 'checkin-tiers'],
+  },
+  {
+    key: 'topics',
+    label: '题库与写作',
+    routeKeys: ['topic-types', 'writing-topics', 'questions', 'prompts'],
+  },
+  {
+    key: 'system',
+    label: '系统与安全',
+    routeKeys: ['providers', 'configs', 'audit-logs'],
+  },
+]
 
 export const ADMIN_ROUTES: AdminRoute[] = [
   {
@@ -87,12 +134,28 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     permission: 'monitor:view',
   },
   {
+    key: 'token-usage',
+    path: '/admin/token-usage',
+    label: 'Token 用量',
+    icon: Gauge,
+    component: AdminTokenUsagePage,
+    permission: 'token_usage:view',
+  },
+  {
     key: 'users',
     path: '/admin/users',
     label: '用户管理',
     icon: Users,
     component: AdminUsersPage,
     permission: 'user:list',
+  },
+  {
+    key: 'roles',
+    path: '/admin/roles',
+    label: '角色权限',
+    icon: Shield,
+    component: AdminRolesPage,
+    permission: 'role:manage',
   },
   {
     key: 'announcements',
@@ -143,44 +206,12 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     permission: 'topic_type:manage',
   },
   {
-    key: 'providers',
-    path: '/admin/providers',
-    label: '模型供应商',
-    icon: Cpu,
-    component: AdminProvidersPage,
-    permission: 'provider:manage',
-  },
-  {
-    key: 'roles',
-    path: '/admin/roles',
-    label: '角色权限',
-    icon: Shield,
-    component: AdminRolesPage,
-    permission: 'role:manage',
-  },
-  {
-    key: 'configs',
-    path: '/admin/configs',
-    label: '系统配置',
-    icon: Settings,
-    component: AdminConfigsPage,
-    permission: 'config:manage',
-  },
-  {
-    key: 'token-usage',
-    path: '/admin/token-usage',
-    label: 'Token 用量',
-    icon: Gauge,
-    component: AdminTokenUsagePage,
-    permission: 'token_usage:view',
-  },
-  {
-    key: 'audit-logs',
-    path: '/admin/audit-logs',
-    label: '操作审计',
-    icon: ScrollText,
-    component: AdminAuditLogsPage,
-    permission: 'audit:view',
+    key: 'questions',
+    path: '/admin/questions',
+    label: '题库管理',
+    icon: ListOrdered,
+    component: AdminQuestionsPage,
+    permission: 'test_question:manage',
   },
   {
     key: 'prompts',
@@ -191,12 +222,28 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     permission: 'prompt:manage',
   },
   {
-    key: 'questions',
-    path: '/admin/questions',
-    label: '题库管理',
-    icon: ListOrdered,
-    component: AdminQuestionsPage,
-    permission: 'test_question:manage',
+    key: 'providers',
+    path: '/admin/providers',
+    label: '模型供应商',
+    icon: Cpu,
+    component: AdminProvidersPage,
+    permission: 'provider:manage',
+  },
+  {
+    key: 'configs',
+    path: '/admin/configs',
+    label: '系统配置',
+    icon: Settings,
+    component: AdminConfigsPage,
+    permission: 'config:manage',
+  },
+  {
+    key: 'audit-logs',
+    path: '/admin/audit-logs',
+    label: '操作审计',
+    icon: ScrollText,
+    component: AdminAuditLogsPage,
+    permission: 'audit:view',
   },
 ]
 
@@ -211,6 +258,18 @@ export function getVisibleAdminRoutes(permissions: string[]): AdminRoute[] {
     }
     return hasPermission(permissions, route.permission)
   })
+}
+
+export function getVisibleAdminMenuGroups(permissions: string[]): AdminVisibleMenuGroup[] {
+  const byKey = new Map(getVisibleAdminRoutes(permissions).map((route) => [route.key, route]))
+
+  return ADMIN_MENU_GROUPS.map((group) => ({
+    key: group.key,
+    label: group.label,
+    routes: group.routeKeys
+      .map((routeKey) => byKey.get(routeKey))
+      .filter((route): route is AdminRoute => Boolean(route)),
+  })).filter((group) => group.routes.length > 0)
 }
 
 export function getFirstAllowedAdminPath(permissions: string[]): string {

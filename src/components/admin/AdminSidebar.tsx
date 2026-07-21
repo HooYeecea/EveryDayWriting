@@ -1,6 +1,17 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { ArrowLeftRight, ChevronLeft, ChevronRight, LogOut, X } from 'lucide-react'
-import { getVisibleAdminRoutes } from '../../config/adminRoutes'
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeftRight,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  X,
+} from 'lucide-react'
+import {
+  getVisibleAdminMenuGroups,
+  type AdminMenuGroupKey,
+} from '../../config/adminRoutes'
 import { DEFAULT_PATH } from '../../config/routes'
 import { useAuth } from '../../context/AuthContext'
 import { hasUserRole } from '../../utils/roles'
@@ -29,8 +40,41 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const { roles, permissions, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const canReturnToUser = hasUserRole(roles)
-  const visibleRoutes = getVisibleAdminRoutes(permissions)
+  const visibleGroups = getVisibleAdminMenuGroups(permissions)
+
+  const activeGroupKey =
+    visibleGroups.find((group) =>
+      group.routes.some((route) =>
+        route.path === '/admin'
+          ? location.pathname === '/admin'
+          : location.pathname === route.path || location.pathname.startsWith(`${route.path}/`),
+      ),
+    )?.key ?? null
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<AdminMenuGroupKey>>(() =>
+    activeGroupKey ? new Set([activeGroupKey]) : new Set(),
+  )
+
+  useEffect(() => {
+    if (!activeGroupKey) return
+    setExpandedGroups((prev) => {
+      if (prev.has(activeGroupKey)) return prev
+      const next = new Set(prev)
+      next.add(activeGroupKey)
+      return next
+    })
+  }, [activeGroupKey])
+
+  const toggleGroup = (groupKey: AdminMenuGroupKey) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupKey)) next.delete(groupKey)
+      else next.add(groupKey)
+      return next
+    })
+  }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ${
@@ -90,29 +134,66 @@ export function AdminSidebar({
         </div>
       </div>
 
-      <nav className={`flex-1 space-y-0.5 overflow-y-auto p-3 ${collapsed ? 'lg:p-2' : ''}`}>
-        {visibleRoutes.map((item) => {
-          const Icon = item.icon
+      <nav className={`flex-1 space-y-3 overflow-y-auto p-3 ${collapsed ? 'lg:space-y-2 lg:p-2' : ''}`}>
+        {visibleGroups.map((group, groupIndex) => {
+          const isExpanded = collapsed || expandedGroups.has(group.key)
+
           return (
-            <NavLink
-              key={item.key}
-              to={item.path}
-              end={item.path === '/admin'}
-              onClick={onClose}
-              className={navLinkClass}
-              title={collapsed ? item.label : undefined}
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    size={18}
-                    strokeWidth={isActive ? 2 : 1.75}
-                    className={isActive ? 'text-neutral-800' : 'text-neutral-400'}
+            <div key={group.key}>
+              {collapsed ? (
+                groupIndex > 0 ? (
+                  <div className="mx-auto mb-2 hidden h-px w-6 bg-neutral-200 lg:block" aria-hidden />
+                ) : null
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.key)}
+                  className="mb-0.5 flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left"
+                  aria-expanded={isExpanded}
+                >
+                  <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+                    {group.label}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`shrink-0 text-neutral-400 transition-transform duration-200 ${
+                      isExpanded ? 'rotate-0' : '-rotate-90'
+                    }`}
                   />
-                  <span className={labelClass}>{item.label}</span>
-                </>
+                </button>
               )}
-            </NavLink>
+
+              <div
+                className={`space-y-0.5 overflow-hidden transition-[max-height,opacity] duration-200 ${
+                  isExpanded ? 'max-h-[28rem] opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                {group.routes.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <NavLink
+                      key={item.key}
+                      to={item.path}
+                      end={item.path === '/admin'}
+                      onClick={onClose}
+                      className={navLinkClass}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <Icon
+                            size={18}
+                            strokeWidth={isActive ? 2 : 1.75}
+                            className={isActive ? 'text-neutral-800' : 'text-neutral-400'}
+                          />
+                          <span className={labelClass}>{item.label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
       </nav>
