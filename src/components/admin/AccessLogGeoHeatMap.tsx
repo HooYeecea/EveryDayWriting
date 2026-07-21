@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as echarts from 'echarts/core'
 import { MapChart } from 'echarts/charts'
 import { TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { Maximize2, Minimize2, X } from 'lucide-react'
+import { Maximize2, X } from 'lucide-react'
 import type { AdminAccessLogGeo } from '../../api/admin'
 import { AdminEmpty } from './AdminUi'
 
@@ -123,6 +124,73 @@ function buildSeriesData(kind: HeatMapKind, geo: AdminAccessLogGeo | null) {
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 }
 
+function applyChartOption(
+  chart: echarts.EChartsType,
+  kind: HeatMapKind,
+  geo: AdminAccessLogGeo | null,
+  fullscreen: boolean,
+) {
+  const mapName = kind === 'province' ? 'access-china' : 'access-world'
+  const data = buildSeriesData(kind, geo)
+  const max = Math.max(...data.map((d: { value: number }) => d.value), 1)
+
+  chart.setOption(
+    {
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: unknown) => {
+          const p = params as {
+            name?: string
+            value?: number | number[]
+            data?: { labelName?: string; value?: number }
+          }
+          const label = p.data?.labelName || p.name || '未知'
+          const value = Array.isArray(p.value) ? p.value[2] : p.value
+          if (value == null || Number.isNaN(Number(value))) {
+            return `${label}<br/>暂无访问`
+          }
+          return `${label}<br/>访问量：${Number(value).toLocaleString('zh-CN')}`
+        },
+      },
+      visualMap: {
+        min: 0,
+        max,
+        left: 8,
+        bottom: 8,
+        text: ['高', '低'],
+        calculable: false,
+        inRange: {
+          color: ['#f5f5f5', '#d4d4d4', '#737373', '#404040', '#171717'],
+        },
+        textStyle: { color: '#737373', fontSize: 11 },
+        itemWidth: 10,
+        itemHeight: fullscreen ? 120 : 72,
+      },
+      series: [
+        {
+          name: '访问量',
+          type: 'map',
+          map: mapName,
+          roam: true,
+          scaleLimit: { min: 0.8, max: 8 },
+          emphasis: {
+            label: { show: true, color: '#171717', fontSize: 11 },
+            itemStyle: { areaColor: '#a3a3a3' },
+          },
+          itemStyle: {
+            borderColor: '#e5e5e5',
+            borderWidth: 0.8,
+            areaColor: '#fafafa',
+          },
+          data,
+        },
+      ],
+    },
+    { notMerge: true },
+  )
+  chart.resize()
+}
+
 export function AccessLogGeoHeatMap({
   kind,
   geo,
@@ -136,8 +204,11 @@ export function AccessLogGeoHeatMap({
   title: string
   description?: string
 }) {
-  const hostRef = useRef<HTMLDivElement | null>(null)
-  const chartRef = useRef<echarts.EChartsType | null>(null)
+  const titleId = useId()
+  const inlineHostRef = useRef<HTMLDivElement | null>(null)
+  const fullscreenHostRef = useRef<HTMLDivElement | null>(null)
+  const inlineChartRef = useRef<echarts.EChartsType | null>(null)
+  const fullscreenChartRef = useRef<echarts.EChartsType | null>(null)
   const [mapError, setMapError] = useState('')
   const [mapReady, setMapReady] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -167,7 +238,10 @@ export function AccessLogGeoHeatMap({
   useEffect(() => {
     if (!fullscreen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFullscreen(false)
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setFullscreen(false)
+      }
     }
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -178,13 +252,14 @@ export function AccessLogGeoHeatMap({
     }
   }, [fullscreen])
 
-  // 容器始终挂载；等地图数据就绪后再 init，避免 loading 阶段卸载导致图表永不创建
+  // 卡片内地图
   useEffect(() => {
-    const el = hostRef.current
-    if (!el || !mapReady || loading || mapError) return
+    const el = inlineHostRef.current
+    if (!el || !mapReady || loading || mapError || fullscreen) return
 
     const chart = echarts.init(el)
-    chartRef.current = chart
+    inlineChartRef.current = chart
+    applyChartOption(chart, kind, geo, false)
 
     const onResize = () => chart.resize()
     window.addEventListener('resize', onResize)
@@ -194,138 +269,86 @@ export function AccessLogGeoHeatMap({
       window.cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
       chart.dispose()
-      chartRef.current = null
+      inlineChartRef.current = null
     }
-  }, [kind, mapReady, loading, mapError, fullscreen])
+  }, [kind, geo, mapReady, loading, mapError, fullscreen])
 
+  // 全屏地图：挂到 body，避开页面 transform/overflow 对 fixed 的限制
   useEffect(() => {
-    const chart = chartRef.current
-    if (!chart || !mapReady || loading || mapError) return
+    const el = fullscreenHostRef.current
+    if (!el || !mapReady || loading || mapError || !fullscreen) return
 
-    const mapName = kind === 'province' ? 'access-china' : 'access-world'
-    const data = buildSeriesData(kind, geo)
-    const max = Math.max(...data.map((d: { value: number }) => d.value), 1)
+    const chart = echarts.init(el)
+    fullscreenChartRef.current = chart
+    applyChartOption(chart, kind, geo, true)
 
-    chart.setOption(
-      {
-        tooltip: {
-          trigger: 'item',
-          formatter: (params: unknown) => {
-            const p = params as {
-              name?: string
-              value?: number | number[]
-              data?: { labelName?: string; value?: number }
-            }
-            const label = p.data?.labelName || p.name || '未知'
-            const value = Array.isArray(p.value) ? p.value[2] : p.value
-            if (value == null || Number.isNaN(Number(value))) {
-              return `${label}<br/>暂无访问`
-            }
-            return `${label}<br/>访问量：${Number(value).toLocaleString('zh-CN')}`
-          },
-        },
-        visualMap: {
-          min: 0,
-          max,
-          left: 8,
-          bottom: 8,
-          text: ['高', '低'],
-          calculable: false,
-          inRange: {
-            color: ['#f5f5f5', '#d4d4d4', '#737373', '#404040', '#171717'],
-          },
-          textStyle: { color: '#737373', fontSize: 11 },
-          itemWidth: 10,
-          itemHeight: fullscreen ? 120 : 72,
-        },
-        series: [
-          {
-            name: '访问量',
-            type: 'map',
-            map: mapName,
-            roam: true,
-            scaleLimit: { min: 0.8, max: 8 },
-            emphasis: {
-              label: { show: true, color: '#171717', fontSize: 11 },
-              itemStyle: { areaColor: '#a3a3a3' },
-            },
-            itemStyle: {
-              borderColor: '#e5e5e5',
-              borderWidth: 0.8,
-              areaColor: '#fafafa',
-            },
-            data,
-          },
-        ],
-      },
-      { notMerge: true },
-    )
-    chart.resize()
+    const onResize = () => chart.resize()
+    window.addEventListener('resize', onResize)
+    const raf = window.requestAnimationFrame(() => chart.resize())
+    const t = window.setTimeout(() => chart.resize(), 50)
+
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.clearTimeout(t)
+      window.removeEventListener('resize', onResize)
+      chart.dispose()
+      fullscreenChartRef.current = null
+    }
   }, [kind, geo, mapReady, loading, mapError, fullscreen])
 
   const emptyData = !loading && (geo?.items.length ?? 0) === 0
-  const canFullscreen = !loading && !mapError && !emptyData
+  const canFullscreen = !loading && !mapError && !emptyData && mapReady
 
-  const mapPane = (
-    <div
-      className={
-        fullscreen
-          ? 'relative min-h-0 flex-1'
-          : 'relative mt-2 h-72 w-full sm:h-80'
-      }
-    >
-      <div ref={hostRef} className="h-full w-full" />
-      {loading || !mapReady ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-          <AdminEmpty message="加载中…" />
-        </div>
-      ) : null}
-      {mapError ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
-          <AdminEmpty message={mapError} />
-        </div>
-      ) : null}
-      {!mapError && emptyData ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
-          <AdminEmpty message="暂无地域数据" />
-        </div>
-      ) : null}
-    </div>
-  )
-
-  if (fullscreen) {
-    return (
-      <div className="fixed inset-0 z-[80] flex flex-col bg-white">
-        <div className="flex items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3 sm:px-6">
-          <div className="min-w-0">
-            <h3 className="font-sans text-sm font-semibold text-neutral-900">{title}</h3>
-            {description ? (
-              <p className="mt-0.5 text-xs text-neutral-400">{description}</p>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setFullscreen(false)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50"
-            >
-              <Minimize2 size={14} strokeWidth={1.75} />
-              退出全屏
-            </button>
-            <button
-              type="button"
-              onClick={() => setFullscreen(false)}
-              className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
-              aria-label="关闭"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-        <div className="min-h-0 flex-1 p-4 sm:p-6">{mapPane}</div>
+  const statusOverlay =
+    loading || !mapReady ? (
+      <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+        <AdminEmpty message="加载中…" />
       </div>
-    )
-  }
+    ) : mapError ? (
+      <div className="absolute inset-0 flex items-center justify-center bg-white">
+        <AdminEmpty message={mapError} />
+      </div>
+    ) : emptyData ? (
+      <div className="absolute inset-0 flex items-center justify-center bg-white">
+        <AdminEmpty message="暂无地域数据" />
+      </div>
+    ) : null
+
+  const fullscreenLayer =
+    fullscreen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex flex-col bg-white"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
+              <div className="min-w-0">
+                <h3 id={titleId} className="font-sans text-sm font-semibold text-neutral-900">
+                  {title}
+                </h3>
+                {description ? (
+                  <p className="mt-0.5 text-xs text-neutral-400">{description}</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setFullscreen(false)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
+              >
+                <X size={14} strokeWidth={1.75} />
+                退出全屏
+              </button>
+            </div>
+            <div className="relative min-h-0 flex-1 bg-white">
+              <div ref={fullscreenHostRef} className="absolute inset-0" />
+              {statusOverlay}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
 
   return (
     <div>
@@ -347,7 +370,19 @@ export function AccessLogGeoHeatMap({
           全屏
         </button>
       </div>
-      {mapPane}
+
+      <div className="relative mt-2 h-72 w-full sm:h-80">
+        {!fullscreen ? <div ref={inlineHostRef} className="h-full w-full" /> : null}
+        {fullscreen ? (
+          <div className="flex h-full items-center justify-center text-xs text-neutral-400">
+            全屏查看中…
+          </div>
+        ) : (
+          statusOverlay
+        )}
+      </div>
+
+      {fullscreenLayer}
     </div>
   )
 }
