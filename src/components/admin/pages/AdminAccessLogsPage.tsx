@@ -49,6 +49,7 @@ import {
   adminInputClass,
 } from '../AdminUi'
 import { MenuSelect } from '../../common/MenuSelect'
+import { getWorldCountrySelectOptions } from '../../../data/countries'
 
 const DEVICE_TYPE_OPTIONS = [
   { value: '', label: '全部' },
@@ -64,6 +65,9 @@ const EVENT_TYPE_OPTIONS = [
   { value: 'api_call', label: '接口' },
   { value: 'page_view', label: '页面' },
 ]
+
+/** 国家列表较固定，模块级缓存即可；locale 后续接国际化时可改为按语言重建 */
+const COUNTRY_SELECT_OPTIONS = getWorldCountrySelectOptions('zh')
 
 const RANGES: { id: AccessLogRange; label: string }[] = [
   { id: '7d', label: '近 7 天' },
@@ -756,11 +760,12 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
               />
             </AdminField>
             <AdminField label="国家/地区">
-              <input
-                className={adminInputClass}
+              <MenuSelect
                 value={filters.country}
-                placeholder="如 中国"
-                onChange={(e) => setFilters((prev) => ({ ...prev, country: e.target.value }))}
+                options={COUNTRY_SELECT_OPTIONS}
+                onChange={(country) => setFilters((prev) => ({ ...prev, country }))}
+                placeholder="选择国家/地区"
+                ariaLabel="国家/地区"
               />
             </AdminField>
             <AdminField label="设备">
