@@ -5,6 +5,7 @@ export type MenuKey =
   | 'personal-vocabulary'
   | 'personal-assessment'
   | 'usage-guide'
+  | 'system-settings'
 
 export interface MenuItem {
   key: MenuKey

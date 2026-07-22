@@ -11,6 +11,7 @@ import { useLocation } from 'react-router-dom'
 import { BrandContentGate, BrandLoading } from '../brand/BrandLoading'
 import { ChunkErrorBoundary } from '../common/ChunkErrorBoundary'
 import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
+import { getRouteLabelKey, useT } from '../../i18n'
 
 function routeIndex(pathname: string): number {
   return APP_ROUTES.findIndex((route) => route.path === pathname)
@@ -24,6 +25,7 @@ function routeIndex(pathname: string): number {
  */
 export function AppPageSwitcher() {
   const { pathname } = useLocation()
+  const t = useT()
   const prevPathRef = useRef(pathname)
   const isFirstNavRef = useRef(true)
   const activePaneRef = useRef<HTMLDivElement | null>(null)
@@ -111,12 +113,14 @@ export function AppPageSwitcher() {
 
   return (
     <div className="app-page-shell">
-      {APP_ROUTES.map(({ path, key, label, component: Page }) => {
+      {APP_ROUTES.map(({ path, key, component: Page }) => {
         if (!mountedPaths.has(path)) return null
 
         const isActive = pathname === path
         const isExiting = exitingPath === path
         const ready = readyPaths.has(path)
+        const routeLabel = t(getRouteLabelKey(key))
+        const loadingLabel = t('common.loadingPage', { name: routeLabel })
         const paneClass = [
           'app-page-pane',
           isActive ? 'app-page-pane--active' : '',
@@ -136,13 +140,13 @@ export function AppPageSwitcher() {
           >
             <BrandContentGate
               ready={ready}
-              loadingLabel={`加载${label}…`}
+              loadingLabel={loadingLabel}
               minHeight={420}
             >
               <ChunkErrorBoundary>
                 <Suspense
                   fallback={
-                    <BrandLoading label={`加载${label}…`} minHeight={420} className="rounded-none border-0 shadow-none" />
+                    <BrandLoading label={loadingLabel} minHeight={420} className="rounded-none border-0 shadow-none" />
                   }
                 >
                   <Page onReady={() => markPageReady(path)} />

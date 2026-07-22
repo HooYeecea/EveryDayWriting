@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BarChart3, FileCheck, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
 import { getAiConfig } from '../../api/ai'
+import { useT } from '../../i18n'
 import {
   loadAiAssistSettings,
   saveAiAssistSettings,
@@ -26,6 +27,7 @@ export function WritingAiAssist({
   highlightKey = null,
   highlightNonce = 0,
 }: WritingAiAssistProps) {
+  const t = useT()
   const [postSubmitReview, setPostSubmitReview] = useState(false)
   const [postSubmitStructure, setPostSubmitStructure] = useState(false)
   const [postSubmitSuggestions, setPostSubmitSuggestions] = useState(false)
@@ -43,13 +45,14 @@ export function WritingAiAssist({
     setPostSubmitSuggestions(saved.postSubmitSuggestions)
     setRealtimeAssist(saved.realtimeAssist)
 
-    // AI 可用 = 有自有 Key 或免费通道开启
     const hasOwnKey = Boolean(saved.encryptedKey && saved.providerId && saved.modelId)
-    getAiConfig().then(cfg => {
-      setHasAiAccess(hasOwnKey || (cfg.freeQuota?.enabled ?? false))
-    }).catch(() => {
-      setHasAiAccess(hasOwnKey)
-    })
+    getAiConfig()
+      .then((cfg) => {
+        setHasAiAccess(hasOwnKey || (cfg.freeQuota?.enabled ?? false))
+      })
+      .catch(() => {
+        setHasAiAccess(hasOwnKey)
+      })
   }, [])
 
   useEffect(() => {
@@ -75,7 +78,7 @@ export function WritingAiAssist({
     }
     saveAiAssistSettings(next)
     onSettingsSaved?.(next)
-    setMessage('AI 辅助开关已保存')
+    setMessage(t('assist.ai.saved'))
     setSaving(false)
   }
 
@@ -96,15 +99,13 @@ export function WritingAiAssist({
     <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
       <div className="flex items-center gap-2">
         <Sparkles size={18} className="text-neutral-500" strokeWidth={1.75} />
-        <h4 className="text-sm font-medium text-neutral-900">AI 辅助开关</h4>
+        <h4 className="text-sm font-medium text-neutral-900">{t('assist.ai.title')}</h4>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-        控制提交后与写作过程中的 AI 行为。连接配置请在用户中心 → 设置中管理。
-      </p>
+      <p className="mt-2 text-xs leading-relaxed text-neutral-500">{t('assist.ai.intro')}</p>
 
       {!hasAiAccess && (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          当前无法使用 AI 功能。请前往用户中心 → 设置 → AI 辅助配置。
+          {t('assist.ai.unavailable')}
         </p>
       )}
 
@@ -112,7 +113,7 @@ export function WritingAiAssist({
 
       <div className="mt-4 space-y-3">
         <div>
-          <p className="text-xs font-medium text-neutral-600">提交后辅助</p>
+          <p className="text-xs font-medium text-neutral-600">{t('assist.ai.sectionPostSubmit')}</p>
           <div className="mt-2 space-y-2">
             <label
               ref={bindRowRef('postSubmitReview')}
@@ -128,10 +129,12 @@ export function WritingAiAssist({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <Wand2 size={14} className="shrink-0 text-neutral-400" />
-                  <span className="text-xs font-medium text-neutral-800">AI 检查与修改</span>
+                  <span className="text-xs font-medium text-neutral-800">
+                    {t('assist.ai.toggle.review')}
+                  </span>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
-                  提交后自动检查语法、表达等问题，并给出修改版本供参考。
+                  {t('assist.ai.toggle.reviewDesc')}
                 </p>
               </div>
             </label>
@@ -149,10 +152,12 @@ export function WritingAiAssist({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <BarChart3 size={14} className="shrink-0 text-neutral-400" />
-                  <span className="text-xs font-medium text-neutral-800">结构与评分</span>
+                  <span className="text-xs font-medium text-neutral-800">
+                    {t('assist.ai.toggle.structure')}
+                  </span>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
-                  提交后进行 IELTS 9分制综合评分，分析文章结构、连贯性与逻辑，给出逐段点评。
+                  {t('assist.ai.toggle.structureDesc')}
                 </p>
               </div>
             </label>
@@ -170,10 +175,12 @@ export function WritingAiAssist({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <Lightbulb size={14} className="shrink-0 text-neutral-400" />
-                  <span className="text-xs font-medium text-neutral-800">提升建议</span>
+                  <span className="text-xs font-medium text-neutral-800">
+                    {t('assist.ai.toggle.suggestions')}
+                  </span>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
-                  提交后综合点评文章结构与语言，给出针对性的进步建议。
+                  {t('assist.ai.toggle.suggestionsDesc')}
                 </p>
               </div>
             </label>
@@ -181,7 +188,7 @@ export function WritingAiAssist({
         </div>
 
         <div>
-          <p className="text-xs font-medium text-neutral-600">写作过程中</p>
+          <p className="text-xs font-medium text-neutral-600">{t('assist.ai.sectionWhileWriting')}</p>
           <div className="mt-2">
             <label
               ref={bindRowRef('realtimeAssist')}
@@ -197,10 +204,12 @@ export function WritingAiAssist({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <FileCheck size={14} className="shrink-0 text-neutral-400" />
-                  <span className="text-xs font-medium text-neutral-800">实时辅助写作</span>
+                  <span className="text-xs font-medium text-neutral-800">
+                    {t('assist.ai.toggle.realtime')}
+                  </span>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
-                  边写边获得 AI 提示，包括用词、句式和结构方面的即时建议。
+                  {t('assist.ai.toggle.realtimeDesc')}
                 </p>
               </div>
             </label>
@@ -213,7 +222,7 @@ export function WritingAiAssist({
           disabled={saving}
           className="w-full rounded-lg bg-neutral-900 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
-          {saving ? '保存中…' : '保存设置'}
+          {saving ? t('common.saving') : t('assist.ai.saveSettings')}
         </button>
       </div>
     </section>

@@ -15,6 +15,7 @@ import {
 import { ASSIST_FEATURES, getAssistFeature, type AssistFeatureId } from './assistConfig'
 import { formatSecondsForRail, WritingTimerAssist } from './WritingTimerAssist'
 import { WritingAiAssist, type AiAssistToggleKey } from './WritingAiAssist'
+import { useT } from '../../i18n'
 import {
   loadAiAssistSettings,
   type AiAssistSettings,
@@ -141,6 +142,7 @@ function MobileDraggableAssistFab({
   timerDisplaySeconds,
   fabRef,
 }: MobileDraggableAssistFabProps) {
+  const t = useT()
   const dragRef = useRef<{
     pointerId: number
     startX: number
@@ -230,7 +232,7 @@ function MobileDraggableAssistFab({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       className={`fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md transition-transform duration-200 active:scale-95 active:cursor-grabbing ${timerRunning && !timerPaused ? 'animate-pulse-soft' : ''}`}
-      aria-label="打开写作辅助，按住可拖动"
+      aria-label={t('assist.open')}
       title="点击打开，按住拖动"
     >
       <LayoutGrid size={18} strokeWidth={1.75} />
@@ -365,6 +367,7 @@ function AssistPanelContent({
   highlightAiNonce = 0,
   highlightTimerNonce = 0,
 }: AssistPanelContentProps) {
+  const t = useT()
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
   const showAiDetail = panelOpen && activeFeature === 'ai-assistant'
@@ -386,7 +389,7 @@ function AssistPanelContent({
           <LayoutGrid size={18} className="ml-1 shrink-0 text-neutral-400" />
         )}
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-900">
-          {activeFeatureMeta?.label ?? '写作辅助'}
+          {activeFeatureMeta ? t(activeFeatureMeta.labelKey) : t('assist.title')}
         </h3>
         {headerClose}
       </div>
@@ -394,7 +397,7 @@ function AssistPanelContent({
       {panelOpen && !activeFeature && (
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-2">
-            <p className="mb-3 text-xs text-neutral-500">选择一项辅助功能</p>
+            <p className="mb-3 text-xs text-neutral-500">{t('assist.pickFeature')}</p>
             {ASSIST_FEATURES.map((feature) => {
               const Icon = feature.icon
               return (
@@ -409,9 +412,9 @@ function AssistPanelContent({
                     <Icon size={18} className="text-neutral-500" strokeWidth={1.75} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-neutral-900">{feature.label}</p>
+                    <p className="text-sm font-medium text-neutral-900">{t(feature.labelKey)}</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
-                      {feature.description}
+                      {t(feature.descriptionKey)}
                     </p>
                     {feature.id === 'writing-timer' && timerRunning && (
                       <p className="mt-1 font-mono text-[11px] text-amber-600">
@@ -446,6 +449,7 @@ function AssistPanelContent({
 }
 
 export function WritingAssistPanel() {
+  const t = useT()
   const isDesktop = useIsDesktop()
   const [desktopExpanded, setDesktopExpanded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -545,7 +549,7 @@ export function WritingAssistPanel() {
               <LayoutGrid size={18} className="ml-1 shrink-0 text-neutral-400" />
             )}
             <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-900">
-              {activeFeatureMeta?.label ?? '写作辅助'}
+              {activeFeatureMeta ? t(activeFeatureMeta.labelKey) : t('assist.title')}
             </h3>
             <button
               type="button"
@@ -562,7 +566,7 @@ export function WritingAssistPanel() {
         {desktopExpanded && !activeFeature && (
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-2">
-              <p className="mb-3 text-xs text-neutral-500">选择一项辅助功能</p>
+              <p className="mb-3 text-xs text-neutral-500">{t('assist.pickFeature')}</p>
               {ASSIST_FEATURES.map((feature) => {
                 const Icon = feature.icon
                 return (
@@ -577,9 +581,9 @@ export function WritingAssistPanel() {
                       <Icon size={18} className="text-neutral-500" strokeWidth={1.75} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-neutral-900">{feature.label}</p>
+                      <p className="text-sm font-medium text-neutral-900">{t(feature.labelKey)}</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-neutral-500">
-                        {feature.description}
+                        {t(feature.descriptionKey)}
                       </p>
                       {feature.id === 'writing-timer' && timerRunning && (
                         <p className="mt-1 font-mono text-[11px] text-amber-600">
@@ -621,13 +625,13 @@ export function WritingAssistPanel() {
               type="button"
               onClick={() => setDesktopExpanded(true)}
               className="flex w-full flex-col items-center gap-3 py-4 text-neutral-400 transition-colors hover:bg-neutral-50 hover:text-neutral-600"
-              aria-label="展开写作辅助"
-              title="写作辅助"
+              aria-label={t('assist.expand')}
+              title={t('assist.title')}
             >
               <ChevronLeft size={18} />
               <LayoutGrid size={18} strokeWidth={1.75} />
               <span className="text-[11px] font-medium tracking-wide text-neutral-500 [writing-mode:vertical-rl]">
-                写作辅助
+                {t('assist.title')}
               </span>
             </button>
 
@@ -652,7 +656,7 @@ export function WritingAssistPanel() {
                     className={`flex flex-col items-center gap-0.5 rounded-md p-1.5 text-amber-700 transition-colors hover:bg-amber-50 ${
                       timerPaused ? '' : 'animate-pulse-soft'
                     }`}
-                    aria-label="打开写作计时"
+                    aria-label={t('assist.openTimer')}
                     title={timerPaused ? '计时已暂停' : '计时中'}
                   >
                     <Timer size={15} strokeWidth={1.75} />

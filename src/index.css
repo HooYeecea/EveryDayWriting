@@ -36,6 +36,198 @@ body {
   color: #37352f;
 }
 
+/* ── Theme: dark（语义分层，避免浅色块 + 浅色字叠在一起） ── */
+html.ew-theme-dark {
+  color-scheme: dark;
+  --ew-bg: #121212;
+  --ew-surface: #1a1a1a;
+  --ew-surface-2: #222222;
+  --ew-surface-3: #2a2a2a;
+  --ew-border: #3f3f3f;
+  --ew-border-strong: #525252;
+  --ew-text: #ececec;
+  --ew-text-secondary: #c4c4c4;
+  --ew-text-muted: #9a9a9a;
+  --ew-text-faint: #737373;
+  /* 主操作 / 选中块：深色抬升面，不再反成白底（白底+白字会叠死） */
+  --ew-primary: #3a3a3a;
+  --ew-primary-fg: #f3f3f3;
+  --ew-primary-hover: #454545;
+  --ew-primary-border: #5c5c5c;
+}
+
+html.ew-theme-dark body {
+  background: var(--ew-bg);
+  color: var(--ew-text);
+}
+
+html.ew-theme-dark .bg-\[\#fafafa\],
+html.ew-theme-dark .bg-\[\#fafafa\]\/80 {
+  background-color: var(--ew-bg) !important;
+}
+
+html.ew-theme-dark .bg-white,
+html.ew-theme-dark .bg-white\/60,
+html.ew-theme-dark .bg-white\/80,
+html.ew-theme-dark .bg-white\/92,
+html.ew-theme-dark .bg-white\/95 {
+  background-color: var(--ew-surface) !important;
+}
+
+/* 关键态 / 浅底：必须落成深色抬升面，否则会白底 + 浅字叠死 */
+html.ew-theme-dark .bg-neutral-50,
+html.ew-theme-dark .bg-neutral-50\/50,
+html.ew-theme-dark .bg-neutral-50\/55,
+html.ew-theme-dark .bg-neutral-50\/80,
+html.ew-theme-dark .bg-green-50\/50,
+html.ew-theme-dark .bg-amber-50 {
+  background-color: var(--ew-surface-2) !important;
+}
+
+html.ew-theme-dark .bg-neutral-100,
+html.ew-theme-dark .bg-neutral-100\/80 {
+  background-color: var(--ew-surface-3) !important;
+}
+
+html.ew-theme-dark .bg-neutral-200 {
+  background-color: #333333 !important;
+}
+
+html.ew-theme-dark .border-neutral-100,
+html.ew-theme-dark .border-neutral-200,
+html.ew-theme-dark .border-neutral-200\/95,
+html.ew-theme-dark .border-neutral-300 {
+  border-color: var(--ew-border) !important;
+}
+
+/* 文字层级：不要把 900–400 压成两档 */
+html.ew-theme-dark .text-neutral-900 {
+  color: var(--ew-text) !important;
+}
+html.ew-theme-dark .text-neutral-800 {
+  color: #e4e4e4 !important;
+}
+html.ew-theme-dark .text-neutral-700 {
+  color: var(--ew-text-secondary) !important;
+}
+html.ew-theme-dark .text-neutral-600 {
+  color: #b0b0b0 !important;
+}
+html.ew-theme-dark .text-neutral-500 {
+  color: var(--ew-text-muted) !important;
+}
+html.ew-theme-dark .text-neutral-400 {
+  color: var(--ew-text-faint) !important;
+}
+html.ew-theme-dark .text-neutral-300 {
+  color: #5c5c5c !important;
+}
+
+/* 主按钮 / Tab 选中 / 检索 pill：深色抬升 + 浅字，与深色主题一致 */
+html.ew-theme-dark .bg-neutral-900,
+html.ew-theme-dark .bg-neutral-900\/95 {
+  background-color: var(--ew-primary) !important;
+  color: var(--ew-primary-fg) !important;
+}
+html.ew-theme-dark .hover\:bg-neutral-800:hover {
+  background-color: var(--ew-primary-hover) !important;
+  color: var(--ew-primary-fg) !important;
+}
+html.ew-theme-dark .border-neutral-900 {
+  border-color: var(--ew-primary-border) !important;
+}
+html.ew-theme-dark .text-white {
+  color: #f5f5f5 !important;
+}
+/* 开关打开态用稍亮轨道，仍避免刺眼纯白 */
+html.ew-theme-dark button[role='switch'].bg-neutral-900 {
+  background-color: #cfcfcf !important;
+}
+html.ew-theme-dark .hover\:bg-neutral-50:hover,
+html.ew-theme-dark .hover\:bg-neutral-100:hover {
+  background-color: var(--ew-surface-3) !important;
+}
+html.ew-theme-dark .hover\:bg-white:hover {
+  background-color: var(--ew-surface-2) !important;
+}
+
+/* 写作纸：真正变深，盖住 from-white / to-neutral 浅色渐变 */
+html.ew-theme-dark .writing-sheet {
+  background: linear-gradient(180deg, #1e1e1e, #191919) !important;
+  border-color: var(--ew-border) !important;
+  box-shadow: none !important;
+}
+html.ew-theme-dark .writing-area-scroll .writing-sheet:focus-within {
+  background: linear-gradient(180deg, #232323, #1c1c1c) !important;
+  border-color: var(--ew-border-strong) !important;
+}
+html.ew-theme-dark .from-white,
+html.ew-theme-dark .from-white\/92,
+html.ew-theme-dark .to-neutral-50\/55,
+html.ew-theme-dark .to-neutral-50\/80 {
+  --tw-gradient-from: #1e1e1e !important;
+  --tw-gradient-to: #191919 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html.ew-theme-dark .notion-editor .tiptap {
+  color: var(--ew-text);
+}
+html.ew-theme-dark .notion-editor .tiptap p.is-editor-empty:first-child::before {
+  color: #8a8a8a;
+}
+html.ew-theme-dark .notion-editor .tiptap h1,
+html.ew-theme-dark .notion-editor .tiptap h2,
+html.ew-theme-dark .notion-editor .tiptap h3 {
+  color: #f3f3f3;
+}
+html.ew-theme-dark .notion-editor .tiptap blockquote {
+  border-left-color: #a3a3a3;
+  color: #cfcfcf;
+}
+html.ew-theme-dark .notion-editor .tiptap code {
+  background: #2a2a2a;
+  color: #e8e8e8;
+}
+
+/* 侧栏激活项：深抬升面 + 清晰字色（修复白块盖白字） */
+html.ew-theme-dark nav a.bg-neutral-100,
+html.ew-theme-dark nav button.bg-neutral-100 {
+  background-color: var(--ew-surface-3) !important;
+  color: var(--ew-text) !important;
+  box-shadow: inset 3px 0 0 #d4d4d4;
+}
+html.ew-theme-dark nav a.bg-neutral-100 .text-neutral-800,
+html.ew-theme-dark nav a.bg-neutral-100 .text-neutral-900 {
+  color: var(--ew-text) !important;
+}
+
+/* 滚动条在深色下略提亮，避免看不见 */
+html.ew-theme-dark .writing-area-scroll:hover::-webkit-scrollbar-thumb,
+html.ew-theme-dark .writing-area-scroll:focus-within::-webkit-scrollbar-thumb,
+html.ew-theme-dark .writing-area-scroll.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: rgb(115 115 115);
+}
+
+/* ── Editor font size preference ── */
+html.ew-editor-font-sm .notion-editor .tiptap {
+  font-size: 14px;
+  line-height: 1.7;
+}
+html.ew-editor-font-md .notion-editor .tiptap {
+  font-size: 16px;
+  line-height: 1.75;
+}
+html.ew-editor-font-lg .notion-editor .tiptap {
+  font-size: 18px;
+  line-height: 1.85;
+}
+@media (max-width: 639px) {
+  html.ew-editor-font-sm .notion-editor .tiptap { font-size: 13px; }
+  html.ew-editor-font-md .notion-editor .tiptap { font-size: 15px; }
+  html.ew-editor-font-lg .notion-editor .tiptap { font-size: 17px; }
+}
+
 /* ── Code ── */
 code, kbd, pre, samp {
   font-family: var(--font-mono);
@@ -554,6 +746,36 @@ code, kbd, pre, samp {
   .animate-assist-target-flash,
   .typing-char-animation { animation: none !important; }
 }
+
+/* 系统设置「减弱动效」：与 prefers-reduced-motion 同源规则 */
+html.ew-reduce-motion .checkin-calendar-layer,
+html.ew-reduce-motion .checkin-calendar-shell { transition: none; }
+html.ew-reduce-motion .checkin-slide-enter-next,
+html.ew-reduce-motion .checkin-slide-enter-prev,
+html.ew-reduce-motion .version-page-enter-next,
+html.ew-reduce-motion .version-page-enter-prev,
+html.ew-reduce-motion .user-tab-enter-next,
+html.ew-reduce-motion .user-tab-enter-prev { animation: none; }
+html.ew-reduce-motion .app-page-enter-next,
+html.ew-reduce-motion .app-page-enter-prev,
+html.ew-reduce-motion .app-page-exit-next,
+html.ew-reduce-motion .app-page-exit-prev { animation: none; }
+html.ew-reduce-motion .dashboard-period-shell[data-switching='true'] { opacity: 1; transition: none; }
+html.ew-reduce-motion .dashboard-period-enter-next,
+html.ew-reduce-motion .dashboard-period-enter-prev { animation: none; }
+html.ew-reduce-motion .records-list-track,
+html.ew-reduce-motion .records-search-slot,
+html.ew-reduce-motion .records-detail-shell { transition: none; }
+html.ew-reduce-motion .records-detail-shell[data-switching='true'] { opacity: 1; }
+html.ew-reduce-motion .records-empty-enter { animation: none; }
+html.ew-reduce-motion .animate-fade-in-up,
+html.ew-reduce-motion .animate-scale-in,
+html.ew-reduce-motion .animate-shimmer,
+html.ew-reduce-motion .animate-pulse-soft,
+html.ew-reduce-motion .animate-assist-target-flash,
+html.ew-reduce-motion .typing-char-animation { animation: none !important; }
+html.ew-reduce-motion .auth-route-layer-enter,
+html.ew-reduce-motion .auth-route-layer-exit { animation: none; }
 
 /* ══════════════════════════════════════════════════════════════
    Typing character animation

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
 import { getTopicTypes, TOPIC_TYPE_FILTER_OPTIONS, type TopicTypeItem } from '../../api/topics'
+import { useT } from '../../i18n'
 
 interface TopicTypeOption {
   value: string
@@ -18,9 +19,9 @@ interface TopicTypeSelectProps {
   disabled?: boolean
 }
 
-function buildOptions(types: TopicTypeItem[]): TopicTypeOption[] {
+function buildOptions(types: TopicTypeItem[], allLabel: string): TopicTypeOption[] {
   return [
-    { value: 'all', label: '全部' },
+    { value: 'all', label: allLabel },
     ...types.map((item) => ({ value: item.name, label: item.name })),
   ]
 }
@@ -32,6 +33,7 @@ export function TopicTypeSelect({
   rootClassName = '',
   disabled = false,
 }: TopicTypeSelectProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; minWidth: number } | null>(
     null,
@@ -39,7 +41,7 @@ export function TopicTypeSelect({
   const [options, setOptions] = useState<TopicTypeOption[]>(
     TOPIC_TYPE_FILTER_OPTIONS.map((option) => ({
       value: option.value,
-      label: option.label,
+      label: option.value === 'all' ? t('writing.topic.typeAll') : option.label,
     })),
   )
   const rootRef = useRef<HTMLDivElement>(null)
@@ -52,7 +54,7 @@ export function TopicTypeSelect({
     getTopicTypes()
       .then((types) => {
         if (cancelled || types.length === 0) return
-        setOptions(buildOptions(types))
+        setOptions(buildOptions(types, t('writing.topic.typeAll')))
       })
       .catch((err) => {
         console.warn('[TopicTypeSelect] 拉取题目类型失败，使用本地兜底选项', err)
@@ -61,7 +63,7 @@ export function TopicTypeSelect({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useLayoutEffect(() => {
     if (!open) {
@@ -179,7 +181,7 @@ export function TopicTypeSelect({
         title={disabled ? '当前草稿题目已锁定' : undefined}
       >
         <span className={`truncate ${value ? 'font-medium text-neutral-700' : 'text-neutral-300'}`}>
-          {value ?? '类型'}
+          {value ?? t('writing.topic.type')}
         </span>
         <ChevronDown
           size={14}

@@ -1,12 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 import { Sparkles, Timer } from 'lucide-react'
+import type { MessageKey } from '../../i18n'
 
 export type AssistFeatureId = 'ai-assistant' | 'writing-timer'
 
 export interface AssistFeature {
   id: AssistFeatureId
-  label: string
-  description: string
+  labelKey: MessageKey
+  descriptionKey: MessageKey
   icon: LucideIcon
   available: boolean
 }
@@ -14,15 +15,15 @@ export interface AssistFeature {
 export const ASSIST_FEATURES: AssistFeature[] = [
   {
     id: 'ai-assistant',
-    label: 'AI 辅助开关',
-    description: '提交后检查修改、提升建议，或边写边辅助',
+    labelKey: 'assist.ai.title',
+    descriptionKey: 'assist.ai.description',
     icon: Sparkles,
     available: true,
   },
   {
     id: 'writing-timer',
-    label: '写作计时',
-    description: '设定时长，倒计时或正计时，到点提醒',
+    labelKey: 'assist.timer.title',
+    descriptionKey: 'assist.timer.description',
     icon: Timer,
     available: true,
   },

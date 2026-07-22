@@ -25,6 +25,7 @@ import type {
   WritingTask,
 } from '../../types/proficiencyTest'
 import { getDefaultHomePath } from '../../utils/roles'
+import { loadUserPreferences } from '../../storage/preferencesStorage'
 
 type ViewMode = 'loading' | 'welcome' | 'testing' | 'evaluating' | 'result' | 'error'
 
@@ -83,7 +84,11 @@ export function ProficiencyTestPage() {
   const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading, refreshProfile, roles, permissions } =
     useAuth()
-  const homePath = getDefaultHomePath(roles, permissions)
+  const homePath = getDefaultHomePath(
+    roles,
+    permissions,
+    loadUserPreferences().ui.defaultHomePath,
+  )
 
   const [view, setView] = useState<ViewMode>('loading')
   const [status, setStatus] = useState<ProficiencyTestStatusResponse | null>(null)

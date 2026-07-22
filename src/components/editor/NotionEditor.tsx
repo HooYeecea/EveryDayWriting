@@ -1,7 +1,7 @@
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { TypingAnimation } from './typingAnimation'
 
 interface NotionEditorProps {
@@ -23,14 +23,19 @@ function readEditorHtml(editor: Editor): string | null {
 export function NotionEditor({
   content = '',
   onChange,
-  placeholder = '开始写作',
+  placeholder = 'Start writing',
 }: NotionEditorProps) {
+  const placeholderRef = useRef(placeholder)
+  placeholderRef.current = placeholder
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({
+        placeholder: () => placeholderRef.current,
+      }),
       TypingAnimation,
     ],
     content,
@@ -61,6 +66,16 @@ export function NotionEditor({
       }
     }
   }, [editor, content])
+
+  // 语言切换后刷新占位符装饰
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    try {
+      editor.view.dispatch(editor.state.tr)
+    } catch {
+      // ignore
+    }
+  }, [editor, placeholder])
 
   return (
     <div className="notion-editor w-full">

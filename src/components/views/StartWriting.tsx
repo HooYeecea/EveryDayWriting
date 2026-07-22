@@ -10,10 +10,11 @@ import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingP
 import { getRandomTopic, topicToPrompt } from '../../api/topics'
 import { isApiError } from '../../api/request'
 import { useAuth } from '../../context/AuthContext'
+import { usePreferences } from '../../context/PreferencesContext'
 import { useReportReady } from '../../hooks/useReportReady'
+import { useT } from '../../i18n'
 import { getMockRandomTopic } from '../../data/mockTopics'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
-import { isTypingAnimationEnabled, setTypingAnimationEnabled } from '../../storage/typingAnimationStorage'
 import {
   loadTopicPanelHeight,
   saveTopicPanelHeight,
@@ -77,6 +78,8 @@ function draftToTopic(draft: { topicId: number | null; topic: string }): Writing
 
 export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated } = useAuth()
+  const { preferences, patchPreferences } = usePreferences()
+  const t = useT()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const draftIdParam = searchParams.get('draftId')
@@ -95,7 +98,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const [isSaving, setIsSaving] = useState(false)
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [topicTypeFilter, setTopicTypeFilter] = useState<string | undefined>(undefined)
+  const [topicTypeFilter, setTopicTypeFilter] = useState<string | undefined>(() => {
+    const preferred = preferences.writing.defaultTopicType.trim()
+    return preferred || undefined
+  })
   const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null)
   const [iterateBaselineSnapshot, setIterateBaselineSnapshot] = useState<string | null>(null)
   /** 仅草稿/迭代需要挡整页；空白起步立刻就绪，避免有缓存仍先闪「加载开始写作」 */
@@ -117,13 +123,25 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const topicHeightRef = useRef<number>(loadTopicPanelHeight() ?? getTopicPanelMinHeight())
   const writingScrollRef = useRef<HTMLDivElement>(null)
   const writingScrollHideTimerRef = useRef<number | null>(null)
-  const [typingAnimOn, setTypingAnimOn] = useState(() => isTypingAnimationEnabled())
+  const [typingAnimOn, setTypingAnimOn] = useState(() => preferences.writing.typingAnimation)
   const [topicHeight, setTopicHeight] = useState(
     () => loadTopicPanelHeight() ?? getTopicPanelMinHeight(),
   )
   const [isResizingTopic, setIsResizingTopic] = useState(false)
-  const [writingFullscreen, setWritingFullscreen] = useState(false)
+  const [writingFullscreen, setWritingFullscreen] = useState(
+    () => preferences.writing.defaultFullscreen,
+  )
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
+
+  useEffect(() => {
+    setTypingAnimOn(preferences.writing.typingAnimation)
+  }, [preferences.writing.typingAnimation])
+
+  useEffect(() => {
+    if (preferences.writing.defaultFullscreen) {
+      setWritingFullscreen(true)
+    }
+  }, [preferences.writing.defaultFullscreen])
 
   const assignDraftMeta = (id: string | undefined, updatedAt: string | undefined) => {
     draftIdRef.current = id
@@ -398,7 +416,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const handleToggleTypingAnim = () => {
     setTypingAnimOn((prev) => {
       const next = !prev
-      setTypingAnimationEnabled(next)
+      patchPreferences((current) => ({
+        ...current,
+        writing: { ...current.writing, typingAnimation: next },
+      }))
       return next
     })
   }
@@ -416,7 +437,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     } catch { /* ignore */ }
   }, [title, content, isAuthenticated, localStorageKey])
 
-  // 服务器自动保存（停止输入 3s 后触发；与手动保存共用同一草稿）
+  // 服务器自动保存（停止输入后按系统设置间隔触发；与手动保存共用同一草稿）
   useEffect(() => {
     if (!isAuthenticated || !topic || topic.id === 0) return
 
@@ -424,6 +445,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     if (hash === lastAutoSavedHashRef.current) return
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+
+    const delayMs = preferences.writing.autoSaveIntervalSec * 1000
 
     autoSaveTimerRef.current = window.setTimeout(() => {
       if (isEditorEmpty(content)) return
@@ -450,13 +473,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           // 静默失败，不打扰用户
         }
       })
-    }, 3000)
+    }, delayMs)
 
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, topic, isAuthenticated])
+  }, [title, content, topic, isAuthenticated, preferences.writing.autoSaveIntervalSec])
 
   // 页面关闭前紧急写入 localStorage
   useEffect(() => {
@@ -601,12 +624,12 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     if (!promptLogin()) return
 
     if (!hasTopic) {
-      setFeedback({ tone: 'error', message: '请先获取题目再保存' })
+      setFeedback({ tone: 'error', message: t('writing.needTopicSave') })
       return
     }
 
     if (isEditorEmpty(content)) {
-      setFeedback({ tone: 'error', message: '请先输入正文再保存' })
+      setFeedback({ tone: 'error', message: t('writing.needContentSave') })
       return
     }
 
@@ -683,23 +706,32 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     if (submitLockRef.current || isSubmitting) return
 
     if (!hasTopic) {
-      setFeedback({ tone: 'error', message: '请先获取题目再提交' })
+      setFeedback({ tone: 'error', message: t('writing.needTopic') })
       return
     }
 
     if (isEditorEmpty(content)) {
-      setFeedback({ tone: 'error', message: '请先输入正文再提交' })
+      setFeedback({ tone: 'error', message: t('writing.needContent') })
       return
     }
 
     if (isContentAlreadySubmitted) {
-      setFeedback({ tone: 'info', message: '当前内容已提交，修改后再提交' })
+      setFeedback({ tone: 'info', message: t('writing.alreadySubmitted') })
       return
     }
 
     if (isIterateUnchanged) {
-      setFeedback({ tone: 'info', message: '内容相对最新版没有变化，请先修改后再提交' })
+      setFeedback({ tone: 'info', message: t('writing.iterateUnchanged') })
       return
+    }
+
+    if (preferences.writing.confirmBeforeSubmit) {
+      const confirmed = await confirm({
+        title: t('writing.confirmSubmitTitle'),
+        message: t('writing.confirmSubmitMessage'),
+        confirmLabel: t('writing.confirmSubmitLabel'),
+      })
+      if (!confirmed) return
     }
 
     submitLockRef.current = true
@@ -835,14 +867,14 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   const idleFooterStatus = (() => {
-    if (!isAuthenticated) return '登录后可保存和提交'
-    if (!hasTopic) return '请先获取题目'
+    if (!isAuthenticated) return t('writing.loginToSave')
+    if (!hasTopic) return t('writing.topic.needFirst')
     if (wordCount !== undefined && wordLimit !== undefined) {
       const mode = draftId ? '编辑中' : '新写作'
       return `${wordCount} / ${wordLimit} 词 · ${mode}`
     }
     if (iterateFromId) {
-      if (isIterateUnchanged) return '相对最新版无变化 · 修改后可提交'
+      if (isIterateUnchanged) return `${t('writing.noChange')} · 修改后可提交`
       return '迭代改进中 · 提交将创建新版本'
     }
     if (draftId) return '编辑中 · 题目已锁定 · 保存将更新当前草稿'
@@ -869,10 +901,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         onClick={() => void handleChangeTopic()}
         aria-disabled={topicLocked}
         className={`${changeTopicButtonClass} order-2 sm:order-1 ${topicLocked ? 'cursor-not-allowed opacity-45 hover:border-neutral-200 hover:bg-white hover:text-neutral-600 active:scale-100' : ''}`}
-        title={topicLocked ? '当前草稿题目已锁定' : '换个题目'}
+        title={topicLocked ? '当前草稿题目已锁定' : t('writing.topic.change')}
       >
         <RefreshCw size={14} className="shrink-0" />
-        <span className="truncate">换个题目</span>
+        <span className="truncate">{t('writing.topic.change')}</span>
       </button>
       <div className={`relative order-1 sm:order-2 sm:w-full ${topicLocked ? 'cursor-not-allowed' : ''}`}>
         <TopicTypeSelect
@@ -909,8 +941,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           >
             <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-2.5 sm:gap-3">
               <p className="hidden shrink-0 self-center text-center font-sans text-lg font-semibold leading-snug tracking-wide text-neutral-600 sm:block">
-                <span className="block">写作</span>
-                <span className="block">题目</span>
+                {t('writing.topic.label')}
               </p>
               <div className="min-h-0 min-w-0 flex-1">
                 {hasTopic ? (
@@ -942,7 +973,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                   </div>
                 ) : (
                   <div className="flex h-full min-h-0 w-full items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50/80 px-3 py-2">
-                    <p className="text-center text-sm text-neutral-400 sm:text-[15px]">请获取题目</p>
+                    <p className="text-center text-sm text-neutral-400 sm:text-[15px]">
+                      {t('writing.topic.fetchHint')}
+                    </p>
                   </div>
                 )}
               </div>
@@ -989,7 +1022,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         >
           {writingFullscreen ? (
             <div className="flex min-h-full items-center justify-center rounded-xl border border-dashed border-neutral-200 bg-white/60 px-4 py-16 text-sm text-neutral-400">
-              写作区全屏中…
+              {t('writing.fullscreen.placeholder')}
             </div>
           ) : (
             <div className="writing-sheet relative flex min-h-full flex-col rounded-xl border border-neutral-200/95 bg-gradient-to-b from-white/92 to-neutral-50/55 pb-12 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]">
@@ -998,12 +1031,17 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="自定义标题"
+                  placeholder={t('writing.titlePlaceholder')}
                   className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
                 />
               </div>
 
-              <NotionEditor key={editorKey} content={content} onChange={setContent} />
+              <NotionEditor
+                key={editorKey}
+                content={content}
+                onChange={setContent}
+                placeholder={t('writing.editorPlaceholder')}
+              />
 
               <button
                 type="button"
@@ -1029,10 +1067,12 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                     ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
                     : 'border-neutral-200 bg-white text-neutral-400'
                 }`}
-                title={typingAnimOn ? '打字动效已开启，点击关闭' : '打字动效已关闭，点击开启'}
+                title={
+                  typingAnimOn ? t('writing.typingAnim.on') : t('writing.typingAnim.off')
+                }
               >
                 <Wand2 size={13} strokeWidth={typingAnimOn ? 2 : 1.5} />
-                打字动效
+                {t('writing.typingAnim.label')}
               </button>
               {feedback ? (
                 <div className={feedbackToneClass}>
@@ -1043,7 +1083,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                       state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
                       className="mt-1 inline-block font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
                     >
-                      前往写作记录
+                      {t('writing.goToRecords')}
                     </Link>
                   )}
                 </div>
@@ -1060,7 +1100,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 title={topicLocked ? '清空并解除题目绑定，请重新获取题目' : '清空标题和正文，下次保存创建新草稿'}
               >
                 <RotateCcw size={14} />
-                重写
+                {t('writing.rewrite')}
               </button>
               <button
                 type="button"
@@ -1068,7 +1108,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 disabled={isSaving}
                 className="flex h-9 flex-1 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
               >
-                {isSaving ? '保存中…' : '保存'}
+                {isSaving ? t('writing.saving') : t('writing.save')}
               </button>
               <button
                 type="button"
@@ -1076,22 +1116,22 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 disabled={isSubmitting || isContentAlreadySubmitted || isIterateUnchanged}
                 title={
                   isContentAlreadySubmitted
-                    ? '当前内容已提交，修改后可再次提交'
+                    ? t('writing.alreadySubmitted')
                     : isIterateUnchanged
-                      ? '内容相对最新版没有变化，请先修改后再提交'
+                      ? t('writing.iterateUnchanged')
                       : undefined
                 }
                 className="flex h-9 flex-1 items-center justify-center rounded-lg bg-neutral-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-6"
               >
                 {isSubmitting
                   ? submitPhase === 'grading'
-                    ? 'AI 批改中…'
-                    : '提交中…'
+                    ? t('writing.submit.grading')
+                    : t('writing.submitting')
                   : isContentAlreadySubmitted
-                    ? '已提交'
+                    ? t('writing.submitted')
                     : isIterateUnchanged
-                      ? '无变化'
-                      : '提交'}
+                      ? '—'
+                      : t('writing.submit')}
               </button>
             </div>
           </div>
@@ -1104,13 +1144,15 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
               className="fixed inset-0 z-[9999] flex flex-col bg-neutral-100"
               role="dialog"
               aria-modal="true"
-              aria-label="全屏写作"
+              aria-label={t('writing.fullscreen.aria')}
             >
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6">
                 <div className="min-w-0">
-                  <p className="font-sans text-sm font-semibold text-neutral-900">专注写作</p>
+                  <p className="font-sans text-sm font-semibold text-neutral-900">
+                    {t('writing.fullscreen.title')}
+                  </p>
                   <p className="mt-0.5 truncate text-xs text-neutral-400">
-                    {topicPrompt || '写作区全屏 · Esc 退出'}
+                    {topicPrompt || t('writing.fullscreen.hint')}
                   </p>
                 </div>
                 <button
@@ -1119,7 +1161,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
                 >
                   <X size={14} strokeWidth={1.75} />
-                  退出全屏
+                  {t('writing.fullscreen.exit')}
                 </button>
               </div>
               <div className="writing-fullscreen-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
@@ -1129,11 +1171,16 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="自定义标题"
+                      placeholder={t('writing.titlePlaceholder')}
                       className="w-full border-none bg-transparent text-center text-xl font-semibold text-neutral-900 outline-none placeholder:text-neutral-300 sm:text-2xl"
                     />
                   </div>
-                  <NotionEditor key={`fs-${editorKey}`} content={content} onChange={setContent} />
+                  <NotionEditor
+                    key={`fs-${editorKey}`}
+                    content={content}
+                    onChange={setContent}
+                    placeholder={t('writing.editorPlaceholder')}
+                  />
                 </div>
               </div>
             </div>,

@@ -8,7 +8,7 @@ export interface AppRoute {
   key: MenuKey
   path: string
   label: string
-  icon: 'user' | 'pen' | 'clipboard' | 'book' | 'chart' | 'help'
+  icon: 'user' | 'pen' | 'clipboard' | 'book' | 'chart' | 'help' | 'settings'
   component: ComponentType<AppPageProps>
 }
 
@@ -35,6 +35,9 @@ const PersonalAssessment = lazy(() =>
 )
 const UsageGuide = lazy(() =>
   import('../components/views/UsageGuide').then((m) => ({ default: m.UsageGuide })),
+)
+const SystemSettings = lazy(() =>
+  import('../components/views/SystemSettings').then((m) => ({ default: m.SystemSettings })),
 )
 
 export const APP_ROUTES: AppRoute[] = [
@@ -79,6 +82,13 @@ export const APP_ROUTES: AppRoute[] = [
     label: '使用指南',
     icon: 'help',
     component: UsageGuide,
+  },
+  {
+    key: 'system-settings',
+    path: '/settings',
+    label: '系统设置',
+    icon: 'settings',
+    component: SystemSettings,
   },
 ]
 

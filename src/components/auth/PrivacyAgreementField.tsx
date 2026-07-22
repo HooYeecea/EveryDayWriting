@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../../i18n'
 import { PrivacyAgreementModal } from './PrivacyAgreementModal'
 
 interface PrivacyAgreementFieldProps {
@@ -15,6 +16,7 @@ export function PrivacyAgreementField({
   onAgreementIdChange,
   highlight = false,
 }: PrivacyAgreementFieldProps) {
+  const t = useT()
   const [showModal, setShowModal] = useState(false)
   const showWarning = highlight && !checked
 
@@ -40,7 +42,7 @@ export function PrivacyAgreementField({
             className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-400"
           />
           <span className="text-xs leading-snug text-neutral-600 sm:text-sm">
-            我已阅读并同意
+            {t('auth.privacy.prefix')}
             <button
               type="button"
               onClick={(e) => {
@@ -49,7 +51,7 @@ export function PrivacyAgreementField({
               }}
               className="mx-0.5 font-medium text-neutral-900 underline-offset-2 hover:underline"
             >
-              《隐私协议》
+              {t('auth.privacy.link')}
             </button>
           </span>
         </label>
@@ -59,7 +61,7 @@ export function PrivacyAgreementField({
           }`}
           aria-hidden={!showWarning}
         >
-          请先阅读并同意《隐私协议》后再继续
+          {t('auth.privacy.warn')}
         </p>
       </div>
 

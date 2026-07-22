@@ -1,4 +1,5 @@
 import type { SendCodePurpose } from '../types'
+import type { MessageKey } from '../i18n/messages'
 
 export const EMAIL_CODE_COOLDOWN_SECONDS = 60
 
@@ -27,8 +28,12 @@ export function getEmailCodeCooldownRemaining(purpose: SendCodePurpose, email: s
   return remain > 0 ? remain : 0
 }
 
-export function emailCodeCooldownLabel(cooldown: number, sending: boolean): string {
-  if (sending) return '发送中…'
+export function emailCodeCooldownLabel(
+  cooldown: number,
+  sending: boolean,
+  t: (key: MessageKey, params?: Record<string, string | number>) => string,
+): string {
+  if (sending) return t('auth.common.sending')
   if (cooldown > 0) return `${cooldown}s`
-  return '获取验证码'
+  return t('auth.common.sendCode')
 }

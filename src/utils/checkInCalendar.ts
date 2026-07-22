@@ -8,7 +8,14 @@ export const CALENDAR_VIEW_LABELS: Record<CalendarViewMode, string> = {
   week: '周',
 }
 
-export const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日']
+export const WEEKDAY_LABELS_MON = ['一', '二', '三', '四', '五', '六', '日']
+export const WEEKDAY_LABELS_SUN = ['日', '一', '二', '三', '四', '五', '六']
+/** @deprecated 默认周一开头；请用 getWeekdayLabels */
+export const WEEKDAY_LABELS = WEEKDAY_LABELS_MON
+
+export function getWeekdayLabels(weekStartsOn: 0 | 1 = 1): string[] {
+  return weekStartsOn === 1 ? WEEKDAY_LABELS_MON : WEEKDAY_LABELS_SUN
+}
 
 export interface CalendarCell {
   key: string
@@ -24,9 +31,14 @@ export function toDateKey(date: Date): string {
 }
 
 export function startOfWeekMonday(date: Date): Date {
+  return startOfWeek(date, 1)
+}
+
+export function startOfWeek(date: Date, weekStartsOn: 0 | 1 = 1): Date {
   const result = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const weekday = (result.getDay() + 6) % 7
-  result.setDate(result.getDate() - weekday)
+  const day = result.getDay()
+  const diff = weekStartsOn === 1 ? (day + 6) % 7 : day
+  result.setDate(result.getDate() - diff)
   return result
 }
 
@@ -36,8 +48,11 @@ export function addDays(date: Date, days: number): Date {
   return result
 }
 
-export function buildMonthGrid(year: number, month: number): CalendarCell[] {
-  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7
+export function buildMonthGrid(year: number, month: number, weekStartsOn: 0 | 1 = 1): CalendarCell[] {
+  const firstWeekday =
+    weekStartsOn === 1
+      ? (new Date(year, month, 1).getDay() + 6) % 7
+      : new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const daysInPrevMonth = new Date(year, month, 0).getDate()
   const cells: CalendarCell[] = []
@@ -79,8 +94,15 @@ export function buildMonthGrid(year: number, month: number): CalendarCell[] {
   return cells
 }
 
-export function buildMonthMiniGrid(year: number, monthIndex: number): CalendarCell[] {
-  const firstWeekday = (new Date(year, monthIndex, 1).getDay() + 6) % 7
+export function buildMonthMiniGrid(
+  year: number,
+  monthIndex: number,
+  weekStartsOn: 0 | 1 = 1,
+): CalendarCell[] {
+  const firstWeekday =
+    weekStartsOn === 1
+      ? (new Date(year, monthIndex, 1).getDay() + 6) % 7
+      : new Date(year, monthIndex, 1).getDay()
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
   const cells: CalendarCell[] = []
 
@@ -130,24 +152,46 @@ export function formatYearLabel(year: number): string {
   return `${year}年`
 }
 
-export function formatMonthLabel(year: number, monthIndex: number): string {
-  return new Date(year, monthIndex, 1).toLocaleDateString('zh-CN', {
+export function formatMonthLabel(
+  year: number,
+  monthIndex: number,
+  locale = 'zh-CN',
+  dateFormat: 'locale' | 'ymd' | 'mdy' = 'locale',
+): string {
+  if (dateFormat === 'ymd') {
+    return `${year}-${String(monthIndex + 1).padStart(2, '0')}`
+  }
+  if (dateFormat === 'mdy') {
+    return new Date(year, monthIndex, 1).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+    })
+  }
+  return new Date(year, monthIndex, 1).toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',
   })
 }
 
-export function formatWeekLabel(weekStart: Date): string {
+export function formatWeekLabel(
+  weekStart: Date,
+  locale = 'zh-CN',
+  dateFormat: 'locale' | 'ymd' | 'mdy' = 'locale',
+): string {
   const weekEnd = addDays(weekStart, 6)
+  if (dateFormat === 'ymd') {
+    return `${toDateKey(weekStart)} - ${toDateKey(weekEnd)}`
+  }
   const sameMonth = weekStart.getMonth() === weekEnd.getMonth()
   const sameYear = weekStart.getFullYear() === weekEnd.getFullYear()
+  const loc = dateFormat === 'mdy' ? 'en-US' : locale
 
-  const startText = weekStart.toLocaleDateString('zh-CN', {
+  const startText = weekStart.toLocaleDateString(loc, {
     year: sameYear ? undefined : 'numeric',
     month: 'long',
     day: 'numeric',
   })
-  const endText = weekEnd.toLocaleDateString('zh-CN', {
+  const endText = weekEnd.toLocaleDateString(loc, {
     year: sameYear ? undefined : 'numeric',
     month: sameMonth ? undefined : 'long',
     day: 'numeric',

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getCheckInCalendar, getCheckInStatus, getCheckInYearCalendar } from '../../api/checkIn'
+import { usePreferences } from '../../context/PreferencesContext'
 import type { CheckInCalendar, CheckInStatus } from '../../types'
+import { APP_LOCALE_TO_BCP47, type DateFormatPref, type WeekStartsOn } from '../../types/preferences'
 import {
   addDays,
   buildCalendarRequestKey,
@@ -17,11 +19,11 @@ import {
   getMonthKeysFromDates,
   getWeekAnchorDate,
   getWeekDays,
+  getWeekdayLabels,
   measureElementHeight,
   resolveTargetViewHeight,
-  startOfWeekMonday,
+  startOfWeek,
   toDateKey,
-  WEEKDAY_LABELS,
   type CalendarViewMode,
 } from '../../utils/checkInCalendar'
 
@@ -118,6 +120,7 @@ function YearCalendarView({
   checkedDaySet,
   today,
   todayKey,
+  weekStartsOn,
   onOpenMonth,
 }: {
   viewYear: number
@@ -125,6 +128,7 @@ function YearCalendarView({
   checkedDaySet: Set<string>
   today: Date
   todayKey: string
+  weekStartsOn: WeekStartsOn
   onOpenMonth: (monthIndex: number) => void
 }) {
   const months = yearCalendars.length === 12 ? yearCalendars : createEmptyYearCalendars(viewYear)
@@ -133,7 +137,7 @@ function YearCalendarView({
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
       {months.map((monthCalendar, monthIndex) => {
         const daysInMonth = getDaysInMonth(viewYear, monthIndex)
-        const miniCells = buildMonthMiniGrid(viewYear, monthIndex)
+        const miniCells = buildMonthMiniGrid(viewYear, monthIndex, weekStartsOn)
         const isCurrentMonth = viewYear === today.getFullYear() && monthIndex === today.getMonth()
 
         return (
@@ -175,15 +179,17 @@ function MonthCalendarView({
   calendarCells,
   checkedDaySet,
   todayKey,
+  weekdayLabels,
 }: {
   calendarCells: ReturnType<typeof buildMonthGrid>
   checkedDaySet: Set<string>
   todayKey: string
+  weekdayLabels: string[]
 }) {
   return (
     <>
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-neutral-400 sm:text-xs">
-        {WEEKDAY_LABELS.map((label) => (
+        {weekdayLabels.map((label) => (
           <div key={label} className="py-1">
             {label}
           </div>
@@ -209,15 +215,21 @@ function WeekCalendarView({
   weekDays,
   checkedDaySet,
   todayKey,
+  weekdayLabels,
+  dateLocale,
+  dateFormat,
 }: {
   weekDays: Date[]
   checkedDaySet: Set<string>
   todayKey: string
+  weekdayLabels: string[]
+  dateLocale: string
+  dateFormat: DateFormatPref
 }) {
   return (
     <>
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-neutral-400 sm:text-xs">
-        {WEEKDAY_LABELS.map((label) => (
+        {weekdayLabels.map((label) => (
           <div key={label} className="py-1">
             {label}
           </div>
@@ -227,6 +239,13 @@ function WeekCalendarView({
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {weekDays.map((date) => {
           const key = toDateKey(date)
+          const dayLabel =
+            dateFormat === 'ymd'
+              ? `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+              : date.toLocaleDateString(dateFormat === 'mdy' ? 'en-US' : dateLocale, {
+                  month: 'numeric',
+                  day: 'numeric',
+                })
           return (
             <div key={key} className="flex flex-col items-center gap-1">
               <DayCell
@@ -235,9 +254,7 @@ function WeekCalendarView({
                 isToday={key === todayKey}
                 size="lg"
               />
-              <span className="hidden text-[10px] text-neutral-400 sm:block">
-                {date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
-              </span>
+              <span className="hidden text-[10px] text-neutral-400 sm:block">{dayLabel}</span>
             </div>
           )
         })}
@@ -261,6 +278,12 @@ function slideEnterClass(direction: SlideDirection | null): string {
 }
 
 export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) {
+  const { preferences } = usePreferences()
+  const weekStartsOn = preferences.ui.weekStartsOn
+  const dateFormat = preferences.ui.dateFormat
+  const dateLocale = APP_LOCALE_TO_BCP47[preferences.locale]
+  const weekdayLabels = useMemo(() => getWeekdayLabels(weekStartsOn), [weekStartsOn])
+
   const today = useMemo(() => new Date(), [])
   const todayKey = useMemo(() => toDateKey(today), [today])
   const calendarCache = useRef(new Map<string, CheckInCalendar>())
@@ -302,7 +325,11 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month')
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
-  const [viewWeekStart, setViewWeekStart] = useState(() => startOfWeekMonday(today))
+  const [viewWeekStart, setViewWeekStart] = useState(() => startOfWeek(today, weekStartsOn))
+
+  useEffect(() => {
+    setViewWeekStart((prev) => startOfWeek(addDays(prev, 3), weekStartsOn))
+  }, [weekStartsOn])
 
   const requestKey = useMemo(
     () => buildCalendarRequestKey(viewMode, viewYear, viewMonth, viewWeekStart),
@@ -354,8 +381,8 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
   }, [getCachedMonth, getCachedYearCalendars, loadedKey, requestKey, viewMode, viewMonth, viewWeekStart, viewYear])
 
   const calendarCells = useMemo(
-    () => buildMonthGrid(viewYear, viewMonth),
-    [viewMonth, viewYear],
+    () => buildMonthGrid(viewYear, viewMonth, weekStartsOn),
+    [viewMonth, viewYear, weekStartsOn],
   )
 
   const weekDays = useMemo(() => getWeekDays(viewWeekStart), [viewWeekStart])
@@ -564,9 +591,9 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
 
   const periodLabel = useMemo(() => {
     if (viewMode === 'year') return formatYearLabel(viewYear)
-    if (viewMode === 'week') return formatWeekLabel(viewWeekStart)
-    return formatMonthLabel(viewYear, viewMonth)
-  }, [viewMode, viewMonth, viewWeekStart, viewYear])
+    if (viewMode === 'week') return formatWeekLabel(viewWeekStart, dateLocale, dateFormat)
+    return formatMonthLabel(viewYear, viewMonth, dateLocale, dateFormat)
+  }, [dateFormat, dateLocale, viewMode, viewMonth, viewWeekStart, viewYear])
 
   useEffect(() => {
     let cancelled = false
@@ -653,7 +680,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
 
     if (mode === 'week') {
       const anchor = getWeekAnchorDate(viewYear, viewMonth, today, viewMode)
-      setViewWeekStart(startOfWeekMonday(anchor))
+      setViewWeekStart(startOfWeek(anchor, weekStartsOn))
     }
 
     if (mode === 'month' && viewMode === 'week') {
@@ -720,13 +747,15 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
     }
     if (viewMode === 'week') {
       const total = weekDays.filter((date) => checkedDaySet.has(toDateKey(date))).length
-      return `${formatWeekLabel(viewWeekStart)} 已打卡 ${total} 天`
+      return `${formatWeekLabel(viewWeekStart, dateLocale, dateFormat)} 已打卡 ${total} 天`
     }
     if (!isSynced || !calendar) return null
-    return `${formatMonthLabel(viewYear, viewMonth)} 已打卡 ${calendar.totalDays} 天`
+    return `${formatMonthLabel(viewYear, viewMonth, dateLocale, dateFormat)} 已打卡 ${calendar.totalDays} 天`
   }, [
     calendar,
     checkedDaySet,
+    dateFormat,
+    dateLocale,
     isSynced,
     viewMode,
     viewMonth,
@@ -841,6 +870,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
                 checkedDaySet={viewMode === 'year' ? checkedDaySet : new Set()}
                 today={today}
                 todayKey={todayKey}
+                weekStartsOn={weekStartsOn}
                 onOpenMonth={openMonthFromYear}
               />
             </div>
@@ -857,6 +887,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
                 calendarCells={calendarCells}
                 checkedDaySet={viewMode === 'month' ? checkedDaySet : new Set()}
                 todayKey={todayKey}
+                weekdayLabels={weekdayLabels}
               />
             </div>
           </div>
@@ -867,6 +898,9 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
                 weekDays={weekDays}
                 checkedDaySet={viewMode === 'week' ? checkedDaySet : new Set()}
                 todayKey={todayKey}
+                weekdayLabels={weekdayLabels}
+                dateLocale={dateLocale}
+                dateFormat={dateFormat}
               />
             </div>
           </div>

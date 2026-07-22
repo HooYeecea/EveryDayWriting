@@ -20,6 +20,7 @@ import {
 } from './utils/roles'
 import { isAuthPath } from './config/authPaths'
 import { dismissBootSplash } from './utils/bootSplash'
+import { loadUserPreferences } from './storage/preferencesStorage'
 
 const AdminLayout = lazy(() =>
   import('./components/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
@@ -54,7 +55,11 @@ function App() {
   const { mustChangePassword, isLoading, roles, permissions, isAuthenticated, refreshAccess } =
     useAuth()
   const { navigationLocked } = useWritingFocus()
-  const homePath = getDefaultHomePath(roles, permissions)
+  const homePath = getDefaultHomePath(
+    roles,
+    permissions,
+    loadUserPreferences().ui.defaultHomePath,
+  )
   const wasOnAdminRef = useRef(false)
 
   // 鉴权恢复完成后再卸 HTML 启动壳，避免 chunk 失败时已无壳可看

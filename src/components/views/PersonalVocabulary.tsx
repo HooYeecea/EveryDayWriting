@@ -11,6 +11,7 @@ import { DEFAULT_PART_OF_SPEECH, PART_OF_SPEECH_OPTIONS } from '../../data/partO
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { useAuth } from '../../context/AuthContext'
 import { useReportReady } from '../../hooks/useReportReady'
+import { useT } from '../../i18n'
 import { MenuSelect } from '../common/MenuSelect'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
@@ -30,6 +31,7 @@ const POS_OPTIONS = PART_OF_SPEECH_OPTIONS.map((item) => ({
 }))
 
 export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
+  const t = useT()
   const { isAuthenticated } = useAuth()
   const { confirm } = useAppConfirm()
   const [items, setItems] = useState<VocabularyItem[]>([])
@@ -114,7 +116,7 @@ export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
       <div className={PANEL_HEADER_CLASS}>
         <div className="flex items-center gap-2">
           <BookOpen size={18} className="text-neutral-500" />
-          <h1 className={PANEL_TITLE_CLASS}>个人词库</h1>
+          <h1 className={PANEL_TITLE_CLASS}>{t('vocab.title')}</h1>
         </div>
       </div>
 
@@ -131,7 +133,7 @@ export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索单词…"
+              placeholder={t('vocab.search.placeholder')}
               className="w-full rounded-lg border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-neutral-400"
             />
           </div>
@@ -139,7 +141,7 @@ export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
             type="submit"
             className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
           >
-            搜索
+            {t('vocab.search.button')}
           </button>
           {activeQuery && (
             <button
@@ -159,7 +161,7 @@ export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
             className="flex shrink-0 items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             <Plus size={14} />
-            添加词条
+            {t('vocab.addButton')}
           </button>
         </form>
 
@@ -203,24 +205,24 @@ export function PersonalVocabulary({ onReady }: { onReady?: () => void } = {}) {
                 disabled={submitting}
                 className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                {submitting ? '保存中…' : '保存'}
+                {submitting ? t('common.saving') : t('common.save')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
                 className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600"
               >
-                取消
+                {t('common.cancel')}
               </button>
             </div>
           </form>
         )}
 
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-        {loading && <p className="text-sm text-neutral-400">加载中…</p>}
+        {loading && <p className="text-sm text-neutral-400">{t('common.loading')}</p>}
 
         {!loading && items.length === 0 && (
-          <p className="text-sm text-neutral-400">暂无词条，点击「添加词条」开始积累。</p>
+          <p className="text-sm text-neutral-400">{t('vocab.empty')}</p>
         )}
 
         <ul className="space-y-3">

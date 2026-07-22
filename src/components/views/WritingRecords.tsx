@@ -17,6 +17,7 @@ import { SubmitVersionNav } from '../writing/SubmitVersionNav'
 import { useAuth } from '../../context/AuthContext'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
+import { useT } from '../../i18n'
 import { loadGradingPreview, gradingPreviewFromAiResults, mergeGradingPreview } from '../../storage/gradingPreviewStorage'
 import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
 import {
@@ -178,6 +179,7 @@ function resolveVersionList(
 
 export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated } = useAuth()
+  const t = useT()
   const { alert } = useAppAlert()
   const { confirm } = useAppConfirm()
   const navigate = useNavigate()
@@ -271,11 +273,11 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
 
   const handleDelete = async () => {
     if (!selectedId || deleting) return
-    const label = tab === 'saves' ? '草稿' : '提交记录'
+    const label = tab === 'saves' ? t('records.tab.drafts') : t('records.tab.submits')
     const ok = await confirm({
-      title: `删除${label}`,
-      message: `确定删除这条${label}？此操作不可恢复。`,
-      confirmLabel: '删除',
+      title: t('records.deleteTitle', { label }),
+      message: t('records.deleteMessage', { label }),
+      confirmLabel: t('common.delete'),
       variant: 'warning',
     })
     if (!ok) return
@@ -300,8 +302,8 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
       setMobileShowDetail(false)
     } catch (err) {
       void alert({
-        title: '删除失败',
-        message: err instanceof Error ? err.message : '删除失败',
+        title: t('records.deleteFailed'),
+        message: err instanceof Error ? err.message : t('records.deleteFailed'),
         variant: 'notice',
       })
     } finally {
@@ -510,16 +512,16 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100">
           <LogIn size={28} className="text-neutral-400" strokeWidth={1.5} />
         </div>
-        <h2 className="mt-5 text-lg font-medium text-neutral-800">登录后查看写作记录</h2>
+        <h2 className="mt-5 text-lg font-medium text-neutral-800">{t('records.loginTitle')}</h2>
         <p className="mt-2 max-w-sm text-center text-sm text-neutral-400">
-          登录后可查看草稿与正式提交记录
+          {t('records.loginHint')}
         </p>
         <Link
           to="/login"
           state={{ from: '/records' }}
           className="mt-6 rounded-lg bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
         >
-          立即登录
+          {t('nav.loginNow')}
         </Link>
       </div>
     )
@@ -537,7 +539,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
             <div className="min-w-0">
               <h2 className={`${PANEL_TITLE_CLASS} flex items-center gap-2`}>
                 <ClipboardList size={18} strokeWidth={2} className="shrink-0 text-neutral-800" />
-                写作记录
+                {t('records.title')}
               </h2>
             </div>
           </div>
@@ -553,7 +555,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                 : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            草稿
+            {t('records.tab.drafts')}
           </button>
           <button
             type="button"
@@ -564,7 +566,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                 : 'text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            提交记录
+            {t('records.tab.submits')}
           </button>
         </div>
 
@@ -573,10 +575,10 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
             <div className="records-list-pane">
               <div className="flex-1 overflow-y-auto p-2 [scrollbar-gutter:stable]">
                 {savesLoading && saves.length === 0 && (
-                  <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>
+                  <p className="px-3 py-4 text-sm text-neutral-400">{t('common.loading')}</p>
                 )}
                 {!savesLoading && saves.length === 0 && (
-                  <p className="py-8 text-center text-sm text-neutral-400">暂无草稿</p>
+                  <p className="py-8 text-center text-sm text-neutral-400">{t('records.empty.drafts')}</p>
                 )}
                 {saves.map((record) => (
                   <button
@@ -615,7 +617,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>
                 )}
                 {!submitsLoading && submits.length === 0 && (
-                  <p className="py-8 text-center text-sm text-neutral-400">暂无提交记录</p>
+                  <p className="py-8 text-center text-sm text-neutral-400">{t('records.empty.submits')}</p>
                 )}
                 {submits.map((record) => (
                   <button
@@ -687,7 +689,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                 {!selectedId && (
                   <div className="records-empty-enter flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
                     <FileText size={32} strokeWidth={1.5} />
-                    <p className="mt-3 text-sm">选择一条记录查看详情</p>
+                    <p className="mt-3 text-sm">{t('records.empty.selectDetail')}</p>
                   </div>
                 )}
 
@@ -730,7 +732,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                               disabled={deleting || draftDetail.id !== selectedDraft.id}
                               className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
                             >
-                              {deleting ? '删除中…' : '删除草稿'}
+                              {deleting ? t('common.deleting') : t('records.deleteDraft')}
                             </button>
                           </div>
                         </div>
@@ -758,7 +760,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         </div>
                       </div>
                     ) : draftDetailLoading ? (
-                      <BrandLoading label="加载草稿内容…" minHeight={280} />
+                      <BrandLoading label={t('records.loadingDraft')} minHeight={280} />
                     ) : (
                       <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
@@ -767,7 +769,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
                           {selectedDraft.title || '无标题'}
                         </h3>
-                        <p className="mt-4 text-sm text-neutral-400">未能加载该草稿</p>
+                        <p className="mt-4 text-sm text-neutral-400">{t('records.draftLoadFailed')}</p>
                       </div>
                     )}
                   </div>
@@ -797,7 +799,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                 {!selectedId && (
                   <div className="records-empty-enter flex h-full min-h-[12rem] flex-col items-center justify-center text-neutral-400">
                     <FileText size={32} strokeWidth={1.5} />
-                    <p className="mt-3 text-sm">选择一条记录查看详情</p>
+                    <p className="mt-3 text-sm">{t('records.empty.selectDetail')}</p>
                   </div>
                 )}
 
@@ -917,7 +919,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                       disabled={deleting || !detailReady}
                       className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 disabled:opacity-50"
                     >
-                      {deleting ? '删除中…' : '删除记录'}
+                      {deleting ? t('common.deleting') : t('records.deleteSubmit')}
                     </button>
                   </div>
                 </div>
@@ -932,7 +934,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     <dd className="mt-0.5 text-neutral-700">{submitDetail.topicType}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-400">提交时间</dt>
+                    <dt className="text-neutral-400">{t('records.submittedAt')}</dt>
                     <dd className="mt-0.5 text-neutral-700">{formatTime(submitDetail.submittedAt)}</dd>
                   </div>
                   {submitDetail.aiEvaluation && (

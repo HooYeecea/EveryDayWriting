@@ -24,6 +24,8 @@ import { updateUserProfile, uploadFile } from '../../api/user'
 import { useAuth } from '../../context/AuthContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { DEFAULT_PATH } from '../../config/routes'
+import { useT } from '../../i18n'
+import type { MessageKey } from '../../i18n'
 import { AiAssistPanel } from '../user/AiAssistPanel'
 import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
 import { PersonalPlanPanel } from '../user/PersonalPlanPanel'
@@ -35,7 +37,7 @@ import {
 } from '../user/UserTabContentGate'
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
 import { resolveAssetUrl } from '../../utils/assetUrl'
-import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
+import { getAvatarLabel } from '../../utils/authValidation'
 import { getFirstAllowedAdminPath } from '../../config/adminPaths'
 import { canAccessAdmin, hasUserRole } from '../../utils/roles'
 import {
@@ -46,20 +48,20 @@ import {
 type UserTab = 'overview' | 'plan' | 'checkin' | 'usage' | 'settings'
 type SlideDirection = 'prev' | 'next'
 
-const TABS: { key: UserTab; label: string; icon: typeof Bell }[] = [
-  { key: 'overview', label: '概览', icon: Bell },
-  { key: 'plan', label: '个人计划', icon: Target },
-  { key: 'checkin', label: '打卡', icon: CalendarDays },
-  { key: 'usage', label: '用量', icon: Gauge },
-  { key: 'settings', label: '设置', icon: Settings },
+const TABS: { key: UserTab; labelKey: MessageKey; icon: typeof Bell }[] = [
+  { key: 'overview', labelKey: 'userCenter.tab.overview', icon: Bell },
+  { key: 'plan', labelKey: 'userCenter.tab.plan', icon: Target },
+  { key: 'checkin', labelKey: 'userCenter.tab.checkin', icon: CalendarDays },
+  { key: 'usage', labelKey: 'userCenter.tab.usage', icon: Gauge },
+  { key: 'settings', labelKey: 'userCenter.tab.settings', icon: Settings },
 ]
 
-const TAB_LOADING_LABELS: Record<UserTab, string> = {
-  overview: '加载概览…',
-  plan: '加载个人计划…',
-  checkin: '加载打卡数据…',
-  usage: '加载用量数据…',
-  settings: '加载设置…',
+const TAB_LOADING_KEYS: Record<UserTab, MessageKey> = {
+  overview: 'userCenter.loading.overview',
+  plan: 'userCenter.loading.plan',
+  checkin: 'userCenter.loading.checkin',
+  usage: 'userCenter.loading.usage',
+  settings: 'userCenter.loading.settings',
 }
 
 function tabPaneClass(active: boolean): string {
@@ -74,6 +76,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated, isLoading, logout, logoutAllDevices, refreshProfile, roles, permissions } =
     useAuth()
   const { confirm } = useAppConfirm()
+  const t = useT()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -259,9 +262,9 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
 
   const handleLogoutAll = async () => {
     const ok = await confirm({
-      title: '退出全部设备',
-      message: '确定退出所有设备？当前设备也需要重新登录。',
-      confirmLabel: '全部退出',
+      title: t('userCenter.logoutAllConfirmTitle'),
+      message: t('userCenter.logoutAllConfirmMessage'),
+      confirmLabel: t('userCenter.logoutAll'),
       variant: 'warning',
     })
     if (!ok) return
@@ -272,7 +275,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-neutral-400">
-        加载中…
+        {t('common.loading')}
       </div>
     )
   }
@@ -283,22 +286,22 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100">
           <LogIn size={28} className="text-neutral-400" strokeWidth={1.5} />
         </div>
-        <h2 className="mt-5 text-lg font-medium text-neutral-800">您还未登录</h2>
+        <h2 className="mt-5 text-lg font-medium text-neutral-800">{t('auth.loginRequiredTitle')}</h2>
         <p className="mt-2 max-w-sm text-center text-sm text-neutral-400">
-          登录后即可查看个人信息、保存和提交写作
+          {t('userCenter.loginGate')}
         </p>
         <div className="mt-6 flex w-full max-w-xs flex-col gap-3 sm:max-w-none sm:w-auto sm:flex-row">
           <Link
             to="/login"
             className="rounded-lg bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
           >
-            立即登录
+            {t('nav.loginNow')}
           </Link>
           <Link
             to="/register"
             className="rounded-lg border border-neutral-200 bg-white px-5 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
           >
-            注册账号
+            {t('auth.loginRequiredRegister')}
           </Link>
         </div>
       </div>
@@ -306,18 +309,21 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   }
 
   const stats = [
-    { label: '累计写作', value: user.stats?.totalWritings ?? 0, unit: '篇', icon: PenLine },
+    { label: t('userCenter.stat.writings'), value: user.stats?.totalWritings ?? 0, unit: t('userCenter.stat.writingsUnit'), icon: PenLine },
     {
-      label: '累计字数',
+      label: t('userCenter.stat.words'),
       value: (user.stats?.totalWords ?? 0).toLocaleString(),
-      unit: '字',
+      unit: '',
       icon: Trophy,
     },
-    { label: '词库词条', value: user.stats?.vocabularyCount ?? 0, unit: '个', icon: Calendar },
+    { label: t('userCenter.stat.vocab'), value: user.stats?.vocabularyCount ?? 0, unit: t('userCenter.stat.vocabUnit'), icon: Calendar },
   ]
 
   const avatarSrc = avatarError ? null : resolveAssetUrl(user.avatar)
   const avatarLabel = getAvatarLabel({ nickname: user.nickname, avatar: user.avatar })
+
+  const vipLabel =
+    user.vipLevel > 0 ? t('userCenter.vip.badge') : t('userCenter.vip.regular')
 
   const startEditingNickname = () => {
     setNicknameDraft(user.nickname)
@@ -371,7 +377,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   }
 
   const renderTabs = (variant: 'inline' | 'below') =>
-    TABS.map(({ key, label, icon: Icon }) => (
+    TABS.map(({ key, labelKey, icon: Icon }) => (
       <button
         key={key}
         type="button"
@@ -391,7 +397,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
         }
       >
         <Icon size={15} className="shrink-0" />
-        {label}
+        {t(labelKey)}
       </button>
     ))
 
@@ -406,13 +412,13 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
           className="pointer-events-none fixed left-0 top-0 -z-10 flex w-max gap-3 opacity-0"
           aria-hidden
         >
-          {TABS.map(({ key, label, icon: Icon }) => (
+          {TABS.map(({ key, labelKey, icon: Icon }) => (
             <span
               key={key}
               className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm"
             >
               <Icon size={15} />
-              {label}
+              {t(labelKey)}
             </span>
           ))}
         </div>
@@ -425,13 +431,13 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
           {showAdminEntry && (
             <span className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs">
               <Shield size={12} />
-              管理后台
+              {t('userCenter.admin')}
             </span>
           )}
-          <span className="rounded-lg border px-3 py-1.5 text-xs">退出登录</span>
+          <span className="rounded-lg border px-3 py-1.5 text-xs">{t('userCenter.logout')}</span>
           <span className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs">
             <LogOut size={12} />
-            全部退出
+            {t('userCenter.logoutAll')}
           </span>
         </div>
 
@@ -441,16 +447,16 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
             className="mx-auto flex min-h-[5.25rem] w-full max-w-5xl items-center gap-3 sm:min-h-[5.5rem] sm:gap-4"
           >
             <div ref={headerTitleRef} className="min-w-0 shrink-0">
-              <h2 className={PANEL_TITLE_CLASS}>用户中心</h2>
+              <h2 className={PANEL_TITLE_CLASS}>{t('userCenter.title')}</h2>
               <p className={`${PANEL_SUBTITLE_CLASS} max-w-[9rem] truncate sm:max-w-[14rem]`}>
-                {user.nickname} · {getVipLabel(user.vipLevel)}
+                {user.nickname} · {vipLabel}
               </p>
             </div>
 
             {!tabsBelow ? (
               <nav
                 className="flex min-w-0 flex-1 items-center justify-center gap-3"
-                aria-label="用户中心栏目"
+                aria-label={t('userCenter.title')}
               >
                 {renderTabs('inline')}
               </nav>
@@ -464,10 +470,10 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                   type="button"
                   onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
                   className="flex items-center gap-1 rounded-lg border border-neutral-900 bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 sm:px-3"
-                  title="管理后台"
+                  title={t('userCenter.admin')}
                 >
                   <Shield size={12} />
-                  <span className="hidden sm:inline">管理后台</span>
+                  <span className="hidden sm:inline">{t('userCenter.admin')}</span>
                 </button>
               )}
               <button
@@ -475,17 +481,17 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                 onClick={() => void handleLogout()}
                 className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
               >
-                <span className="sm:hidden">退出</span>
-                <span className="hidden sm:inline">退出登录</span>
+                <span className="sm:hidden">{t('userCenter.logoutShort')}</span>
+                <span className="hidden sm:inline">{t('userCenter.logout')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => void handleLogoutAll()}
                 className="flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 sm:px-3"
-                title="全部退出"
+                title={t('userCenter.logoutAll')}
               >
                 <LogOut size={12} />
-                <span className="hidden lg:inline">全部退出</span>
+                <span className="hidden lg:inline">{t('userCenter.logoutAll')}</span>
               </button>
             </div>
           </div>
@@ -494,7 +500,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
         {tabsBelow ? (
           <nav
             className="border-t border-neutral-100 px-3 pb-2.5 pt-2"
-            aria-label="用户中心栏目"
+            aria-label={t('userCenter.title')}
           >
             <div className="mx-auto flex max-w-5xl gap-1">{renderTabs('below')}</div>
           </nav>
@@ -592,7 +598,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                           type="button"
                           onClick={startEditingNickname}
                           className="rounded-lg p-1 text-neutral-300 hover:bg-neutral-100 hover:text-neutral-500"
-                          title="编辑昵称"
+                          title={t('userCenter.editNickname')}
                         >
                           <Pencil size={14} />
                         </button>
@@ -604,7 +610,8 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                     </div>
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400">
                       <Calendar size={13} />
-                      加入时间：{new Date(user.createdAt).toLocaleDateString('zh-CN')}
+                      {t('userCenter.joinedAt')}
+                      {new Date(user.createdAt).toLocaleDateString('zh-CN')}
                       {user.locationText && ` · ${user.locationText}`}
                     </div>
                   </div>
@@ -629,17 +636,19 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               {user.proficiencyOnboarding &&
                 user.proficiencyOnboarding.status !== 'completed' && (
                   <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                    <p className="text-sm font-medium text-neutral-800">还未完成英语能力测评</p>
+                    <p className="text-sm font-medium text-neutral-800">
+                      {t('userCenter.proficiency.title')}
+                    </p>
                     <p className="mt-1 text-xs text-neutral-500">
-                      完成后可获得个人写作提升计划，也可在使用指南中继续。
+                      {t('userCenter.proficiency.hint')}
                     </p>
                     <Link
                       to="/proficiency-test"
                       className="mt-3 inline-flex text-xs font-medium text-neutral-900 underline underline-offset-2"
                     >
                       {user.proficiencyOnboarding.status === 'in_progress'
-                        ? '继续测评'
-                        : '开始测评'}
+                        ? t('userCenter.proficiency.continue')
+                        : t('userCenter.proficiency.start')}
                     </Link>
                   </div>
                 )}
@@ -660,7 +669,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               {visitedTabs.has('plan') && (
                 <UserTabContentGate
                   ready={readyTabs.has('plan')}
-                  loadingLabel={TAB_LOADING_LABELS.plan}
+                  loadingLabel={t(TAB_LOADING_KEYS.plan)}
                 >
                   <PersonalPlanPanel onReady={() => markTabReady('plan')} />
                 </UserTabContentGate>
@@ -677,7 +686,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               {visitedTabs.has('checkin') && (
                 <UserTabContentGate
                   ready={readyTabs.has('checkin')}
-                  loadingLabel={TAB_LOADING_LABELS.checkin}
+                  loadingLabel={t(TAB_LOADING_KEYS.checkin)}
                   minHeight={360}
                 >
                   <WritingCheckInPanel onReady={() => markTabReady('checkin')} />
@@ -695,7 +704,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               {visitedTabs.has('usage') && (
                 <UserTabContentGate
                   ready={readyTabs.has('usage')}
-                  loadingLabel={TAB_LOADING_LABELS.usage}
+                  loadingLabel={t(TAB_LOADING_KEYS.usage)}
                 >
                   <TokenUsagePanel onReady={() => markTabReady('usage')} />
                 </UserTabContentGate>
@@ -712,7 +721,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               {visitedTabs.has('settings') && (
                 <UserTabContentGate
                   ready={readyTabs.has('settings')}
-                  loadingLabel={TAB_LOADING_LABELS.settings}
+                  loadingLabel={t(TAB_LOADING_KEYS.settings)}
                   minHeight={320}
                 >
                   <div className="space-y-5">
@@ -722,10 +731,12 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                           <div>
                             <div className="flex items-center gap-2">
                               <Shield size={18} className="text-neutral-500" />
-                              <h3 className="text-sm font-medium text-neutral-900">管理后台</h3>
+                              <h3 className="text-sm font-medium text-neutral-900">
+                                {t('userCenter.admin')}
+                              </h3>
                             </div>
                             <p className="mt-2 text-sm text-neutral-400">
-                              你同时拥有管理员角色，可以进入后台进行运营与系统配置。
+                              {t('userCenter.admin.description')}
                             </p>
                           </div>
                           <button
@@ -733,7 +744,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
                             onClick={() => navigate(getFirstAllowedAdminPath(permissions))}
                             className="shrink-0 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
                           >
-                            进入后台
+                            {t('userCenter.admin.enter')}
                           </button>
                         </div>
                       </section>

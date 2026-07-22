@@ -74,8 +74,16 @@ export function canAccessAdmin(
 export function getDefaultHomePath(
   roles: AuthRole[] | string[] | null | undefined,
   permissions?: string[] | null,
+  preferredUserHome?: string | null,
 ): string {
   if (isAdminOnly(roles) && canAccessAdmin(roles, permissions)) return '/admin'
+  if (
+    preferredUserHome === '/writing' ||
+    preferredUserHome === '/records' ||
+    preferredUserHome === '/user-center'
+  ) {
+    return preferredUserHome
+  }
   return '/writing'
 }
 

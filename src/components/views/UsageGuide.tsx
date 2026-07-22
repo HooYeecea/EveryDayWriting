@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useProficiencyGuideRedDot } from '../../hooks/useProficiencyGuideRedDot'
 import { useReportReady } from '../../hooks/useReportReady'
+import { useT } from '../../i18n'
 import { MAIN_CONTENT_X_CLASS, PANEL_HEADER_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
 export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
@@ -10,6 +11,7 @@ export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
   const onboarding = user?.proficiencyOnboarding
   const showGuideRedDot = useProficiencyGuideRedDot()
   const showTestEntry = isAuthenticated && showGuideRedDot
+  const t = useT()
 
   useReportReady(true, onReady)
 
@@ -18,9 +20,9 @@ export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
       <div className={PANEL_HEADER_CLASS}>
         <div className="flex items-center gap-2">
           <HelpCircle size={18} className="text-neutral-500" />
-          <h1 className={PANEL_TITLE_CLASS}>使用指南</h1>
+          <h1 className={PANEL_TITLE_CLASS}>{t('guide.title')}</h1>
           {showTestEntry && (
-            <span className="h-2 w-2 rounded-full bg-red-500" aria-label="未完成能力测评" />
+            <span className="h-2 w-2 rounded-full bg-red-500" aria-label={t('nav.proficiencyIncomplete')} />
           )}
         </div>
       </div>
@@ -36,7 +38,7 @@ export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
                     <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-medium text-neutral-900">英语能力测评</h2>
+                    <h2 className="text-sm font-medium text-neutral-900">{t('guide.proficiencyTitle')}</h2>
                     <p className="mt-2 text-sm leading-relaxed text-neutral-600">
                       {onboarding?.status === 'in_progress'
                         ? '你有一份未完成的能力测评，继续完成后可获得个人写作提升计划。'
@@ -48,7 +50,9 @@ export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
                   to="/proficiency-test"
                   className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800"
                 >
-                  {onboarding?.status === 'in_progress' ? '继续测评' : '开始测评'}
+                  {onboarding?.status === 'in_progress'
+                    ? t('guide.proficiencyContinue')
+                    : t('guide.proficiencyStart')}
                   <ArrowRight size={14} />
                 </Link>
               </div>
@@ -56,7 +60,7 @@ export function UsageGuide({ onReady }: { onReady?: () => void } = {}) {
           )}
 
           <div className="rounded-2xl border border-neutral-300 bg-neutral-50 p-5 sm:p-6">
-            <p className="text-sm font-medium text-neutral-800">公益声明</p>
+            <p className="text-sm font-medium text-neutral-800">{t('guide.publicNotice')}</p>
             <p className="mt-2 text-sm leading-relaxed text-neutral-600">
               本项目为<span className="font-medium text-neutral-900">纯公益项目</span>
               ，不收取任何费用，不从任何第三方平台赚取佣金或返利。

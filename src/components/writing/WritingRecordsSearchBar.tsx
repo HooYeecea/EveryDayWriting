@@ -1,5 +1,7 @@
 import { Search, X } from 'lucide-react'
 import type { WritingSubmitListItem } from '../../types'
+import { useT } from '../../i18n'
+import type { MessageKey } from '../../i18n'
 
 export type RecordSearchField = 'topic' | 'title' | 'content'
 
@@ -9,11 +11,11 @@ export const DEFAULT_RECORD_SEARCH_FIELDS: RecordSearchField[] = [
   'content',
 ]
 
-const SEARCH_FIELD_OPTIONS: { id: RecordSearchField; label: string }[] = [
-  { id: 'topic', label: '题目' },
-  { id: 'title', label: '标题' },
-  { id: 'content', label: '内容' },
-]
+const SEARCH_FIELD_LABEL_KEYS: Record<RecordSearchField, MessageKey> = {
+  topic: 'records.search.field.topic',
+  title: 'records.search.field.title',
+  content: 'records.search.field.content',
+}
 
 /** 勾选标题/内容时才走服务端 keyword（全文为标题+正文） */
 export function needsServerKeyword(
@@ -69,11 +71,18 @@ export function WritingRecordsSearchBar({
   searchEnabled = false,
   compact = false,
 }: WritingRecordsSearchBarProps) {
+  const t = useT()
+
+  const searchFieldOptions: { id: RecordSearchField; labelKey: MessageKey }[] = [
+    { id: 'topic', labelKey: SEARCH_FIELD_LABEL_KEYS.topic },
+    { id: 'title', labelKey: SEARCH_FIELD_LABEL_KEYS.title },
+    { id: 'content', labelKey: SEARCH_FIELD_LABEL_KEYS.content },
+  ]
+
   return (
     <div
       className={`border-b border-neutral-200 bg-white ${compact ? 'px-3 py-2.5' : 'px-4 py-3 sm:px-5'}`}
     >
-      {/* Search input row */}
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <Search
@@ -89,7 +98,7 @@ export function WritingRecordsSearchBar({
                 onSearch?.()
               }
             }}
-            placeholder="按检索范围搜索…"
+            placeholder={t('records.search.placeholder')}
             disabled={!searchEnabled}
             className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-8 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-400 focus:bg-white disabled:cursor-not-allowed disabled:opacity-50"
           />
@@ -110,20 +119,19 @@ export function WritingRecordsSearchBar({
             onClick={onSearch}
             className="shrink-0 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
-            搜索
+            {t('records.search.button')}
           </button>
         )}
       </div>
 
-      {/* Filter row */}
       {searchEnabled && (
         <div className="mt-2.5 flex items-center gap-2.5">
-          <span className="shrink-0 text-xs text-neutral-500">检索范围</span>
+          <span className="shrink-0 text-xs text-neutral-500">{t('records.search.scopeLabel')}</span>
           <div className="flex">
-            {SEARCH_FIELD_OPTIONS.map(({ id, label }, index) => {
+            {searchFieldOptions.map(({ id, labelKey }, index) => {
               const active = fields.includes(id)
               const isFirst = index === 0
-              const isLast = index === SEARCH_FIELD_OPTIONS.length - 1
+              const isLast = index === searchFieldOptions.length - 1
               return (
                 <button
                   key={id}
@@ -139,7 +147,7 @@ export function WritingRecordsSearchBar({
                       : 'border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50'
                   }`}
                 >
-                  {label}
+                  {t(labelKey)}
                 </button>
               )
             })}

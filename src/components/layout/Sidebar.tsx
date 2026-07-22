@@ -6,6 +6,7 @@ import { useAppAlert } from '../../context/AppAlertContext'
 import { useAuth } from '../../context/AuthContext'
 import { useWritingFocus } from '../../context/WritingFocusContext'
 import { useProficiencyGuideRedDot } from '../../hooks/useProficiencyGuideRedDot'
+import { getRouteLabelKey, useT } from '../../i18n'
 import { NAV_ICON_MAP } from './navConfig'
 import {
   PANEL_HEADER_CLASS,
@@ -17,7 +18,6 @@ import {
 } from './layoutConstants'
 
 const MAIN_ROUTES = APP_ROUTES.filter((route) => route.key !== 'user-center')
-const FOCUS_LOCK_HINT = '专注写作中，请先结束或停止计时后再切换页面'
 
 interface SidebarProps {
   mobileOpen?: boolean
@@ -36,13 +36,16 @@ export function Sidebar({
   const { navigationLocked } = useWritingFocus()
   const { alert } = useAppAlert()
   const showGuideRedDot = useProficiencyGuideRedDot()
+  const t = useT()
+
+  const accountLabel = isAuthenticated ? t('nav.userCenter') : t('nav.loginNow')
 
   const guardNavClick = (targetPath: string, event: MouseEvent) => {
     if (navigationLocked && targetPath !== DEFAULT_PATH) {
       event.preventDefault()
       void alert({
-        title: '专注写作中',
-        message: FOCUS_LOCK_HINT,
+        title: t('nav.focusLockTitle'),
+        message: t('nav.focusLockHint'),
         variant: 'info',
       })
       return
@@ -74,7 +77,7 @@ export function Sidebar({
               }`}
             >
               <h1 className={`${PANEL_TITLE_CLASS} whitespace-nowrap`}>Everyday Writing</h1>
-              <p className={`${PANEL_SUBTITLE_CLASS} whitespace-nowrap`}>每日英语写作</p>
+              <p className={`${PANEL_SUBTITLE_CLASS} whitespace-nowrap`}>{t('nav.brandSubtitle')}</p>
             </div>
             <p
               className={`absolute inset-0 hidden items-center justify-center text-sm font-semibold tracking-tight text-neutral-900 transition-[opacity,transform] duration-300 ease-out lg:flex ${
@@ -93,7 +96,7 @@ export function Sidebar({
               type="button"
               onClick={onClose}
               className="shrink-0 rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 lg:hidden"
-              aria-label="关闭菜单"
+              aria-label={t('common.close')}
             >
               <X size={18} />
             </button>
@@ -110,7 +113,7 @@ export function Sidebar({
             guardNavClick(isAuthenticated ? '/user-center' : '/login', event)
           }
           className={navLinkClass}
-          title={collapsed ? (isAuthenticated ? '用户中心' : '立即登录') : undefined}
+          title={collapsed ? accountLabel : undefined}
           aria-disabled={navigationLocked}
         >
           {({ isActive }) => (
@@ -133,7 +136,7 @@ export function Sidebar({
                   collapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'
                 }`}
               >
-                {isAuthenticated ? '用户中心' : '立即登录'}
+                {accountLabel}
               </span>
             </>
           )}
@@ -141,13 +144,14 @@ export function Sidebar({
 
         {MAIN_ROUTES.map((item) => {
           const Icon = NAV_ICON_MAP[item.icon]
+          const label = t(getRouteLabelKey(item.key))
           return (
             <NavLink
               key={item.key}
               to={item.path}
               onClick={(event) => guardNavClick(item.path, event)}
               className={navLinkClass}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? label : undefined}
               aria-disabled={navigationLocked && item.path !== DEFAULT_PATH}
             >
               {({ isActive }) => (
@@ -170,12 +174,12 @@ export function Sidebar({
                       collapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'
                     }`}
                   >
-                    {item.label}
+                    {label}
                   </span>
                   {item.key === 'usage-guide' && showGuideRedDot && !collapsed && (
                     <span
                       className="ml-auto h-2 w-2 shrink-0 rounded-full bg-red-500"
-                      aria-label="未完成能力测评"
+                      aria-label={t('nav.proficiencyIncomplete')}
                     />
                   )}
                 </>
@@ -194,8 +198,8 @@ export function Sidebar({
               className={`flex h-9 w-full items-center rounded-lg text-sm text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900 ${
                 collapsed ? 'justify-center px-2' : 'gap-2 px-3'
               }`}
-              aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-              title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+              aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+              title={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
             >
               {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
               <span
@@ -203,7 +207,7 @@ export function Sidebar({
                   collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
                 }`}
               >
-                收起菜单
+                {t('nav.collapseMenu')}
               </span>
             </button>
           </div>
@@ -219,7 +223,7 @@ export function Sidebar({
           type="button"
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={onClose}
-          aria-label="关闭菜单"
+          aria-label={t('common.close')}
         />
       )}
 

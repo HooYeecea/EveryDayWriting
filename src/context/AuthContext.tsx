@@ -22,6 +22,7 @@ import {
 import { clearStoredRoles, getStoredRoles, setStoredRoles } from '../storage/rolesStorage'
 import { getToken } from '../storage/tokenStorage'
 import { getDefaultHomePath, parseAuthPermissions, parseAuthRoles } from '../utils/roles'
+import { loadUserPreferences } from '../storage/preferencesStorage'
 
 interface AuthContextValue {
   user: UserProfile | null
@@ -96,7 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStoredRoles(sessionRoles)
       setPermissions(sessionPermissions)
       setStoredPermissions(sessionPermissions)
-      const redirectTo = getDefaultHomePath(sessionRoles, sessionPermissions)
+      const redirectTo = getDefaultHomePath(
+        sessionRoles,
+        sessionPermissions,
+        loadUserPreferences().ui.defaultHomePath,
+      )
 
       if (sessionMustChange) {
         setMustChangePasswordState(true)

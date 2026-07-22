@@ -14,15 +14,21 @@ import { AuthFieldHint } from '../auth/AuthFieldHint'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
 import { useAuthBubble } from '../../hooks/useAuthBubble'
+import { useT } from '../../i18n'
 import { buildGraphCaptchaImageSrc } from '../../utils/graphCaptchaImage'
 import { validateEmail } from '../../utils/authValidation'
 import { getDefaultHomePath } from '../../utils/roles'
+import { loadUserPreferences } from '../../storage/preferencesStorage'
 
 function isCaptchaExpiredMessage(message: string): boolean {
-  return /过期|失效|无效/.test(message) && message.includes('验证码')
+  return (
+    (/过期|失效|无效/.test(message) && message.includes('验证码')) ||
+    (/expired|invalid/i.test(message) && /captcha|code/i.test(message))
+  )
 }
 
 export function Login() {
+  const t = useT()
   const { login, isAuthenticated, isLoading, roles, permissions } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -42,7 +48,11 @@ export function Login() {
   const captchaRequestedRef = useRef(false)
 
   const from = (location.state as { from?: string } | null)?.from
-  const authenticatedHome = getDefaultHomePath(roles, permissions)
+  const authenticatedHome = getDefaultHomePath(
+    roles,
+    permissions,
+    loadUserPreferences().ui.defaultHomePath,
+  )
 
   const applyCaptcha = useCallback((data: { captchaId: string; imageBase64: string }, resetInput: boolean) => {
     setCaptchaId(data.captchaId)
@@ -62,12 +72,12 @@ export function Login() {
         applyCaptcha(data, mode === 'refresh')
       } catch (err) {
         setCaptchaCooldown(getGraphCaptchaCooldownRemaining())
-        show(err instanceof Error ? err.message : '图形验证码加载失败')
+        show(err instanceof Error ? err.message : t('auth.login.captchaLoadFailed'))
       } finally {
         setLoadingCaptcha(false)
       }
     },
-    [applyCaptcha, show],
+    [applyCaptcha, show, t],
   )
 
   useEffect(() => {
@@ -90,8 +100,8 @@ export function Login() {
 
   if (isLoading) {
     return (
-      <AuthLayout title="登录" subtitle="正在恢复登录状态…" footer={null}>
-        <p className="text-sm text-neutral-400">加载中…</p>
+      <AuthLayout title={t('auth.login.title')} subtitle={t('auth.common.restoring')} footer={null}>
+        <p className="text-sm text-neutral-400">{t('auth.common.loading')}</p>
       </AuthLayout>
     )
   }
@@ -105,27 +115,27 @@ export function Login() {
 
     const emailError = validateEmail(email)
     if (emailError) {
-      show(emailError)
+      show(t(emailError))
       return
     }
     if (!password) {
-      show('请填写密码')
+      show(t('auth.login.needPassword'))
       return
     }
 
     if (!privacyAgreed) {
       setPrivacyWarning(true)
-      show('请先阅读并同意隐私协议')
+      show(t('auth.common.needPrivacy'))
       return
     }
 
     if (requireCaptcha) {
       if (!captchaId) {
-        show('图形验证码加载中，请稍候')
+        show(t('auth.login.captchaNeedWait'))
         return
       }
       if (!captchaCode.trim()) {
-        show('请输入图形验证码')
+        show(t('auth.login.captchaRequired'))
         return
       }
     }
@@ -161,7 +171,7 @@ export function Login() {
       if (isApiError(err)) {
         const data = err.data as LoginErrorData | null
         const message = err.message
-        if (data?.requireCaptcha || message.includes('验证码')) {
+        if (data?.requireCaptcha || message.includes('验证码') || /captcha/i.test(message)) {
           setRequireCaptcha(true)
         }
         if (isCaptchaExpiredMessage(message)) {
@@ -169,7 +179,7 @@ export function Login() {
           void loadGraphCaptcha('refresh')
         }
       }
-      show(err instanceof Error ? err.message : '登录失败')
+      show(err instanceof Error ? err.message : t('auth.login.failed'))
     } finally {
       setSubmitting(false)
     }
@@ -184,12 +194,15 @@ export function Login() {
     }
   }
 
-  const refreshLabel =
-    loadingCaptcha ? '加载中…' : captchaCooldown > 0 ? `${captchaCooldown}s` : '换一张'
+  const refreshLabel = loadingCaptcha
+    ? t('auth.common.loading')
+    : captchaCooldown > 0
+      ? `${captchaCooldown}s`
+      : t('auth.login.captchaRefresh')
 
   return (
     <AuthLayout
-      title="登录"
+      title={t('auth.login.title')}
       subtitle=""
       footer={
         <div className="flex w-full flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -198,16 +211,16 @@ export function Login() {
             state={{ from }}
             className="text-sm text-neutral-500 hover:text-neutral-900 hover:underline"
           >
-            找回密码
+            {t('auth.login.forgot')}
           </Link>
           <span>
-            还没有账号？
+            {t('auth.login.noAccount')}
             <Link
               to="/register"
               state={{ from }}
               className="ml-1 font-medium text-neutral-900 hover:underline"
             >
-              立即注册
+              {t('auth.login.registerNow')}
             </Link>
           </span>
         </div>
@@ -216,7 +229,9 @@ export function Login() {
       <AuthBubble message={bubble} />
       <form noValidate onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">邮箱</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+            {t('auth.common.email')}
+          </label>
           <input
             type="email"
             value={email}
@@ -227,31 +242,35 @@ export function Login() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">密码</label>
+          <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+            {t('auth.common.password')}
+          </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="密码"
+            placeholder={t('auth.common.password')}
             autoComplete="current-password"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
         {requireCaptcha && (
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-neutral-700">图形验证码</label>
+            <label className="mb-1.5 block text-sm font-medium text-neutral-700">
+              {t('auth.login.captcha')}
+            </label>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2">
                 <div className="flex h-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 px-1">
                   {captchaImageSrc ? (
                     <img
                       src={captchaImageSrc}
-                      alt="图形验证码"
+                      alt={t('auth.login.captchaAlt')}
                       className="h-10 w-auto max-w-[140px] object-contain"
                     />
                   ) : (
                     <span className="px-3 text-xs text-neutral-400">
-                      {loadingCaptcha ? '加载中…' : '暂无'}
+                      {loadingCaptcha ? t('auth.common.loading') : t('auth.common.none')}
                     </span>
                   )}
                 </div>
@@ -268,13 +287,13 @@ export function Login() {
                 type="text"
                 value={captchaCode}
                 onChange={(e) => setCaptchaCode(e.target.value.replace(/\s/g, '').slice(0, 8))}
-                placeholder="图中字符"
+                placeholder={t('auth.login.captchaPlaceholder')}
                 maxLength={8}
                 autoComplete="off"
                 className="min-w-0 flex-1 rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
               />
             </div>
-            <AuthFieldHint>密码错误次数过多时需填写；验证码 60 秒内仅可刷新一次</AuthFieldHint>
+            <AuthFieldHint>{t('auth.login.captchaHint')}</AuthFieldHint>
           </div>
         )}
         <button
@@ -282,7 +301,7 @@ export function Login() {
           disabled={submitting}
           className="w-full rounded-md bg-neutral-900 py-3 font-sans text-sm font-semibold tracking-wider text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 uppercase"
         >
-          {submitting ? '登录中…' : '登录'}
+          {submitting ? t('auth.login.submitting') : t('auth.login.submit')}
         </button>
         <PrivacyAgreementField
           checked={privacyAgreed}

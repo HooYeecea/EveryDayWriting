@@ -10,8 +10,9 @@ import { AuthFieldHint } from '../auth/AuthFieldHint'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
 import { useAuthBubble } from '../../hooks/useAuthBubble'
+import { useT } from '../../i18n'
 import {
-  PASSWORD_FIELD_HINT,
+  PASSWORD_FIELD_HINT_KEY,
   validateEmail,
   validatePassword,
 } from '../../utils/authValidation'
@@ -22,6 +23,7 @@ const fieldClass =
   'w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400'
 
 export function Register() {
+  const t = useT()
   const { register, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -42,8 +44,8 @@ export function Register() {
 
   if (isLoading) {
     return (
-      <AuthLayout title="注册" subtitle="正在恢复登录状态…" footer={null}>
-        <p className="text-sm text-neutral-400">加载中…</p>
+      <AuthLayout title={t('auth.register.title')} subtitle={t('auth.common.restoring')} footer={null}>
+        <p className="text-sm text-neutral-400">{t('auth.common.loading')}</p>
       </AuthLayout>
     )
   }
@@ -55,19 +57,19 @@ export function Register() {
   const handleSendCode = async () => {
     const emailError = validateEmail(email)
     if (emailError) {
-      show(emailError)
+      show(t(emailError))
       return
     }
     setSendingCode(true)
     try {
       await sendEmailCode(email.trim(), 'register')
       startCooldown()
-      show('验证码已发送，请查收邮箱')
+      show(t('auth.common.codeSent'))
     } catch (err) {
       if (isApiError(err) && err.isRateLimited) {
         startCooldown()
       }
-      show(err instanceof Error ? err.message : '验证码发送失败')
+      show(err instanceof Error ? err.message : t('auth.common.codeSendFailed'))
     } finally {
       setSendingCode(false)
     }
@@ -78,35 +80,35 @@ export function Register() {
 
     const emailError = validateEmail(email)
     if (emailError) {
-      show(emailError)
+      show(t(emailError))
       return
     }
     if (!code.trim()) {
-      show('请填写验证码')
+      show(t('auth.common.fillCode'))
       return
     }
     if (!password) {
-      show('请设置密码')
+      show(t('auth.register.needPassword'))
       return
     }
     if (!confirmPassword) {
-      show('请再次输入密码')
+      show(t('auth.register.needConfirm'))
       return
     }
     if (password !== confirmPassword) {
-      show('两次输入的密码不一致')
+      show(t('auth.common.passwordMismatch'))
       return
     }
 
     const passwordError = validatePassword(password)
     if (passwordError) {
-      show(passwordError)
+      show(t(passwordError))
       return
     }
 
     if (!privacyAgreed) {
       setPrivacyWarning(true)
-      show('请先阅读并同意隐私协议')
+      show(t('auth.common.needPrivacy'))
       return
     }
 
@@ -126,7 +128,7 @@ export function Register() {
         { replace: true },
       )
     } catch (err) {
-      show(err instanceof Error ? err.message : '注册失败')
+      show(err instanceof Error ? err.message : t('auth.register.failed'))
     } finally {
       setSubmitting(false)
     }
@@ -143,17 +145,17 @@ export function Register() {
 
   return (
     <AuthLayout
-      title="注册"
-      subtitle="创建账号，开始你的英语写作之旅"
+      title={t('auth.register.title')}
+      subtitle={t('auth.register.subtitle')}
       footer={
         <div className="w-full text-center">
-          已有账号？
+          {t('auth.register.hasAccount')}
           <Link
             to="/login"
             state={{ from }}
             className="ml-1 font-medium text-neutral-900 hover:underline"
           >
-            立即登录
+            {t('auth.register.loginNow')}
           </Link>
         </div>
       }
@@ -161,7 +163,9 @@ export function Register() {
       <AuthBubble message={bubble} />
       <form noValidate onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">邮箱</label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
+            {t('auth.common.email')}
+          </label>
           <input
             type="email"
             value={email}
@@ -172,13 +176,15 @@ export function Register() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">验证码</label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
+            {t('auth.common.code')}
+          </label>
           <div className="flex gap-2">
             <input
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="验证码"
+              placeholder={t('auth.common.code')}
               maxLength={6}
               className={`min-w-0 flex-1 ${fieldClass}`}
             />
@@ -188,31 +194,35 @@ export function Register() {
               disabled={sendingCode || cooldown > 0}
               className="shrink-0 rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
             >
-              {emailCodeCooldownLabel(cooldown, sendingCode)}
+              {emailCodeCooldownLabel(cooldown, sendingCode, t)}
             </button>
           </div>
-          <AuthFieldHint>发送至邮箱的 6 位数字</AuthFieldHint>
+          <AuthFieldHint>{t('auth.common.codeHint')}</AuthFieldHint>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-700">密码</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700">
+              {t('auth.common.password')}
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="设置密码"
+              placeholder={t('auth.register.passwordPlaceholder')}
               autoComplete="new-password"
               className={fieldClass}
             />
-            <AuthFieldHint>{PASSWORD_FIELD_HINT}</AuthFieldHint>
+            <AuthFieldHint>{t(PASSWORD_FIELD_HINT_KEY)}</AuthFieldHint>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-700">确认密码</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700">
+              {t('auth.common.confirmPassword')}
+            </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="再输入一次"
+              placeholder={t('auth.register.confirmPlaceholder')}
               autoComplete="new-password"
               className={fieldClass}
             />
@@ -229,7 +239,7 @@ export function Register() {
           disabled={submitting}
           className="w-full rounded-md bg-neutral-900 py-3 font-sans text-sm font-semibold tracking-wider text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 uppercase"
         >
-          {submitting ? '注册中…' : '注册'}
+          {submitting ? t('auth.register.submitting') : t('auth.register.submit')}
         </button>
       </form>
     </AuthLayout>

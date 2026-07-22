@@ -7,11 +7,14 @@ import { AuthLayout } from '../layout/AuthLayout'
 import { useAuth } from '../../context/AuthContext'
 import { useAuthBubble } from '../../hooks/useAuthBubble'
 import { getToken } from '../../storage/tokenStorage'
-import { PASSWORD_FIELD_HINT, validatePassword } from '../../utils/authValidation'
+import { PASSWORD_FIELD_HINT_KEY, validatePassword } from '../../utils/authValidation'
 import { getDefaultHomePath } from '../../utils/roles'
+import { loadUserPreferences } from '../../storage/preferencesStorage'
 import { DEFAULT_PATH } from '../../config/routes'
+import { useT } from '../../i18n'
 
 export function ChangePassword() {
+  const t = useT()
   const navigate = useNavigate()
   const { mustChangePassword, isLoading, logout, completeForcedPasswordChange, roles, permissions } =
     useAuth()
@@ -20,7 +23,11 @@ export function ChangePassword() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const homePath = getDefaultHomePath(roles, permissions)
+  const homePath = getDefaultHomePath(
+    roles,
+    permissions,
+    loadUserPreferences().ui.defaultHomePath,
+  )
 
   if (isLoading) {
     return (
@@ -65,7 +72,7 @@ export function ChangePassword() {
 
     const passwordError = validatePassword(newPassword)
     if (passwordError) {
-      show(passwordError)
+      show(t(passwordError))
       return
     }
     if (oldPassword === newPassword) {
@@ -133,7 +140,7 @@ export function ChangePassword() {
             autoComplete="new-password"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
-          <AuthFieldHint>{PASSWORD_FIELD_HINT}</AuthFieldHint>
+          <AuthFieldHint>{t(PASSWORD_FIELD_HINT_KEY)}</AuthFieldHint>
         </div>
         <div>
           <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">确认新密码</label>

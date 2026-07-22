@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertTriangle, RotateCcw, X } from 'lucide-react'
+import { useT } from '../../i18n'
 
 export interface ConfirmOptions {
   title: string
@@ -19,12 +20,16 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = '确定',
-  cancelLabel = '取消',
+  confirmLabel,
+  cancelLabel,
   variant = 'default',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const t = useT()
+  const resolvedConfirm = confirmLabel ?? t('common.confirm')
+  const resolvedCancel = cancelLabel ?? t('common.cancel')
+
   useEffect(() => {
     if (!open) return
 
@@ -57,7 +62,7 @@ export function ConfirmDialog({
           type="button"
           onClick={onCancel}
           className="absolute right-4 top-4 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-          aria-label="关闭"
+          aria-label={t('common.close')}
         >
           <X size={18} />
         </button>
@@ -82,7 +87,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="flex-1 rounded-lg border border-neutral-200 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
           >
-            {cancelLabel}
+            {resolvedCancel}
           </button>
           <button
             type="button"
@@ -91,7 +96,7 @@ export function ConfirmDialog({
               isWarning ? 'bg-amber-600' : 'bg-neutral-900'
             }`}
           >
-            {confirmLabel}
+            {resolvedConfirm}
           </button>
         </div>
       </div>

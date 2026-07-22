@@ -5,27 +5,38 @@ import {
   getAnnouncements,
   markAnnouncementRead,
 } from '../../api/announcements'
+import { useT } from '../../i18n'
 import type { AnnouncementItem } from '../../types'
 
-const PRIORITY_LABELS: Record<string, string> = {
-  Urgent: '紧急',
-  Important: '重要',
-  Normal: '普通',
-}
-
 export function AnnouncementsPanel({ onReady }: { onReady?: () => void } = {}) {
+  const t = useT()
   const [items, setItems] = useState<AnnouncementItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
   const reportedRef = useRef(false)
 
+  const priorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'Urgent':
+        return t('announce.priority.urgent')
+      case 'Important':
+        return t('announce.priority.important')
+      case 'Normal':
+        return t('announce.priority.normal')
+      default:
+        return priority
+    }
+  }
+
   useEffect(() => {
     getAnnouncements()
       .then(setItems)
-      .catch((err) => setError(err instanceof Error ? err.message : '加载公告失败'))
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : t('announce.loadFailed')),
+      )
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (loading || reportedRef.current) return
@@ -61,11 +72,11 @@ export function AnnouncementsPanel({ onReady }: { onReady?: () => void } = {}) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Bell size={18} className="text-neutral-500" />
-          <h3 className="text-sm font-medium text-neutral-900">系统公告</h3>
+          <h3 className="text-sm font-medium text-neutral-900">{t('announce.title')}</h3>
         </div>
         {unreadCount > 0 && (
           <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
-            {unreadCount} 条未读
+            {t('announce.unreadCount', { n: unreadCount })}
           </span>
         )}
       </div>
@@ -76,13 +87,13 @@ export function AnnouncementsPanel({ onReady }: { onReady?: () => void } = {}) {
           role="status"
         >
           <Loader2 size={18} className="animate-spin text-neutral-300" />
-          加载公告…
+          {t('announce.loading')}
         </div>
       )}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       {!loading && !error && items.length === 0 && (
-        <p className="mt-4 text-sm text-neutral-400">暂无公告</p>
+        <p className="mt-4 text-sm text-neutral-400">{t('announce.empty')}</p>
       )}
 
       {!loading && (
@@ -105,7 +116,7 @@ export function AnnouncementsPanel({ onReady }: { onReady?: () => void } = {}) {
                     )}
                     <span className="font-medium text-neutral-900">{item.title}</span>
                     <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-neutral-500">
-                      {PRIORITY_LABELS[item.priority] ?? item.priority}
+                      {priorityLabel(item.priority)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-neutral-400">
@@ -121,7 +132,9 @@ export function AnnouncementsPanel({ onReady }: { onReady?: () => void } = {}) {
                     className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
                   />
                 </span>
-                <span className="sr-only">{expanded ? '折叠公告' : '展开公告'}</span>
+                <span className="sr-only">
+                  {expanded ? t('announce.collapse') : t('announce.expand')}
+                </span>
               </button>
               {expanded && (
                 <div className="border-t border-neutral-100 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-neutral-700">

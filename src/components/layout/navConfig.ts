@@ -5,6 +5,7 @@ import {
   User,
   BarChart3,
   HelpCircle,
+  Settings2,
 } from 'lucide-react'
 
 export const NAV_ICON_MAP = {
@@ -14,4 +15,5 @@ export const NAV_ICON_MAP = {
   book: BookOpen,
   chart: BarChart3,
   help: HelpCircle,
+  settings: Settings2,
 } as const

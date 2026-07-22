@@ -1,4 +1,5 @@
 import { LogIn, UserPlus, X } from 'lucide-react'
+import { useT } from '../../i18n'
 
 interface LoginRequiredModalProps {
   open: boolean
@@ -13,6 +14,7 @@ export function LoginRequiredModal({
   onLogin,
   onRegister,
 }: LoginRequiredModalProps) {
+  const t = useT()
   if (!open) return null
 
   return (
@@ -22,7 +24,7 @@ export function LoginRequiredModal({
           type="button"
           onClick={onClose}
           className="absolute right-4 top-4 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-          aria-label="关闭"
+          aria-label={t('common.close')}
         >
           <X size={18} />
         </button>
@@ -31,10 +33,8 @@ export function LoginRequiredModal({
           <LogIn size={22} className="text-neutral-500" />
         </div>
 
-        <h2 className="mt-4 text-lg font-semibold text-neutral-900">您还未登录</h2>
-        <p className="mt-2 text-sm leading-relaxed text-neutral-500">
-          保存和提交写作需要先登录账号。您也可以稍后再登录，当前写作内容会保留在页面上。
-        </p>
+        <h2 className="mt-4 text-lg font-semibold text-neutral-900">{t('auth.loginRequiredTitle')}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-neutral-500">{t('auth.loginRequiredBody')}</p>
 
         <div className="mt-6 flex flex-col gap-2.5">
           <button
@@ -43,7 +43,7 @@ export function LoginRequiredModal({
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 py-2.5 text-sm font-medium text-white hover:opacity-90"
           >
             <LogIn size={16} />
-            去登录
+            {t('auth.loginRequiredLogin')}
           </button>
           <button
             type="button"
@@ -51,14 +51,14 @@ export function LoginRequiredModal({
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
           >
             <UserPlus size={16} />
-            去注册
+            {t('auth.goRegister')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="py-2 text-sm text-neutral-400 hover:text-neutral-600"
           >
-            暂不登录
+            {t('auth.later')}
           </button>
         </div>
       </div>

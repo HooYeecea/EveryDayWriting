@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Maximize2, X } from 'lucide-react'
+import { useT } from '../../i18n'
 import { PANEL_SUBTITLE_CLASS, PANEL_TITLE_CLASS } from '../layout/layoutConstants'
 
 interface TopicPromptBoxProps {
@@ -10,6 +11,7 @@ interface TopicPromptBoxProps {
 }
 
 export function TopicPromptBox({ prompt, type, fill = false }: TopicPromptBoxProps) {
+  const t = useT()
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
@@ -36,8 +38,8 @@ export function TopicPromptBox({ prompt, type, fill = false }: TopicPromptBoxPro
           type="button"
           onClick={() => setExpanded(true)}
           className="absolute bottom-1 right-1 z-10 flex h-8 w-8 items-center justify-center rounded-md bg-neutral-50/90 text-neutral-500 shadow-sm ring-1 ring-neutral-200/80 transition-colors hover:bg-neutral-200 hover:text-neutral-800 active:scale-95 sm:bottom-1.5 sm:right-1.5 sm:h-7 sm:w-7"
-          aria-label="查看完整题目"
-          title="查看完整题目"
+          aria-label={t('writing.topic.viewFull')}
+          title={t('writing.topic.viewFull')}
         >
           <Maximize2 size={15} />
         </button>

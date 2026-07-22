@@ -1,16 +1,17 @@
-const TYPING_ANIMATION_KEY = 'ew_typing_animation'
+import { loadUserPreferences, updateUserPreferences } from './preferencesStorage'
 
-/** 默认开启打字动画 */
+/** 默认开启打字动画；读写统一走用户偏好，便于系统设置页与写作页同步 */
 export function isTypingAnimationEnabled(): boolean {
   try {
-    const raw = localStorage.getItem(TYPING_ANIMATION_KEY)
-    if (raw === null) return true
-    return raw === 'true'
+    return loadUserPreferences().writing.typingAnimation
   } catch {
     return true
   }
 }
 
 export function setTypingAnimationEnabled(enabled: boolean): void {
-  localStorage.setItem(TYPING_ANIMATION_KEY, String(enabled))
+  updateUserPreferences((current) => ({
+    ...current,
+    writing: { ...current.writing, typingAnimation: enabled },
+  }))
 }
