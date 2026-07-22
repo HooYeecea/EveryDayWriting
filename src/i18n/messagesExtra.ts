@@ -1423,6 +1423,16 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   'assist.ai.toggle.realtimeDesc':
     '書きながら語彙・文型・構成の AI ヒントを受け取ります。',
   'assist.ai.saveSettings': '設定を保存',
+  'assist.realtime.title': 'リアルタイム提案',
+  'assist.realtime.hint': '入力を止めて約 2–3 秒後に更新。このセッションのみの一時表示です。',
+  'assist.realtime.waiting': '入力停止後に分析…',
+  'assist.realtime.loading': '分析中…',
+  'assist.realtime.idle': '書き続けてください。停止後に短い提案が出ます。',
+  'assist.realtime.empty': '特に提案はありません。続けて書けます。',
+  'assist.realtime.type.grammar': '文法',
+  'assist.realtime.type.wording': '語彙',
+  'assist.realtime.type.polish': '推敲',
+  'assist.realtime.badgeAria': '新しい提案 {n} 件',
   'assist.timer.title': '執筆タイマー',
   'assist.timer.description': '時間を設定し、カウントダウン／アップと終了通知',
   'assist.timer.intro':
@@ -2035,6 +2045,16 @@ export const koExtra: Record<ExtraMessageKey, string> = {
   'assist.ai.toggle.realtimeDesc':
     '쓰면서 어휘·문형·구조에 대한 AI 힌트를 받습니다.',
   'assist.ai.saveSettings': '설정 저장',
+  'assist.realtime.title': '실시간 제안',
+  'assist.realtime.hint': '입력을 멈추고 약 2–3초 후 업데이트됩니다. 이번 작성에만 임시로 표시됩니다.',
+  'assist.realtime.waiting': '입력 멈춘 뒤 분석…',
+  'assist.realtime.loading': '분석 중…',
+  'assist.realtime.idle': '계속 쓰세요. 멈추면 짧은 제안이 나타납니다.',
+  'assist.realtime.empty': '특별한 제안이 없습니다. 계속 쓰세요.',
+  'assist.realtime.type.grammar': '문법',
+  'assist.realtime.type.wording': '어휘',
+  'assist.realtime.type.polish': '다듬기',
+  'assist.realtime.badgeAria': '새 제안 {n}개',
   'assist.timer.title': '글쓰기 타이머',
   'assist.timer.description': '시간 설정, 카운트다운/업, 종료 알림',
   'assist.timer.intro':
