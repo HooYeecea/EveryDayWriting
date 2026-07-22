@@ -44,6 +44,7 @@ export const ruBase = {
   'settings.locale.label': "Язык",
   'settings.locale.desc': "Сохраните, чтобы обновить язык всего интерфейса.",
   'settings.locale.zh': "简体中文",
+  'settings.locale.zh-TW': "繁體中文",
   'settings.locale.en': "English",
   'settings.locale.ja': "日本語",
   'settings.locale.ko': "한국어",

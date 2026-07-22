@@ -5,6 +5,7 @@ import { deBase as deBaseCatalog } from './locales/deBase'
 import { esBase as esBaseCatalog } from './locales/esBase'
 import { ptBase as ptBaseCatalog } from './locales/ptBase'
 import { ruBase as ruBaseCatalog } from './locales/ruBase'
+import { toTraditionalChinese } from './traditionalChinese'
 
 /** 中文为文案源；其它语言缺 key 时回退中文 */
 const zhBase = {
@@ -58,6 +59,7 @@ const zhBase = {
   'settings.locale.label': '界面语言',
   'settings.locale.desc': '切换后保存即可更新整站界面文案。',
   'settings.locale.zh': '简体中文',
+  'settings.locale.zh-TW': '繁體中文',
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
@@ -260,6 +262,7 @@ const enBase: Record<keyof typeof zhBase, string> = {
   'settings.locale.label': 'Language',
   'settings.locale.desc': 'Save to update the full interface language.',
   'settings.locale.zh': '简体中文',
+  'settings.locale.zh-TW': '繁體中文',
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
@@ -460,6 +463,7 @@ const jaBase: Record<keyof typeof zhBase, string> = {
   'settings.locale.label': '表示言語',
   'settings.locale.desc': '保存するとサイト全体の表示言語が切り替わります。',
   'settings.locale.zh': '简体中文',
+  'settings.locale.zh-TW': '繁體中文',
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
@@ -660,6 +664,7 @@ const koBase: Record<keyof typeof zhBase, string> = {
   'settings.locale.label': '표시 언어',
   'settings.locale.desc': '저장하면 전체 화면 언어가 바뀝니다.',
   'settings.locale.zh': '简体中文',
+  'settings.locale.zh-TW': '繁體中文',
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
@@ -829,6 +834,7 @@ export const ruMessages: MessageCatalog = { ...ruBase, ...ruExtra }
 
 const CATALOGS: Record<AppLocale, MessageCatalog> = {
   zh: zhMessages,
+  'zh-TW': zhMessages,
   en: enMessages,
   ja: jaMessages,
   ko: koMessages,
@@ -841,6 +847,7 @@ const CATALOGS: Record<AppLocale, MessageCatalog> = {
 
 export const LOCALE_HTML_LANG: Record<AppLocale, string> = {
   zh: 'zh-CN',
+  'zh-TW': 'zh-TW',
   en: 'en',
   ja: 'ja',
   ko: 'ko',
@@ -862,6 +869,10 @@ export function translate(
     for (const [name, value] of Object.entries(params)) {
       text = text.replaceAll(`{${name}}`, String(value))
     }
+  }
+  // 繁体：以简体文案为源，运行时转换为台湾正体
+  if (locale === 'zh-TW') {
+    text = toTraditionalChinese(text)
   }
   return text
 }

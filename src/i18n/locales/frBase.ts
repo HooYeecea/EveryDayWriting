@@ -44,6 +44,7 @@ export const frBase = {
   'settings.locale.label': "Langue",
   'settings.locale.desc': "Enregistrez pour mettre à jour la langue de toute l'interface.",
   'settings.locale.zh': "简体中文",
+  'settings.locale.zh-TW': "繁體中文",
   'settings.locale.en': "English",
   'settings.locale.ja': "日本語",
   'settings.locale.ko': "한국어",

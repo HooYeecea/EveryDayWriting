@@ -44,6 +44,7 @@ export const ptBase = {
   'settings.locale.label': "Idioma",
   'settings.locale.desc': "Salve para atualizar o idioma de toda a interface.",
   'settings.locale.zh': "简体中文",
+  'settings.locale.zh-TW': "繁體中文",
   'settings.locale.en': "English",
   'settings.locale.ja': "日本語",
   'settings.locale.ko': "한국어",

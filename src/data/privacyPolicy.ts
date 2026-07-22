@@ -1,4 +1,5 @@
 import type { AppLocale } from '../types/preferences'
+import { toTraditionalChinese } from '../i18n/traditionalChinese'
 
 export interface PrivacyPolicySection {
   title: string
@@ -441,6 +442,7 @@ const ruSections: PrivacyPolicySection[] = [
 
 const PRIVACY_POLICY_BY_LOCALE: Record<AppLocale, PrivacyPolicySection[]> = {
   zh: zhSections,
+  'zh-TW': zhSections,
   en: enSections,
   ja: jaSections,
   ko: koSections,
@@ -453,7 +455,12 @@ const PRIVACY_POLICY_BY_LOCALE: Record<AppLocale, PrivacyPolicySection[]> = {
 
 /** 按界面语言返回前端本地隐私协议正文 */
 export function getPrivacyPolicySections(locale: AppLocale): PrivacyPolicySection[] {
-  return PRIVACY_POLICY_BY_LOCALE[locale] ?? zhSections
+  const sections = PRIVACY_POLICY_BY_LOCALE[locale] ?? zhSections
+  if (locale !== 'zh-TW') return sections
+  return sections.map((section) => ({
+    title: toTraditionalChinese(section.title),
+    content: toTraditionalChinese(section.content),
+  }))
 }
 
 /** @deprecated 请用 getPrivacyPolicySections(locale) */

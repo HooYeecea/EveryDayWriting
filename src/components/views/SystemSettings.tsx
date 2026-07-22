@@ -86,6 +86,7 @@ function SettingRow({
 
 const LOCALE_LABEL_KEY: Record<AppLocale, MessageKey> = {
   zh: 'settings.locale.zh',
+  'zh-TW': 'settings.locale.zh-TW',
   en: 'settings.locale.en',
   ja: 'settings.locale.ja',
   ko: 'settings.locale.ko',

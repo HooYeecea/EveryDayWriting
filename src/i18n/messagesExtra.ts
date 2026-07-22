@@ -2446,6 +2446,7 @@ export { frExtra, deExtra, esExtra, ptExtra, ruExtra }
 
 export const EXTRA_BY_LOCALE: Record<AppLocale, Record<ExtraMessageKey, string>> = {
   zh: zhExtra,
+  'zh-TW': zhExtra,
   en: enExtra,
   ja: jaExtra,
   ko: koExtra,

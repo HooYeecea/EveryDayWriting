@@ -11,9 +11,11 @@ import zhLocale from 'i18n-iso-countries/langs/zh.json'
 import type { MenuSelectOption } from '../components/common/MenuSelect'
 import type { AppLocale } from '../types/preferences'
 import { LOCALE_HTML_LANG } from '../i18n'
+import { toTraditionalChinese } from '../i18n/traditionalChinese'
 
 const ALL_LABEL: Record<AppLocale, string> = {
   zh: '全部',
+  'zh-TW': '全部',
   en: 'All',
   ja: 'すべて',
   ko: '전체',
@@ -26,6 +28,7 @@ const ALL_LABEL: Record<AppLocale, string> = {
 
 const ISO_LOCALE: Record<AppLocale, string> = {
   zh: 'zh',
+  'zh-TW': 'zh',
   en: 'en',
   ja: 'ja',
   ko: 'ko',
@@ -65,8 +68,9 @@ export function getWorldCountrySelectOptions(locale: AppLocale = 'zh'): MenuSele
 
   for (const code of codes) {
     const filterValue = countries.getName(code, 'zh')
-    const label = countries.getName(code, isoLang) || filterValue
+    let label = countries.getName(code, isoLang) || filterValue
     if (!filterValue || !label) continue
+    if (locale === 'zh-TW') label = toTraditionalChinese(label)
     options.push({ value: filterValue, label })
   }
 
@@ -74,7 +78,7 @@ export function getWorldCountrySelectOptions(locale: AppLocale = 'zh'): MenuSele
     a.label.localeCompare(b.label, LOCALE_HTML_LANG[locale] ?? 'en'),
   )
 
-  if (locale === 'zh') {
+  if (locale === 'zh' || locale === 'zh-TW') {
     const chinaIndex = options.findIndex((item) => item.value === '中国')
     if (chinaIndex > 0) {
       const [china] = options.splice(chinaIndex, 1)
@@ -82,5 +86,11 @@ export function getWorldCountrySelectOptions(locale: AppLocale = 'zh'): MenuSele
     }
   }
 
-  return [{ value: '', label: ALL_LABEL[locale] }, ...options]
+  return [
+    {
+      value: '',
+      label: locale === 'zh-TW' ? toTraditionalChinese(ALL_LABEL.zh) : ALL_LABEL[locale],
+    },
+    ...options,
+  ]
 }

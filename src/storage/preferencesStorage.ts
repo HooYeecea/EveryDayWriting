@@ -17,6 +17,7 @@ const LEGACY_TYPING_KEY = 'ew_typing_animation'
 function isLocale(value: unknown): value is AppLocale {
   return (
     value === 'zh' ||
+    value === 'zh-TW' ||
     value === 'en' ||
     value === 'ja' ||
     value === 'ko' ||
@@ -130,8 +131,20 @@ export function detectLocaleFromNavigator(
         : [],
 ): AppLocale {
   for (const tag of languages) {
-    const primary = tag.trim().toLowerCase().split('-')[0]
-    if (primary === 'zh') return 'zh'
+    const normalized = tag.trim().toLowerCase()
+    const primary = normalized.split('-')[0]
+    if (primary === 'zh') {
+      // zh-TW / zh-HK / zh-MO / zh-Hant → 繁体；其余中文默认简体
+      if (
+        normalized.includes('tw') ||
+        normalized.includes('hk') ||
+        normalized.includes('mo') ||
+        normalized.includes('hant')
+      ) {
+        return 'zh-TW'
+      }
+      return 'zh'
+    }
     if (primary === 'en') return 'en'
     if (primary === 'ja') return 'ja'
     if (primary === 'ko') return 'ko'

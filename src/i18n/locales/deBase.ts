@@ -44,6 +44,7 @@ export const deBase = {
   'settings.locale.label': "Sprache",
   'settings.locale.desc': "Speichern, um die Sprache der gesamten Oberfläche zu ändern.",
   'settings.locale.zh': "简体中文",
+  'settings.locale.zh-TW': "繁體中文",
   'settings.locale.en': "English",
   'settings.locale.ja': "日本語",
   'settings.locale.ko': "한국어",
