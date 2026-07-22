@@ -8,7 +8,8 @@ import {
   type AnimationEvent,
 } from 'react'
 import { useLocation } from 'react-router-dom'
-import { BrandContentGate } from '../brand/BrandLoading'
+import { BrandContentGate, BrandLoading } from '../brand/BrandLoading'
+import { ChunkErrorBoundary } from '../common/ChunkErrorBoundary'
 import { APP_ROUTES, DEFAULT_PATH } from '../../config/routes'
 
 function routeIndex(pathname: string): number {
@@ -136,9 +137,15 @@ export function AppPageSwitcher() {
               loadingLabel={`加载${label}…`}
               minHeight={420}
             >
-              <Suspense fallback={null}>
-                <Page onReady={() => markPageReady(path)} />
-              </Suspense>
+              <ChunkErrorBoundary>
+                <Suspense
+                  fallback={
+                    <BrandLoading label={`加载${label}…`} minHeight={420} className="rounded-none border-0 shadow-none" />
+                  }
+                >
+                  <Page onReady={() => markPageReady(path)} />
+                </Suspense>
+              </ChunkErrorBoundary>
             </BrandContentGate>
           </div>
         )

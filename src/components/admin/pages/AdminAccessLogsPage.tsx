@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -32,7 +32,10 @@ import {
   type AdminAccessLogVisitorItem,
 } from '../../../api/admin'
 import { useReportReady } from '../../../hooks/useReportReady'
-import { AccessLogGeoHeatMap } from '../AccessLogGeoHeatMap'
+
+const AccessLogGeoHeatMap = lazy(() =>
+  import('../AccessLogGeoHeatMap').then((m) => ({ default: m.AccessLogGeoHeatMap })),
+)
 import {
   AdminCard,
   AdminEmpty,
@@ -664,23 +667,39 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <AdminCard>
-            <AccessLogGeoHeatMap
-              kind="country"
-              title="国家热力图"
-              description="颜色越深访问越多，悬停查看数值"
-              geo={countryGeo}
-              loading={statsLoading}
-            />
+            <Suspense
+              fallback={
+                <div className="flex h-64 items-center justify-center text-xs text-neutral-400">
+                  加载地图…
+                </div>
+              }
+            >
+              <AccessLogGeoHeatMap
+                kind="country"
+                title="国家热力图"
+                description="颜色越深访问越多，悬停查看数值"
+                geo={countryGeo}
+                loading={statsLoading}
+              />
+            </Suspense>
           </AdminCard>
 
           <AdminCard>
-            <AccessLogGeoHeatMap
-              kind="province"
-              title="省热力图"
-              description="中国各省访问热度（排除内网）"
-              geo={provinceGeo}
-              loading={statsLoading}
-            />
+            <Suspense
+              fallback={
+                <div className="flex h-64 items-center justify-center text-xs text-neutral-400">
+                  加载地图…
+                </div>
+              }
+            >
+              <AccessLogGeoHeatMap
+                kind="province"
+                title="省热力图"
+                description="中国各省访问热度（排除内网）"
+                geo={provinceGeo}
+                loading={statsLoading}
+              />
+            </Suspense>
           </AdminCard>
         </div>
 

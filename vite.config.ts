@@ -2,6 +2,16 @@ import { defineConfig, loadEnv, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+/** 后台图表包不得进入用户端入口 modulepreload */
+function isChartDep(dep: string) {
+  return (
+    dep.includes('echarts') ||
+    dep.includes('recharts') ||
+    dep.includes('/charts-') ||
+    /(?:^|\/)charts-[^/]+\.js$/.test(dep)
+  )
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = (
@@ -13,6 +23,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     build: {
+      modulePreload: {
+        resolveDependencies: (_filename, deps) => deps.filter((dep) => !isChartDep(dep)),
+      },
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -33,17 +46,18 @@ export default defineConfig(({ mode }) => {
             ) {
               return 'editor'
             }
+            // echarts / recharts 分开，避免进 Dashboard 就拖上热力图
+            if (id.includes('node_modules/echarts')) {
+              return 'echarts'
+            }
             if (
-              id.includes('node_modules/echarts') ||
               id.includes('node_modules/recharts') ||
               id.includes('node_modules/d3-') ||
               id.includes('node_modules/victory-vendor')
             ) {
-              return 'charts'
+              return 'recharts'
             }
-            if (id.includes('node_modules/lucide-react')) {
-              return 'icons'
-            }
+            // lucide 交给按图标 tree-shake，不强行打成 icons vendor
           },
         },
       },

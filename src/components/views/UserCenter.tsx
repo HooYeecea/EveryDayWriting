@@ -36,7 +36,7 @@ import {
 import { WritingCheckInPanel } from '../user/WritingCheckInPanel'
 import { resolveAssetUrl } from '../../utils/assetUrl'
 import { getAvatarLabel, getVipLabel } from '../../utils/authValidation'
-import { getFirstAllowedAdminPath } from '../../config/adminRoutes'
+import { getFirstAllowedAdminPath } from '../../config/adminPaths'
 import { canAccessAdmin, hasUserRole } from '../../utils/roles'
 import {
   PANEL_SUBTITLE_CLASS,

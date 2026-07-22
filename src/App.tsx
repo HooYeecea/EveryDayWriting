@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { AppBootLoading } from './components/brand/BrandLoading'
+import { ChunkErrorBoundary } from './components/common/ChunkErrorBoundary'
 import { Layout } from './components/layout/Layout'
 import { AppPageSwitcher } from './components/layout/AppPageSwitcher'
 import { useAuth } from './context/AuthContext'
@@ -10,7 +11,7 @@ import {
   canAccessAdminPath,
   getFirstAllowedAdminPath,
   isAdminPath,
-} from './config/adminRoutes'
+} from './config/adminPaths'
 import { getToken } from './storage/tokenStorage'
 import {
   canAccessAdmin,
@@ -18,6 +19,7 @@ import {
   isAdminOnly,
 } from './utils/roles'
 import { isAuthPath } from './config/authPaths'
+import { dismissBootSplash } from './utils/bootSplash'
 
 const AdminLayout = lazy(() =>
   import('./components/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })),
@@ -40,7 +42,11 @@ const ProficiencyTestPage = lazy(() =>
 )
 
 function LazyBoot({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<AppBootLoading />}>{children}</Suspense>
+  return (
+    <ChunkErrorBoundary>
+      <Suspense fallback={<AppBootLoading />}>{children}</Suspense>
+    </ChunkErrorBoundary>
+  )
 }
 
 function App() {
@@ -50,6 +56,11 @@ function App() {
   const { navigationLocked } = useWritingFocus()
   const homePath = getDefaultHomePath(roles, permissions)
   const wasOnAdminRef = useRef(false)
+
+  // 鉴权恢复完成后再卸 HTML 启动壳，避免 chunk 失败时已无壳可看
+  useLayoutEffect(() => {
+    if (!isLoading) dismissBootSplash()
+  }, [isLoading])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -133,9 +144,11 @@ function App() {
     }
 
     return (
-      <Layout>
-        <AppPageSwitcher />
-      </Layout>
+      <ChunkErrorBoundary>
+        <Layout>
+          <AppPageSwitcher />
+        </Layout>
+      </ChunkErrorBoundary>
     )
   }
 

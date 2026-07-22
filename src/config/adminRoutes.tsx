@@ -20,6 +20,13 @@ import {
 } from 'lucide-react'
 import { hasPermission } from '../utils/roles'
 
+export {
+  ADMIN_DEFAULT_PATH,
+  canAccessAdminPath,
+  getFirstAllowedAdminPath,
+  isAdminPath,
+} from './adminPaths'
+
 export type AdminMenuKey =
   | 'dashboard'
   | 'system'
@@ -71,8 +78,6 @@ export interface AdminVisibleMenuGroup {
   label: string
   routes: AdminRoute[]
 }
-
-export const ADMIN_DEFAULT_PATH = '/admin'
 
 export const ADMIN_MENU_GROUPS: AdminMenuGroup[] = [
   {
@@ -327,10 +332,6 @@ export const ADMIN_ROUTES: AdminRoute[] = [
   },
 ]
 
-export function isAdminPath(pathname: string): boolean {
-  return pathname === '/admin' || pathname.startsWith('/admin/')
-}
-
 export function getVisibleAdminRoutes(permissions: string[]): AdminRoute[] {
   return ADMIN_ROUTES.filter((route) => {
     if (!route.permission) {
@@ -348,16 +349,4 @@ export function getVisibleAdminMenuGroups(permissions: string[]): AdminVisibleMe
     label: group.label,
     routes: group.routeKeys.map((key) => byKey.get(key)).filter(Boolean) as AdminRoute[],
   })).filter((group) => group.routes.length > 0)
-}
-
-export function canAccessAdminPath(pathname: string, permissions: string[]): boolean {
-  const route = ADMIN_ROUTES.find((item) => item.path === pathname)
-  if (!route) return false
-  if (!route.permission) return permissions.length > 0
-  return hasPermission(permissions, route.permission)
-}
-
-export function getFirstAllowedAdminPath(permissions: string[]): string {
-  const first = getVisibleAdminRoutes(permissions)[0]
-  return first?.path ?? ADMIN_DEFAULT_PATH
 }
