@@ -13,8 +13,14 @@ export const WEEKDAY_LABELS_SUN = ['日', '一', '二', '三', '四', '五', '�
 /** @deprecated 默认周一开头；请用 getWeekdayLabels */
 export const WEEKDAY_LABELS = WEEKDAY_LABELS_MON
 
-export function getWeekdayLabels(weekStartsOn: 0 | 1 = 1): string[] {
-  return weekStartsOn === 1 ? WEEKDAY_LABELS_MON : WEEKDAY_LABELS_SUN
+export function getWeekdayLabels(weekStartsOn: 0 | 1 = 1, locale = 'zh-CN'): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  const anchor =
+    weekStartsOn === 1
+      ? new Date(2024, 0, 1) // Monday
+      : new Date(2024, 0, 7) // Sunday
+
+  return Array.from({ length: 7 }, (_, index) => formatter.format(addDays(anchor, index)))
 }
 
 export interface CalendarCell {
@@ -148,8 +154,9 @@ export function buildCheckedDaySet(calendars: CheckInCalendar[]): Set<string> {
   return set
 }
 
-export function formatYearLabel(year: number): string {
-  return `${year}年`
+export function formatYearLabel(year: number, locale = 'zh-CN'): string {
+  if (locale.startsWith('zh')) return `${year}年`
+  return String(year)
 }
 
 export function formatMonthLabel(

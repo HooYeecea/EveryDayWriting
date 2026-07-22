@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getCheckInCalendar, getCheckInStatus, getCheckInYearCalendar } from '../../api/checkIn'
 import { usePreferences } from '../../context/PreferencesContext'
+import { useT } from '../../i18n'
+import type { MessageKey } from '../../i18n'
 import type { CheckInCalendar, CheckInStatus } from '../../types'
 import { APP_LOCALE_TO_BCP47, type DateFormatPref, type WeekStartsOn } from '../../types/preferences'
 import {
@@ -10,7 +12,6 @@ import {
   buildCheckedDaySet,
   buildMonthGrid,
   buildMonthMiniGrid,
-  CALENDAR_VIEW_LABELS,
   createEmptyYearCalendars,
   formatMonthLabel,
   formatWeekLabel,
@@ -31,21 +32,31 @@ function calendarCacheKey(year: number, month: number): string {
   return `${year}-${month}`
 }
 
+const CALENDAR_VIEW_KEYS: Record<CalendarViewMode, MessageKey> = {
+  year: 'checkin.view.year',
+  month: 'checkin.view.month',
+  week: 'checkin.view.week',
+}
+
 function CalendarViewToggle({
   value,
   onChange,
+  label,
+  ariaLabel,
 }: {
   value: CalendarViewMode
   onChange: (mode: CalendarViewMode) => void
+  label: (mode: CalendarViewMode) => string
+  ariaLabel: string
 }) {
-  const modes = Object.keys(CALENDAR_VIEW_LABELS) as CalendarViewMode[]
+  const modes = Object.keys(CALENDAR_VIEW_KEYS) as CalendarViewMode[]
   const activeIndex = modes.indexOf(value)
 
   return (
     <div
       className="relative flex w-full rounded-lg border border-neutral-200 bg-neutral-50 p-0.5 sm:w-auto"
       role="tablist"
-      aria-label="打卡日历视图"
+      aria-label={ariaLabel}
     >
       <span
         aria-hidden
@@ -66,7 +77,7 @@ function CalendarViewToggle({
             value === mode ? 'text-neutral-900' : 'text-neutral-500 hover:text-neutral-700'
           }`}
         >
-          {CALENDAR_VIEW_LABELS[mode]}
+          {label(mode)}
         </button>
       ))}
     </div>
@@ -121,6 +132,7 @@ function YearCalendarView({
   today,
   todayKey,
   weekStartsOn,
+  dateLocale,
   onOpenMonth,
 }: {
   viewYear: number
@@ -129,6 +141,7 @@ function YearCalendarView({
   today: Date
   todayKey: string
   weekStartsOn: WeekStartsOn
+  dateLocale: string
   onOpenMonth: (monthIndex: number) => void
 }) {
   const months = yearCalendars.length === 12 ? yearCalendars : createEmptyYearCalendars(viewYear)
@@ -151,7 +164,9 @@ function YearCalendarView({
           >
             <div className="flex items-center justify-between gap-1">
               <span className="text-xs font-medium text-neutral-800 sm:text-sm">
-                {monthIndex + 1}月
+                {new Date(viewYear, monthIndex, 1).toLocaleDateString(dateLocale, {
+                  month: 'short',
+                })}
               </span>
               <span className="text-[10px] text-neutral-400 sm:text-xs">
                 {monthCalendar.totalDays}/{daysInMonth}
@@ -278,11 +293,15 @@ function slideEnterClass(direction: SlideDirection | null): string {
 }
 
 export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) {
+  const t = useT()
   const { preferences } = usePreferences()
   const weekStartsOn = preferences.ui.weekStartsOn
   const dateFormat = preferences.ui.dateFormat
   const dateLocale = APP_LOCALE_TO_BCP47[preferences.locale]
-  const weekdayLabels = useMemo(() => getWeekdayLabels(weekStartsOn), [weekStartsOn])
+  const weekdayLabels = useMemo(
+    () => getWeekdayLabels(weekStartsOn, dateLocale),
+    [dateLocale, weekStartsOn],
+  )
 
   const today = useMemo(() => new Date(), [])
   const todayKey = useMemo(() => toDateKey(today), [today])
@@ -590,7 +609,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
   useEffect(() => () => cancelHeightAnimation(), [cancelHeightAnimation])
 
   const periodLabel = useMemo(() => {
-    if (viewMode === 'year') return formatYearLabel(viewYear)
+    if (viewMode === 'year') return formatYearLabel(viewYear, dateLocale)
     if (viewMode === 'week') return formatWeekLabel(viewWeekStart, dateLocale, dateFormat)
     return formatMonthLabel(viewYear, viewMonth, dateLocale, dateFormat)
   }, [dateFormat, dateLocale, viewMode, viewMonth, viewWeekStart, viewYear])
@@ -743,20 +762,30 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
     if (viewMode === 'year') {
       if (!isSynced) return null
       const total = yearCalendars.reduce((sum, item) => sum + item.totalDays, 0)
-      return `${formatYearLabel(viewYear)} 累计打卡 ${total} 天`
+      return t('checkin.summary.year', {
+        period: formatYearLabel(viewYear, dateLocale),
+        n: total,
+      })
     }
     if (viewMode === 'week') {
       const total = weekDays.filter((date) => checkedDaySet.has(toDateKey(date))).length
-      return `${formatWeekLabel(viewWeekStart, dateLocale, dateFormat)} 已打卡 ${total} 天`
+      return t('checkin.summary.week', {
+        period: formatWeekLabel(viewWeekStart, dateLocale, dateFormat),
+        n: total,
+      })
     }
     if (!isSynced || !calendar) return null
-    return `${formatMonthLabel(viewYear, viewMonth, dateLocale, dateFormat)} 已打卡 ${calendar.totalDays} 天`
+    return t('checkin.summary.month', {
+      period: formatMonthLabel(viewYear, viewMonth, dateLocale, dateFormat),
+      n: calendar.totalDays,
+    })
   }, [
     calendar,
     checkedDaySet,
     dateFormat,
     dateLocale,
     isSynced,
+    t,
     viewMode,
     viewMonth,
     viewWeekStart,
@@ -775,24 +804,37 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
     <section className="checkin-calendar-panel rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center gap-2">
         <CalendarDays size={18} className="text-neutral-500" strokeWidth={1.75} />
-        <h3 className="text-base font-semibold text-neutral-900">坚持写作打卡</h3>
+        <h3 className="text-base font-semibold text-neutral-900">{t('checkin.title')}</h3>
       </div>
-      <p className="mt-1 text-sm text-neutral-500">
-        每日首次提交作文自动打卡，无需手动操作
-      </p>
+      <p className="mt-1 text-sm text-neutral-500">{t('checkin.hint')}</p>
 
       {initialLoading && !status && (
-        <p className="mt-4 text-sm text-neutral-400">加载中…</p>
+        <p className="mt-4 text-sm text-neutral-400">{t('checkin.loading')}</p>
       )}
 
       {status && (
         <>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: '今日打卡', value: status.checkedInToday ? '已完成' : '未完成' },
-              { label: '当前连续', value: status.currentStreak, unit: '天' },
-              { label: '最长连续', value: status.longestStreak, unit: '天' },
-              { label: '累计打卡', value: status.totalCheckIns, unit: '天' },
+              {
+                label: t('checkin.today'),
+                value: status.checkedInToday ? t('checkin.done') : t('checkin.notDone'),
+              },
+              {
+                label: t('checkin.currentStreak'),
+                value: status.currentStreak,
+                unit: t('checkin.daysUnit'),
+              },
+              {
+                label: t('checkin.longestStreak'),
+                value: status.longestStreak,
+                unit: t('checkin.daysUnit'),
+              },
+              {
+                label: t('checkin.total'),
+                value: status.totalCheckIns,
+                unit: t('checkin.daysUnit'),
+              },
             ].map(({ label, value, unit }) => (
               <div key={label} className="rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-3">
                 <p className="text-lg font-semibold text-neutral-900">
@@ -806,11 +848,15 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
 
           {status.checkinTier && (
             <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm">
-              <p className="font-medium text-amber-900">当前段位：{status.checkinTier.name}</p>
+              <p className="font-medium text-amber-900">
+                {t('checkin.tierCurrent', { name: status.checkinTier.name })}
+              </p>
               {status.checkinTier.nextTier && (
                 <p className="mt-1 text-xs text-amber-800">
-                  距离「{status.checkinTier.nextTier.name}」还需{' '}
-                  {status.checkinTier.nextTier.daysRemaining} 天
+                  {t('checkin.tierNext', {
+                    name: status.checkinTier.nextTier.name,
+                    days: status.checkinTier.nextTier.daysRemaining,
+                  })}
                 </p>
               )}
             </div>
@@ -826,8 +872,13 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
 
       <div className="mt-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h4 className="text-sm font-medium text-neutral-800">打卡日历</h4>
-          <CalendarViewToggle value={viewMode} onChange={switchViewMode} />
+          <h4 className="text-sm font-medium text-neutral-800">{t('checkin.calendar')}</h4>
+          <CalendarViewToggle
+            value={viewMode}
+            onChange={switchViewMode}
+            label={(mode) => t(CALENDAR_VIEW_KEYS[mode])}
+            ariaLabel={t('checkin.viewToggleAria')}
+          />
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-2">
@@ -835,7 +886,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
             type="button"
             onClick={goPrev}
             className="rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
-            aria-label="上一段"
+            aria-label={t('checkin.prev')}
           >
             <ChevronLeft size={16} />
           </button>
@@ -846,7 +897,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
             type="button"
             onClick={goNext}
             className="rounded-lg p-1.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
-            aria-label="下一段"
+            aria-label={t('checkin.next')}
           >
             <ChevronRight size={16} />
           </button>
@@ -871,6 +922,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
                 today={today}
                 todayKey={todayKey}
                 weekStartsOn={weekStartsOn}
+                dateLocale={dateLocale}
                 onOpenMonth={openMonthFromYear}
               />
             </div>
@@ -917,7 +969,7 @@ export function WritingCheckInPanel({ onReady }: { onReady?: () => void } = {}) 
         )}
 
         {viewMode === 'year' && (
-          <p className="mt-2 text-[11px] text-neutral-400 sm:text-xs">点击月份可查看该月详细打卡</p>
+          <p className="mt-2 text-[11px] text-neutral-400 sm:text-xs">{t('checkin.monthClickHint')}</p>
         )}
       </div>
     </section>

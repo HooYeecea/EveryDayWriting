@@ -13,6 +13,7 @@ import { callAiProxy } from '../../api/ai'
 import { isApiError } from '../../api/request'
 import * as proficiencyApi from '../../api/proficiencyTest'
 import { useAuth } from '../../context/AuthContext'
+import { useT } from '../../i18n'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
 import { parseAiProxyContent } from '../../storage/gradingPreviewStorage'
 import { getToken } from '../../storage/tokenStorage'
@@ -29,6 +30,8 @@ import { loadUserPreferences } from '../../storage/preferencesStorage'
 
 type ViewMode = 'loading' | 'welcome' | 'testing' | 'evaluating' | 'result' | 'error'
 
+type TFn = ReturnType<typeof useT>
+
 function countWords(text: string): number {
   return text
     .trim()
@@ -36,29 +39,29 @@ function countWords(text: string): number {
     .filter(Boolean).length
 }
 
-function questionTypeLabel(type: string): string {
+function questionTypeLabel(type: string, t: TFn): string {
   switch (type) {
     case 'vocabulary':
-      return '词汇'
+      return t('proficiency.questionType.vocabulary')
     case 'grammar_judge':
-      return '语法判断'
+      return t('proficiency.questionType.grammarJudge')
     case 'sentence_rewrite':
-      return '句子改写'
+      return t('proficiency.questionType.sentenceRewrite')
     case 'error_correction':
-      return '改错'
+      return t('proficiency.questionType.errorCorrection')
     default:
-      return '基础题'
+      return t('proficiency.questionType.default')
   }
 }
 
-function difficultyBandLabel(band?: string, difficulty?: number): string {
-  if (band === 'easy' || difficulty === 1 || difficulty === 2) return '简单'
-  if (band === 'hard' || difficulty === 4 || difficulty === 5) return '较难'
-  return '中等'
+function difficultyBandLabel(band: string | undefined, difficulty: number | undefined, t: TFn): string {
+  if (band === 'easy' || difficulty === 1 || difficulty === 2) return t('proficiency.difficulty.easy')
+  if (band === 'hard' || difficulty === 4 || difficulty === 5) return t('proficiency.difficulty.hard')
+  return t('proficiency.difficulty.medium')
 }
 
-function writingSlotLabel(slot: string): string {
-  return slot === 'hard' ? '进阶写作' : '基础写作'
+function writingSlotLabel(slot: string, t: TFn): string {
+  return slot === 'hard' ? t('proficiency.writingSlot.hard') : t('proficiency.writingSlot.easy')
 }
 
 function normalizeContent(content: ObjectiveQuestion['content']) {
@@ -82,6 +85,7 @@ function sortWritingTasks(tasks: WritingTask[]): WritingTask[] {
 
 export function ProficiencyTestPage() {
   const navigate = useNavigate()
+  const t = useT()
   const { isAuthenticated, isLoading: authLoading, refreshProfile, roles, permissions } =
     useAuth()
   const homePath = getDefaultHomePath(
@@ -167,7 +171,7 @@ export function ProficiencyTestPage() {
 
         const parsed = parseAiProxyContent<ProficiencyEvaluationResult>(aiResult.content || '')
         if (typeof parsed === 'string') {
-          throw new Error('AI 评估结果格式异常，请稍后重试')
+          throw new Error(t('proficiency.error.evalFormat'))
         }
 
         const completed = await proficiencyApi.completeProficiencyTest(id, parsed)
@@ -177,11 +181,11 @@ export function ProficiencyTestPage() {
         await refreshProfile()
         setView('result')
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'AI 评估失败')
+        setError(err instanceof Error ? err.message : t('proficiency.error.evalFailed'))
         setView('error')
       }
     },
-    [refreshProfile],
+    [refreshProfile, t],
   )
 
   const loadStatus = useCallback(async () => {
@@ -217,10 +221,10 @@ export function ProficiencyTestPage() {
 
       setView('welcome')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载测评状态失败')
+      setError(err instanceof Error ? err.message : t('proficiency.error.loadStatusFailed'))
       setView('error')
     }
-  }, [restoreFromStage, runEvaluation])
+  }, [restoreFromStage, runEvaluation, t])
 
   useEffect(() => {
     if (authLoading) return
@@ -253,7 +257,7 @@ export function ProficiencyTestPage() {
         await refreshProfile()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '开始测评失败')
+      setError(err instanceof Error ? err.message : t('proficiency.error.startFailed'))
     } finally {
       setBusy(false)
     }
@@ -267,7 +271,7 @@ export function ProficiencyTestPage() {
       await refreshProfile()
       navigate(homePath, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '跳过失败')
+      setError(err instanceof Error ? err.message : t('proficiency.error.skipFailed'))
     } finally {
       setBusy(false)
     }
@@ -278,7 +282,7 @@ export function ProficiencyTestPage() {
     for (const q of selfQuestions) {
       if (q.required === false) continue
       if (!selfAnswers[q.id]) {
-        setError(`请完成：${q.question}`)
+        setError(t('proficiency.error.selfRequired', { question: q.question }))
         return
       }
     }
@@ -291,7 +295,7 @@ export function ProficiencyTestPage() {
       setObjectiveIndex(0)
       setStage('B')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '提交自评失败')
+      setError(err instanceof Error ? err.message : t('proficiency.error.selfSubmitFailed'))
     } finally {
       setBusy(false)
     }
@@ -301,7 +305,7 @@ export function ProficiencyTestPage() {
     if (!testId) return
     const missing = objectiveQuestions.find((q) => !objectiveAnswers[q.id]?.trim())
     if (missing) {
-      setError('请完成全部客观题')
+      setError(t('proficiency.error.objectiveIncomplete'))
       return
     }
     setBusy(true)
@@ -317,7 +321,7 @@ export function ProficiencyTestPage() {
       await loadWritingTasks(testId)
       setStage('C')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '提交客观题失败')
+      setError(err instanceof Error ? err.message : t('proficiency.error.objectiveSubmitFailed'))
     } finally {
       setBusy(false)
     }
@@ -330,20 +334,30 @@ export function ProficiencyTestPage() {
       const text = (writingTexts[task.slot] ?? '').trim()
       const words = countWords(text)
       if (!text) {
-        setError(`请完成${writingSlotLabel(task.slot)}`)
-        setWritingIndex(writingTasks.findIndex((t) => t.slot === task.slot))
+        setError(t('proficiency.error.writingIncomplete', { type: writingSlotLabel(task.slot, t) }))
+        setWritingIndex(writingTasks.findIndex((item) => item.slot === task.slot))
         return
       }
       if (words < task.minWords) {
-        setError(`${writingSlotLabel(task.slot)}请至少写 ${task.minWords} 词（当前 ${words}）`)
-        setWritingIndex(writingTasks.findIndex((t) => t.slot === task.slot))
+        setError(
+          t('proficiency.error.writingMinWords', {
+            type: writingSlotLabel(task.slot, t),
+            min: task.minWords,
+            current: words,
+          }),
+        )
+        setWritingIndex(writingTasks.findIndex((item) => item.slot === task.slot))
         return
       }
       if (words > task.maxWords + 40) {
         setError(
-          `${writingSlotLabel(task.slot)}请控制在约 ${task.maxWords} 词以内（当前 ${words}）`,
+          t('proficiency.error.writingMaxWords', {
+            type: writingSlotLabel(task.slot, t),
+            max: task.maxWords,
+            current: words,
+          }),
         )
-        setWritingIndex(writingTasks.findIndex((t) => t.slot === task.slot))
+        setWritingIndex(writingTasks.findIndex((item) => item.slot === task.slot))
         return
       }
     }
@@ -361,7 +375,13 @@ export function ProficiencyTestPage() {
       setBusy(false)
       await runEvaluation(testId)
     } catch (err) {
-      setError(isApiError(err) ? err.message : err instanceof Error ? err.message : '提交写作失败')
+      setError(
+        isApiError(err)
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : t('proficiency.error.writingSubmitFailed'),
+      )
       setBusy(false)
     }
   }
@@ -369,7 +389,7 @@ export function ProficiencyTestPage() {
   if (authLoading) {
     return (
       <Shell>
-        <p className="text-sm text-neutral-400">加载中…</p>
+        <p className="text-sm text-neutral-400">{t('proficiency.loading')}</p>
       </Shell>
     )
   }
@@ -385,7 +405,7 @@ export function ProficiencyTestPage() {
       {view === 'loading' && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-400">
           <Loader2 size={16} className="animate-spin" />
-          正在准备测评…
+          {t('proficiency.preparing')}
         </div>
       )}
 
@@ -402,16 +422,16 @@ export function ProficiencyTestPage() {
 
       {view === 'testing' && stage === 'A' && (
         <StageCard
-          step="1 / 3"
-          title="快速自评"
-          subtitle="约 1 分钟，帮助我们了解你的练习背景与目标"
+          step={t('proficiency.stageA.step')}
+          title={t('proficiency.stageA.title')}
+          subtitle={t('proficiency.stageA.subtitle')}
         >
           <div className="space-y-5">
             {selfQuestions.map((q) => (
               <div key={q.id}>
                 <p className="font-sans text-xs font-medium uppercase tracking-wider text-neutral-500">
                   {q.question}
-                  {q.required === false ? '（可选）' : ''}
+                  {q.required === false ? t('proficiency.stageA.optional') : ''}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {q.options.map((opt) => {
@@ -444,7 +464,7 @@ export function ProficiencyTestPage() {
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-              下一步：递进基础题
+              {t('proficiency.stageA.next')}
               <ArrowRight size={16} />
             </button>
           </div>
@@ -453,15 +473,32 @@ export function ProficiencyTestPage() {
 
       {view === 'testing' && stage === 'B' && currentObjective && (
         <StageCard
-          step={`2 / 3 · ${objectiveIndex + 1}/${objectiveQuestions.length}`}
-          title="递进基础题"
-          subtitle={`${questionTypeLabel(currentObjective.questionType)} · ${difficultyBandLabel(currentObjective.difficultyBand, currentObjective.difficulty)} · 由易到难共 ${objectiveQuestions.length || 10} 题`}
+          step={t('proficiency.stageB.step', {
+            current: objectiveIndex + 1,
+            total: objectiveQuestions.length,
+          })}
+          title={t('proficiency.stageB.title')}
+          subtitle={t('proficiency.stageB.subtitle', {
+            type: questionTypeLabel(currentObjective.questionType, t),
+            difficulty: difficultyBandLabel(
+              currentObjective.difficultyBand,
+              currentObjective.difficulty,
+              t,
+            ),
+            total: objectiveQuestions.length || 10,
+          })}
         >
           <div className="mb-3 flex items-center gap-2 text-xs text-neutral-400">
             <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">
-              {difficultyBandLabel(currentObjective.difficultyBand, currentObjective.difficulty)}
+              {difficultyBandLabel(
+                currentObjective.difficultyBand,
+                currentObjective.difficulty,
+                t,
+              )}
             </span>
-            <span>难度 {currentObjective.difficulty}/5</span>
+            <span>
+              {t('proficiency.stageB.difficulty', { n: currentObjective.difficulty })}
+            </span>
           </div>
           <ObjectiveQuestionView
             question={currentObjective}
@@ -481,7 +518,7 @@ export function ProficiencyTestPage() {
               onClick={() => setObjectiveIndex((i) => Math.max(0, i - 1))}
               className="rounded-lg border border-neutral-200 px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
             >
-              上一题
+              {t('proficiency.stageB.prev')}
             </button>
             {objectiveIndex < objectiveQuestions.length - 1 ? (
               <button
@@ -490,7 +527,7 @@ export function ProficiencyTestPage() {
                 onClick={() => setObjectiveIndex((i) => i + 1)}
                 className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
               >
-                下一题
+                {t('proficiency.stageB.next')}
               </button>
             ) : (
               <button
@@ -500,7 +537,7 @@ export function ProficiencyTestPage() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-                进入双写作
+                {t('proficiency.stageB.submit')}
               </button>
             )}
           </div>
@@ -509,9 +546,12 @@ export function ProficiencyTestPage() {
 
       {view === 'testing' && stage === 'C' && currentWriting && (
         <StageCard
-          step={`3 / 3 · ${writingIndex + 1}/${writingTasks.length}`}
-          title="一易一难双写作"
-          subtitle="先完成基础写作，再挑战进阶写作；两篇都要提交"
+          step={t('proficiency.stageC.step', {
+            current: writingIndex + 1,
+            total: writingTasks.length,
+          })}
+          title={t('proficiency.stageC.title')}
+          subtitle={t('proficiency.stageC.subtitle')}
         >
           <div className="mb-4 flex gap-2">
             {writingTasks.map((task, index) => {
@@ -530,8 +570,8 @@ export function ProficiencyTestPage() {
                         : 'border-neutral-200 bg-white text-neutral-500'
                   }`}
                 >
-                  {writingSlotLabel(task.slot)}
-                  {done ? ' · 已写' : ''}
+                  {writingSlotLabel(task.slot, t)}
+                  {done ? t('proficiency.stageC.written') : ''}
                 </button>
               )
             })}
@@ -540,9 +580,11 @@ export function ProficiencyTestPage() {
           <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
             <div className="mb-2 flex items-center gap-2 text-xs text-neutral-400">
               <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">
-                {writingSlotLabel(currentWriting.slot)}
+                {writingSlotLabel(currentWriting.slot, t)}
               </span>
-              <span>难度 {currentWriting.difficulty}/5</span>
+              <span>
+                {t('proficiency.stageC.difficulty', { n: currentWriting.difficulty })}
+              </span>
             </div>
             <p className="font-serif text-base leading-relaxed text-neutral-800">
               {currentWriting.prompt}
@@ -560,19 +602,22 @@ export function ProficiencyTestPage() {
               }))
             }
             rows={9}
-            placeholder="Write your response in English…"
+            placeholder={t('proficiency.stageC.placeholder')}
             className="mt-4 w-full resize-y rounded-xl border border-neutral-200 bg-white px-4 py-3 font-serif text-sm leading-relaxed text-neutral-800 outline-none focus:border-neutral-400 focus:bg-white"
           />
           <div className="mt-2 flex items-center justify-between text-xs text-neutral-400">
             <span>
-              建议 {currentWriting.minWords}–{currentWriting.maxWords} 词
+              {t('proficiency.stageC.wordHint', {
+                min: currentWriting.minWords,
+                max: currentWriting.maxWords,
+              })}
             </span>
             <span
               className={
                 currentWordCount < currentWriting.minWords ? 'text-amber-600' : ''
               }
             >
-              {currentWordCount} 词
+              {t('proficiency.stageC.wordCount', { n: currentWordCount })}
             </span>
           </div>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -583,7 +628,7 @@ export function ProficiencyTestPage() {
               onClick={() => setWritingIndex((i) => Math.max(0, i - 1))}
               className="rounded-lg border border-neutral-200 px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
             >
-              上一篇
+              {t('proficiency.stageC.prev')}
             </button>
             {writingIndex < writingTasks.length - 1 ? (
               <button
@@ -592,7 +637,7 @@ export function ProficiencyTestPage() {
                 onClick={() => setWritingIndex((i) => i + 1)}
                 className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-60"
               >
-                下一篇
+                {t('proficiency.stageC.next')}
               </button>
             ) : (
               <button
@@ -602,7 +647,7 @@ export function ProficiencyTestPage() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                提交两篇并评估
+                {t('proficiency.stageC.submit')}
               </button>
             )}
           </div>
@@ -612,8 +657,10 @@ export function ProficiencyTestPage() {
       {view === 'evaluating' && (
         <div className="py-16 text-center">
           <Loader2 size={28} className="mx-auto animate-spin text-neutral-700" />
-          <p className="mt-4 font-sans text-base font-medium text-neutral-900">AI 正在分析你的水平</p>
-          <p className="mt-2 text-sm text-neutral-500">大约需要几秒钟，请稍候…</p>
+          <p className="mt-4 font-sans text-base font-medium text-neutral-900">
+            {t('proficiency.evaluating.title')}
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">{t('proficiency.evaluating.hint')}</p>
           {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
         </div>
       )}
@@ -630,21 +677,21 @@ export function ProficiencyTestPage() {
 
       {view === 'error' && (
         <div className="py-10 text-center">
-          <p className="text-sm text-red-600">{error || '出错了'}</p>
+          <p className="text-sm text-red-600">{error || t('proficiency.error.generic')}</p>
           <div className="mt-4 flex justify-center gap-2">
             <button
               type="button"
               onClick={() => void loadStatus()}
               className="rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-800"
             >
-              重试
+              {t('proficiency.error.retry')}
             </button>
             <button
               type="button"
               onClick={() => navigate(homePath)}
               className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600"
             >
-              返回首页
+              {t('proficiency.error.backHome')}
             </button>
           </div>
         </div>
@@ -654,6 +701,7 @@ export function ProficiencyTestPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
+  const t = useT()
   return (
     <div className="min-h-screen bg-[#fafafa] px-4 py-10 sm:py-14">
       <div className="mx-auto w-full max-w-xl">
@@ -661,7 +709,9 @@ function Shell({ children }: { children: React.ReactNode }) {
           <p className="font-sans text-xl font-bold tracking-tight text-neutral-900">
             Everyday Writing
           </p>
-          <p className="mt-1 font-sans text-xs tracking-wide text-neutral-400">英语能力测评</p>
+          <p className="mt-1 font-sans text-xs tracking-wide text-neutral-400">
+            {t('proficiency.shellSubtitle')}
+          </p>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-white px-5 py-7 shadow-sm sm:px-7">
           <div className="-mx-5 -mt-7 mb-7 border-t-4 border-neutral-900 sm:-mx-7" />
@@ -710,27 +760,43 @@ function WelcomePanel({
   onSkip: () => void
   onHome: () => void
 }) {
+  const t = useT()
   const isResume = status?.status === 'in_progress' || status?.status === 'skipped'
+  const features = [
+    {
+      icon: ClipboardList,
+      title: t('proficiency.welcome.feature1Title'),
+      desc: t('proficiency.welcome.feature1Desc'),
+    },
+    {
+      icon: PenLine,
+      title: t('proficiency.welcome.feature2Title'),
+      desc: t('proficiency.welcome.feature2Desc'),
+    },
+    {
+      icon: Sparkles,
+      title: t('proficiency.welcome.feature3Title'),
+      desc: t('proficiency.welcome.feature3Desc'),
+    },
+  ] as const
+
   return (
     <div>
       <div className="flex items-center gap-2 text-neutral-500">
         <Target size={18} />
-        <p className="font-sans text-xs font-medium uppercase tracking-wider">个性化起点</p>
+        <p className="font-sans text-xs font-medium uppercase tracking-wider">
+          {t('proficiency.welcome.badge')}
+        </p>
       </div>
       <h1 className="mt-3 text-center font-sans text-2xl font-bold tracking-wide text-neutral-900">
-        {isResume ? '继续英语能力测评' : '先了解你的英语写作水平'}
+        {isResume ? t('proficiency.welcome.titleResume') : t('proficiency.welcome.titleNew')}
       </h1>
       <p className="mt-3 text-center text-sm leading-relaxed text-neutral-500">
-        约 5–8 分钟：自评 + 由易到难基础题 + 一易一难两篇短写作。完成后 AI
-        会给出等级诊断与个人计划。
+        {t('proficiency.welcome.desc')}
       </p>
 
       <div className="mt-6 space-y-3">
-        {[
-          { icon: ClipboardList, title: '自评 + 递进基础题', desc: '约 10 题，难度由易到难校准能力区间' },
-          { icon: PenLine, title: '一易一难双写作', desc: '基础篇 + 进阶篇，更准确反映真实写作水平' },
-          { icon: Sparkles, title: 'AI 分析与个人计划', desc: '给出等级诊断与后续练习规划' },
-        ].map(({ icon: Icon, title, desc }) => (
+        {features.map(({ icon: Icon, title, desc }) => (
           <div
             key={title}
             className="flex gap-3 rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3"
@@ -753,7 +819,9 @@ function WelcomePanel({
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
       >
         {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-        {status?.status === 'in_progress' ? '继续测评' : '开始测评'}
+        {status?.status === 'in_progress'
+          ? t('proficiency.welcome.continue')
+          : t('proficiency.welcome.start')}
       </button>
       <button
         type="button"
@@ -761,17 +829,17 @@ function WelcomePanel({
         onClick={onSkip}
         className="mt-3 w-full rounded-lg px-4 py-2.5 text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800"
       >
-        稍后再做
+        {t('proficiency.welcome.skip')}
       </button>
       <p className="mt-3 text-center text-[11px] leading-relaxed text-neutral-400">
-        跳过后可在「使用指南」中随时继续。完成后可在用户中心查看个人计划。
+        {t('proficiency.welcome.skipHint')}
       </p>
       <button
         type="button"
         onClick={onHome}
         className="mt-2 w-full text-center text-xs text-neutral-400 hover:text-neutral-600"
       >
-        直接进入网站
+        {t('proficiency.welcome.enterSite')}
       </button>
     </div>
   )
@@ -786,6 +854,7 @@ function ObjectiveQuestionView({
   answer: string
   onChange: (value: string) => void
 }) {
+  const t = useT()
   const content = normalizeContent(question.content)
   const sentence = String(content.sentence ?? content.prompt ?? content.topic ?? '')
   const instruction = String(content.instruction ?? '')
@@ -823,8 +892,8 @@ function ObjectiveQuestionView({
       ) : question.questionType === 'grammar_judge' ? (
         <div className="mt-4 flex gap-2">
           {[
-            { key: 'hasError', label: '有语法错误' },
-            { key: 'correct', label: '语法正确' },
+            { key: 'hasError', label: t('proficiency.objective.hasError') },
+            { key: 'correct', label: t('proficiency.objective.correct') },
           ].map((opt) => {
             const selected = answer === opt.key
             return (
@@ -848,7 +917,7 @@ function ObjectiveQuestionView({
           value={answer}
           onChange={(e) => onChange(e.target.value)}
           rows={4}
-          placeholder="在此输入你的改写 / 答案…"
+          placeholder={t('proficiency.objective.answerPlaceholder')}
           className="mt-4 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 font-serif text-sm leading-relaxed outline-none focus:border-neutral-400 focus:bg-white"
         />
       )}
@@ -869,6 +938,7 @@ function ResultPanel({
   onPlan: () => void
   onHome: () => void
 }) {
+  const t = useT()
   const strengths = result?.strengths ?? []
   const weaknesses = result?.weaknesses ?? []
   const dimensions = result?.dimensions ?? {}
@@ -878,22 +948,26 @@ function ResultPanel({
       <div className="text-center">
         <CheckCircle2 size={28} className="mx-auto text-neutral-800" />
         <h1 className="mt-3 font-sans text-2xl font-bold tracking-wide text-neutral-900">
-          测评完成
+          {t('proficiency.result.title')}
         </h1>
         <p className="mt-2 text-sm text-neutral-500">
-          {result?.summary || '已根据你的双写作与基础题生成能力画像'}
+          {result?.summary || t('proficiency.result.fallbackSummary')}
         </p>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center">
-          <p className="text-[11px] uppercase tracking-wider text-neutral-400">预估等级</p>
+          <p className="text-[11px] uppercase tracking-wider text-neutral-400">
+            {t('proficiency.result.estimatedLevel')}
+          </p>
           <p className="mt-1 font-sans text-3xl font-bold text-neutral-900">
             {overallLevel || result?.overallLevel || '—'}
           </p>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center">
-          <p className="text-[11px] uppercase tracking-wider text-neutral-400">综合得分</p>
+          <p className="text-[11px] uppercase tracking-wider text-neutral-400">
+            {t('proficiency.result.overallScore')}
+          </p>
           <p className="mt-1 font-sans text-3xl font-bold text-neutral-900">
             {overallScore ?? result?.overallScore ?? '—'}
           </p>
@@ -902,7 +976,9 @@ function ResultPanel({
 
       {Object.keys(dimensions).length > 0 && (
         <div className="mt-5 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-400">维度评分</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-400">
+            {t('proficiency.result.dimensions')}
+          </p>
           {Object.entries(dimensions).map(([key, dim]) => (
             <div
               key={key}
@@ -922,7 +998,7 @@ function ResultPanel({
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {strengths.length > 0 && (
             <div className="rounded-xl border border-neutral-200 p-4">
-              <p className="text-xs font-medium text-neutral-500">优势</p>
+              <p className="text-xs font-medium text-neutral-500">{t('proficiency.result.strengths')}</p>
               <ul className="mt-2 space-y-1.5 text-sm text-neutral-700">
                 {strengths.map((item) => (
                   <li key={item}>· {item}</li>
@@ -932,7 +1008,7 @@ function ResultPanel({
           )}
           {weaknesses.length > 0 && (
             <div className="rounded-xl border border-neutral-200 p-4">
-              <p className="text-xs font-medium text-neutral-500">待提升</p>
+              <p className="text-xs font-medium text-neutral-500">{t('proficiency.result.weaknesses')}</p>
               <ul className="mt-2 space-y-1.5 text-sm text-neutral-700">
                 {weaknesses.map((item) => (
                   <li key={item}>· {item}</li>
@@ -948,7 +1024,7 @@ function ResultPanel({
         onClick={onPlan}
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800"
       >
-        查看个人计划
+        {t('proficiency.result.viewPlan')}
         <ArrowRight size={16} />
       </button>
       <button
@@ -956,14 +1032,14 @@ function ResultPanel({
         onClick={onHome}
         className="mt-2 w-full rounded-lg px-4 py-2.5 text-sm text-neutral-500 hover:bg-neutral-50"
       >
-        进入开始写作
+        {t('proficiency.result.startWriting')}
       </button>
       <p className="mt-3 text-center text-[11px] text-neutral-400">
-        也可稍后在{' '}
+        {t('proficiency.result.planHintBefore')}{' '}
         <Link to="/user-center" className="underline underline-offset-2">
-          用户中心 → 个人计划
+          {t('proficiency.result.planLink')}
         </Link>{' '}
-        查看
+        {t('proficiency.result.planHintAfter')}
       </p>
     </div>
   )
