@@ -386,8 +386,11 @@ export interface WritingSavePayload {
 }
 
 export interface WritingSubmitPayload {
+  /** 系统题 > 0；自拟题固定 0 */
   topicId: number
   topic: string
+  /** 可选：仅自拟题时传；空则后端存 "" */
+  topicType?: string
   title: string
   content: string
   draftId?: string

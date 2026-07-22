@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
+import { Check, FlipHorizontal2, Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { autoSaveDraft, loadDraftById, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
@@ -42,6 +42,7 @@ function getTopicPanelMinHeight(): number {
 }
 
 type RecordsTab = 'saves' | 'submits'
+type TopicSourceMode = 'system' | 'custom'
 
 interface ActionFeedback {
   tone: 'success' | 'error' | 'info'
@@ -68,12 +69,17 @@ function buildSubmitSnapshot(title: string, content: string) {
 }
 
 function draftToTopic(draft: { topicId: number | null; topic: string }): WritingTopic {
+  const id = draft.topicId ?? 0
   return {
-    id: draft.topicId ?? 0,
-    type: 'Draft',
+    id,
+    type: id === 0 ? '' : 'Draft',
     title: draft.topic,
     description: draft.topic,
   }
+}
+
+function isCustomTopicId(topicId: number | null | undefined): boolean {
+  return topicId === 0
 }
 
 export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
@@ -86,6 +92,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const iterateFromParam = searchParams.get('iterateFrom')
 
   const [topic, setTopic] = useState<WritingTopic>(EMPTY_TOPIC)
+  const [topicMode, setTopicMode] = useState<TopicSourceMode>('system')
+  const [customTopicInput, setCustomTopicInput] = useState('')
+  const [customTopicConfirmed, setCustomTopicConfirmed] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [draftId, setDraftId] = useState<string | undefined>()
@@ -271,8 +280,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     iterateBaselineSnapshot !== null &&
     iterateBaselineSnapshot === currentSubmitSnapshot
   const hasTopic = Boolean(topicToPrompt(topic).trim())
-  /** 已绑定草稿或迭代提交后锁定题目，禁止更换 */
-  const topicLocked = Boolean(draftId || iterateFromId)
+  /** 已绑定草稿/迭代，或自拟题已确定后锁定题目，禁止更换 */
+  const topicLocked = Boolean(
+    draftId || iterateFromId || (topicMode === 'custom' && customTopicConfirmed),
+  )
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -305,6 +316,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             preserveWritingSessionRef.current = true
             assignIterateFrom(submit.id)
             assignDraftMeta(undefined, undefined)
+            const custom = isCustomTopicId(submit.topicId)
+            setTopicMode(custom ? 'custom' : 'system')
+            setCustomTopicConfirmed(custom)
+            setCustomTopicInput(custom ? submit.topic : '')
             setTopic({
               id: submit.topicId,
               type: submit.topicType,
@@ -337,6 +352,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
             preserveWritingSessionRef.current = true
             assignDraftMeta(draft.id, draft.updatedAt)
+            const custom = isCustomTopicId(draft.topicId)
+            setTopicMode(custom ? 'custom' : 'system')
+            setCustomTopicConfirmed(custom && Boolean(draft.topic.trim()))
+            setCustomTopicInput(custom ? draft.topic : '')
             setTopic(draftToTopic(draft))
             setTitle(draft.title)
             setContent(draft.content)
@@ -378,6 +397,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         // 刷新 / 无 draftId：空白起步，不自动恢复草稿或随机题目
         if (!cancelled) {
           assignDraftMeta(undefined, undefined)
+          // 保留当前 topicMode（重写/翻转已设置）；仅清空题目内容
+          setCustomTopicInput('')
+          setCustomTopicConfirmed(false)
           setTopic(EMPTY_TOPIC)
           setTitle('')
           setContent('')
@@ -503,12 +525,18 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     }
   }, [feedback, localStorageKey])
 
+  const notifyTopicLocked = () => {
+    setFeedback({
+      tone: 'info',
+      message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
+    })
+  }
+
   const handleChangeTopic = async () => {
+    if (topicMode === 'custom') return
+
     if (draftIdRef.current || iterateFromIdRef.current) {
-      setFeedback({
-        tone: 'info',
-        message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
-      })
+      notifyTopicLocked()
       return
     }
 
@@ -527,28 +555,43 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     setTopic(getMockRandomTopic(topic.id || undefined))
   }
 
+  const handleConfirmCustomTopic = () => {
+    if (draftIdRef.current || iterateFromIdRef.current || customTopicConfirmed) {
+      notifyTopicLocked()
+      return
+    }
+
+    const text = customTopicInput.trim()
+    if (!text) {
+      setFeedback({ tone: 'error', message: t('writing.topic.customEmpty') })
+      return
+    }
+
+    preserveWritingSessionRef.current = true
+    setTopic({
+      id: 0,
+      type: topicTypeFilter ?? '',
+      title: text,
+      description: text,
+    })
+    setCustomTopicConfirmed(true)
+    setSubmittedSnapshot(null)
+    setFeedback({ tone: 'success', message: t('writing.topic.customConfirmed') })
+  }
+
   const handleTopicTypeFilterChange = (value: string | undefined) => {
-    if (draftIdRef.current || iterateFromIdRef.current) {
-      setFeedback({
-        tone: 'info',
-        message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
-      })
+    if (draftIdRef.current || iterateFromIdRef.current || (topicMode === 'custom' && customTopicConfirmed)) {
+      notifyTopicLocked()
       return
     }
     setTopicTypeFilter(value)
   }
 
-  const notifyTopicLocked = () => {
-    setFeedback({
-      tone: 'info',
-      message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
-    })
-  }
-
   const buildSavePayload = (): WritingSavePayload => {
     const sourceSubmitId = iterateFromIdRef.current
+    const custom = topicMode === 'custom'
     return {
-      topicId: topic.id > 0 ? topic.id : null,
+      topicId: custom ? 0 : topic.id > 0 ? topic.id : null,
       topic: topicToPrompt(topic),
       title: title.trim(),
       content,
@@ -575,11 +618,16 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     })
   }
 
-  const performRewrite = () => {
-    preserveWritingSessionRef.current = false
+  const clearWritingSession = (options?: {
+    feedbackMessage?: string
+    preserveSession?: boolean
+  }) => {
+    preserveWritingSessionRef.current = Boolean(options?.preserveSession)
     setTitle('')
     setContent('')
     setTopic(EMPTY_TOPIC)
+    setCustomTopicInput('')
+    setCustomTopicConfirmed(false)
     assignDraftMeta(undefined, undefined)
     assignIterateFrom(undefined)
     setSubmittedSnapshot(null)
@@ -588,7 +636,14 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     setWordLimit(undefined)
     lastAutoSavedHashRef.current = ''
     setEditorKey((key) => key + 1)
-    setFeedback({ tone: 'info', message: '已开始新写作，请先获取题目' })
+    setFeedback({
+      tone: 'info',
+      message:
+        options?.feedbackMessage ??
+        (topicMode === 'custom'
+          ? t('writing.topic.rewriteCustomHint')
+          : t('writing.topic.rewriteSystemHint')),
+    })
 
     try {
       localStorage.removeItem(localStorageKey)
@@ -599,16 +654,24 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     }
   }
 
+  const performRewrite = () => {
+    clearWritingSession()
+  }
+
   const handleRewrite = async () => {
     const hasContent = title.trim().length > 0 || !isEditorEmpty(content)
     const hasBoundDraft = Boolean(draftIdRef.current || iterateFromId)
-    if (hasContent || hasBoundDraft || hasTopic) {
+    if (hasContent || hasBoundDraft || hasTopic || customTopicInput.trim() || customTopicConfirmed) {
       const confirmed = await confirm({
         title: '确认重写',
         message: (
           <>
             <p>将清空标题、正文，并解除当前题目与草稿绑定。</p>
-            <p className="mt-2">请重新获取题目后再写；当前草稿仍保留在写作记录中。</p>
+            <p className="mt-2">
+              {topicMode === 'custom'
+                ? '请重新输入并确定自拟题目后再写；当前草稿仍保留在写作记录中。'
+                : '请重新获取题目后再写；当前草稿仍保留在写作记录中。'}
+            </p>
           </>
         ),
         confirmLabel: '继续重写',
@@ -618,6 +681,39 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     }
 
     performRewrite()
+  }
+
+  const handleFlipTopicMode = async () => {
+    const nextMode: TopicSourceMode = topicMode === 'system' ? 'custom' : 'system'
+    const hasContent = title.trim().length > 0 || !isEditorEmpty(content)
+    const hasBoundDraft = Boolean(draftIdRef.current || iterateFromId)
+    const hasPendingCustom = Boolean(customTopicInput.trim() || customTopicConfirmed)
+
+    if (hasContent || hasBoundDraft || hasTopic || hasPendingCustom) {
+      const confirmed = await confirm({
+        title:
+          nextMode === 'custom'
+            ? t('writing.topic.flipToCustomTitle')
+            : t('writing.topic.flipToSystemTitle'),
+        message:
+          nextMode === 'custom'
+            ? t('writing.topic.flipToCustomMessage')
+            : t('writing.topic.flipToSystemMessage'),
+        confirmLabel: t('writing.topic.flipConfirm'),
+        cancelLabel: t('common.cancel'),
+      })
+      if (!confirmed) return
+    }
+
+    setTopicMode(nextMode)
+    // 翻转后保留会话标记，避免 URL 去掉 draftId 时 init 把模式冲掉
+    clearWritingSession({
+      feedbackMessage:
+        nextMode === 'custom'
+          ? t('writing.topic.customNeedFirst')
+          : t('writing.topic.rewriteSystemHint'),
+      preserveSession: true,
+    })
   }
 
   const handleSave = async () => {
@@ -818,8 +914,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       }
 
       const result = await submitWriting({
-        topicId: topic.id,
+        topicId: topicMode === 'custom' ? 0 : topic.id,
         topic: topicToPrompt(topic),
+        ...(topicMode === 'custom' && topic.type.trim()
+          ? { topicType: topic.type.trim() }
+          : {}),
         title: title.trim(),
         content,
         draftId: draftIdRef.current,
@@ -868,7 +967,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
   const idleFooterStatus = (() => {
     if (!isAuthenticated) return t('writing.loginToSave')
-    if (!hasTopic) return t('writing.topic.needFirst')
+    if (!hasTopic) {
+      return topicMode === 'custom'
+        ? t('writing.topic.customNeedFirst')
+        : t('writing.topic.needFirst')
+    }
     if (wordCount !== undefined && wordLimit !== undefined) {
       const mode = draftId ? '编辑中' : '新写作'
       return `${wordCount} / ${wordLimit} 词 · ${mode}`
@@ -893,18 +996,31 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const changeTopicButtonClass =
     'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97] sm:w-full sm:flex-none'
 
-  // 手机：类型 + 换题横排；桌面：上换题 / 下类型，同宽竖排（收窄以对齐写作区右缘）
+  const primaryTopicActionLabel =
+    topicMode === 'custom' ? t('writing.topic.confirm') : t('writing.topic.change')
+  const primaryTopicActionTitle = topicLocked
+    ? '当前草稿题目已锁定'
+    : primaryTopicActionLabel
+
+  // 手机：类型 + 主操作横排；桌面：上主操作 / 下类型，同宽竖排
   const topicControls = (
     <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-[6.5rem] sm:flex-col sm:items-stretch sm:justify-center sm:gap-2 sm:self-stretch">
       <button
         type="button"
-        onClick={() => void handleChangeTopic()}
+        onClick={() => {
+          if (topicMode === 'custom') {
+            handleConfirmCustomTopic()
+            return
+          }
+          void handleChangeTopic()
+        }}
         aria-disabled={topicLocked}
         className={`${changeTopicButtonClass} order-2 sm:order-1 ${topicLocked ? 'cursor-not-allowed opacity-45 hover:border-neutral-200 hover:bg-white hover:text-neutral-600 active:scale-100' : ''}`}
-        title={topicLocked ? '当前草稿题目已锁定' : t('writing.topic.change')}
+        title={primaryTopicActionTitle}
       >
-        <RefreshCw size={14} className="shrink-0" />
-        <span className="truncate">{t('writing.topic.change')}</span>
+        <RefreshCw size={14} className={`shrink-0 ${topicMode === 'custom' ? 'hidden' : ''}`} />
+        <Check size={14} className={`shrink-0 ${topicMode === 'custom' ? '' : 'hidden'}`} />
+        <span className="truncate">{primaryTopicActionLabel}</span>
       </button>
       <div className={`relative order-1 sm:order-2 sm:w-full ${topicLocked ? 'cursor-not-allowed' : ''}`}>
         <TopicTypeSelect
@@ -927,6 +1043,18 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     </div>
   )
 
+  const flipTopicModeButton = (
+    <button
+      type="button"
+      onClick={() => void handleFlipTopicMode()}
+      className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]"
+      title={t('writing.topic.flip')}
+      aria-label={t('writing.topic.flip')}
+    >
+      <FlipHorizontal2 size={16} strokeWidth={1.75} />
+    </button>
+  )
+
   return (
     <div ref={pageRef} className="flex min-h-0 flex-1 overflow-hidden">
       {/* 题目 + 写作同列，避免写作辅助侧栏把两边 max-w-5xl 挤成不对齐 */}
@@ -941,10 +1069,18 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           >
             <div className="flex min-h-0 min-w-0 flex-1 items-stretch gap-2.5 sm:gap-3">
               <p className="hidden shrink-0 self-center text-center font-sans text-lg font-semibold leading-snug tracking-wide text-neutral-600 sm:block">
-                {t('writing.topic.label')}
+                {topicMode === 'custom' ? t('writing.topic.customLabel') : t('writing.topic.label')}
               </p>
               <div className="min-h-0 min-w-0 flex-1">
-                {hasTopic ? (
+                {topicMode === 'custom' && !customTopicConfirmed ? (
+                  <textarea
+                    value={customTopicInput}
+                    onChange={(event) => setCustomTopicInput(event.target.value)}
+                    placeholder={t('writing.topic.customHint')}
+                    className="h-full min-h-0 w-full resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm leading-snug text-neutral-800 outline-none transition-[border-color,background-color] placeholder:text-neutral-400 focus:border-neutral-300 focus:bg-white sm:px-4 sm:py-2.5 sm:text-[15px] sm:leading-relaxed"
+                    aria-label={t('writing.topic.customLabel')}
+                  />
+                ) : hasTopic ? (
                   <div
                     className={`h-full min-h-0 ${topicLocked ? 'cursor-default' : ''}`}
                     onClick={
@@ -969,18 +1105,27 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                     tabIndex={topicLocked ? 0 : undefined}
                     title={topicLocked ? '当前草稿题目已锁定' : undefined}
                   >
-                    <TopicPromptBox fill prompt={topicPrompt} type={topic.type || '题目'} />
+                    <TopicPromptBox
+                      fill
+                      prompt={topicPrompt}
+                      type={topic.type || (topicMode === 'custom' ? t('writing.topic.customLabel') : '题目')}
+                    />
                   </div>
                 ) : (
                   <div className="flex h-full min-h-0 w-full items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50/80 px-3 py-2">
                     <p className="text-center text-sm text-neutral-400 sm:text-[15px]">
-                      {t('writing.topic.fetchHint')}
+                      {topicMode === 'custom'
+                        ? t('writing.topic.customHint')
+                        : t('writing.topic.fetchHint')}
                     </p>
                   </div>
                 )}
               </div>
             </div>
-            {topicControls}
+            <div className="flex shrink-0 items-center gap-2 self-start sm:self-stretch">
+              {topicControls}
+              {flipTopicModeButton}
+            </div>
           </div>
 
           <div
@@ -1097,7 +1242,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 onClick={handleRewrite}
                 disabled={isSaving || isSubmitting}
                 className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-4"
-                title={topicLocked ? '清空并解除题目绑定，请重新获取题目' : '清空标题和正文，下次保存创建新草稿'}
+                title={
+                  topicLocked
+                    ? topicMode === 'custom'
+                      ? '清空并解除题目绑定，请重新输入自拟题目'
+                      : '清空并解除题目绑定，请重新获取题目'
+                    : '清空标题和正文，下次保存创建新草稿'
+                }
               >
                 <RotateCcw size={14} />
                 {t('writing.rewrite')}
