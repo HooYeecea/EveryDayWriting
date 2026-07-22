@@ -75,9 +75,11 @@ export const frExtra = {
   'writing.topic.flipToCustomTitle': "Passer au sujet libre",
   'writing.topic.flipToCustomMessage':
     "Le titre et le texte seront effacés, et le sujet ainsi que le brouillon seront détachés. Saisissez ensuite votre sujet. Les brouillons existants restent dans l'historique.",
+  'writing.topic.flipToCustomMessageEmpty': "Ensuite, saisissez et confirmez votre sujet libre.",
   'writing.topic.flipToSystemTitle': "Passer aux sujets système",
   'writing.topic.flipToSystemMessage':
     "Le titre et le texte seront effacés, et le sujet ainsi que le brouillon seront détachés. Obtenez ensuite un sujet système. Les brouillons existants restent dans l'historique.",
+  'writing.topic.flipToSystemMessageEmpty': "Ensuite, utilisez « Nouveau sujet » pour obtenir un sujet système.",
   'writing.topic.flipConfirm': "Changer",
   'writing.topic.customConfirmed': "Sujet libre confirmé — commencez à écrire",
   'writing.topic.customEmpty': "Saisissez un sujet avant de confirmer",

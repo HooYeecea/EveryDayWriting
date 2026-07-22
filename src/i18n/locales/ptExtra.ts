@@ -75,9 +75,11 @@ export const ptExtra = {
   'writing.topic.flipToCustomTitle': "Mudar para tema próprio",
   'writing.topic.flipToCustomMessage':
     "Isso limpa o título e o texto e desvincula o tema e o rascunho. Em seguida, digite seu tema. Rascunhos existentes permanecem no histórico.",
+  'writing.topic.flipToCustomMessageEmpty': "Depois você pode digitar e confirmar seu próprio tema.",
   'writing.topic.flipToSystemTitle': "Mudar para temas do sistema",
   'writing.topic.flipToSystemMessage':
     "Isso limpa o título e o texto e desvincula o tema e o rascunho. Em seguida, obtenha um tema do sistema. Rascunhos existentes permanecem no histórico.",
+  'writing.topic.flipToSystemMessageEmpty': "Depois toque em «Novo tema» para obter um tema do sistema.",
   'writing.topic.flipConfirm': "Alternar",
   'writing.topic.customConfirmed': "Tema próprio confirmado — comece a escrever",
   'writing.topic.customEmpty': "Digite um tema antes de confirmar",

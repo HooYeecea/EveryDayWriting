@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, FlipHorizontal2, Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
+import { AlertCircle, Check, FlipHorizontal2, Info, Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { autoSaveDraft, loadDraftById, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
@@ -621,6 +621,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const clearWritingSession = (options?: {
     feedbackMessage?: string
     preserveSession?: boolean
+    /** 清空后交给底部 idle 文案，避免多余信息条 */
+    clearFeedback?: boolean
   }) => {
     preserveWritingSessionRef.current = Boolean(options?.preserveSession)
     setTitle('')
@@ -636,14 +638,19 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     setWordLimit(undefined)
     lastAutoSavedHashRef.current = ''
     setEditorKey((key) => key + 1)
-    setFeedback({
-      tone: 'info',
-      message:
-        options?.feedbackMessage ??
-        (topicMode === 'custom'
-          ? t('writing.topic.rewriteCustomHint')
-          : t('writing.topic.rewriteSystemHint')),
-    })
+
+    if (options?.clearFeedback) {
+      setFeedback(null)
+    } else {
+      setFeedback({
+        tone: 'info',
+        message:
+          options?.feedbackMessage ??
+          (topicMode === 'custom'
+            ? t('writing.topic.rewriteCustomHint')
+            : t('writing.topic.rewriteSystemHint')),
+      })
+    }
 
     try {
       localStorage.removeItem(localStorageKey)
@@ -655,7 +662,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   const performRewrite = () => {
-    clearWritingSession()
+    clearWritingSession({ clearFeedback: true })
   }
 
   const handleRewrite = async () => {
@@ -688,31 +695,30 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     const hasContent = title.trim().length > 0 || !isEditorEmpty(content)
     const hasBoundDraft = Boolean(draftIdRef.current || iterateFromId)
     const hasPendingCustom = Boolean(customTopicInput.trim() || customTopicConfirmed)
+    const willClear = hasContent || hasBoundDraft || hasTopic || hasPendingCustom
 
-    if (hasContent || hasBoundDraft || hasTopic || hasPendingCustom) {
-      const confirmed = await confirm({
-        title:
-          nextMode === 'custom'
-            ? t('writing.topic.flipToCustomTitle')
-            : t('writing.topic.flipToSystemTitle'),
-        message:
-          nextMode === 'custom'
-            ? t('writing.topic.flipToCustomMessage')
-            : t('writing.topic.flipToSystemMessage'),
-        confirmLabel: t('writing.topic.flipConfirm'),
-        cancelLabel: t('common.cancel'),
-      })
-      if (!confirmed) return
-    }
+    const confirmed = await confirm({
+      title:
+        nextMode === 'custom'
+          ? t('writing.topic.flipToCustomTitle')
+          : t('writing.topic.flipToSystemTitle'),
+      message: willClear
+        ? nextMode === 'custom'
+          ? t('writing.topic.flipToCustomMessage')
+          : t('writing.topic.flipToSystemMessage')
+        : nextMode === 'custom'
+          ? t('writing.topic.flipToCustomMessageEmpty')
+          : t('writing.topic.flipToSystemMessageEmpty'),
+      confirmLabel: t('writing.topic.flipConfirm'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (!confirmed) return
 
     setTopicMode(nextMode)
     // 翻转后保留会话标记，避免 URL 去掉 draftId 时 init 把模式冲掉
     clearWritingSession({
-      feedbackMessage:
-        nextMode === 'custom'
-          ? t('writing.topic.customNeedFirst')
-          : t('writing.topic.rewriteSystemHint'),
       preserveSession: true,
+      clearFeedback: true,
     })
   }
 
@@ -986,10 +992,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
   const feedbackToneClass =
     feedback?.tone === 'success'
-      ? 'text-green-700'
+      ? 'border-neutral-200 bg-neutral-50 text-neutral-700'
       : feedback?.tone === 'error'
-        ? 'text-red-600'
-        : 'text-neutral-500'
+        ? 'border-red-200/90 bg-red-50 text-red-700'
+        : 'border-neutral-200 bg-neutral-50 text-neutral-600'
+
+  const FeedbackIcon =
+    feedback?.tone === 'success' ? Check : feedback?.tone === 'error' ? AlertCircle : Info
 
   const topicPrompt = topicToPrompt(topic)
 
@@ -1220,20 +1229,36 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 {t('writing.typingAnim.label')}
               </button>
               {feedback ? (
-                <div className={feedbackToneClass}>
-                  <p>{feedback.message}</p>
-                  {feedback.tone === 'success' && feedback.recordsTab && (
-                    <Link
-                      to="/records"
-                      state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
-                      className="mt-1 inline-block font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
-                    >
-                      {t('writing.goToRecords')}
-                    </Link>
-                  )}
+                <div
+                  className={`inline-flex max-w-full items-start gap-2 rounded-lg border px-2.5 py-1.5 font-sans text-xs leading-snug ${feedbackToneClass}`}
+                  role="status"
+                >
+                  <FeedbackIcon
+                    size={14}
+                    strokeWidth={1.75}
+                    className={`mt-0.5 shrink-0 ${
+                      feedback.tone === 'success'
+                        ? 'text-neutral-500'
+                        : feedback.tone === 'error'
+                          ? 'text-red-500'
+                          : 'text-neutral-400'
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <p>{feedback.message}</p>
+                    {feedback.tone === 'success' && feedback.recordsTab && (
+                      <Link
+                        to="/records"
+                        state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
+                        className="mt-1 inline-block font-medium text-neutral-800 underline underline-offset-2 hover:text-neutral-950"
+                      >
+                        {t('writing.goToRecords')}
+                      </Link>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <p className="leading-none text-neutral-400">{idleFooterStatus}</p>
+                <p className="font-sans leading-none text-neutral-400">{idleFooterStatus}</p>
               )}
             </div>
             <div className="flex w-full shrink-0 items-center gap-2 lg:w-auto lg:gap-3">

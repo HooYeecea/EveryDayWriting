@@ -75,9 +75,11 @@ export const ruExtra = {
   'writing.topic.flipToCustomTitle': "Перейти к своей теме",
   'writing.topic.flipToCustomMessage':
     "Заголовок и текст будут очищены, тема и черновик отвязаны. Затем введите свою тему. Существующие черновики останутся в записях.",
+  'writing.topic.flipToCustomMessageEmpty': "После переключения можно ввести и подтвердить свою тему.",
   'writing.topic.flipToSystemTitle': "Перейти к системным темам",
   'writing.topic.flipToSystemMessage':
     "Заголовок и текст будут очищены, тема и черновик отвязаны. Затем получите системную тему. Существующие черновики останутся в записях.",
+  'writing.topic.flipToSystemMessageEmpty': "После переключения нажмите «Новая тема», чтобы получить системную тему.",
   'writing.topic.flipConfirm': "Переключить",
   'writing.topic.customConfirmed': "Своя тема подтверждена — можно писать",
   'writing.topic.customEmpty': "Введите тему перед подтверждением",

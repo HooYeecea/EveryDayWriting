@@ -89,9 +89,11 @@ export const zhExtra = {
   'writing.topic.flipToCustomTitle': '切换到自拟题目',
   'writing.topic.flipToCustomMessage':
     '将清空当前标题、正文，并解除题目与草稿绑定。切换后请自行输入题目。当前草稿仍保留在写作记录中。',
+  'writing.topic.flipToCustomMessageEmpty': '切换后可自行输入并确定题目。',
   'writing.topic.flipToSystemTitle': '切换到系统出题',
   'writing.topic.flipToSystemMessage':
     '将清空当前标题、正文，并解除题目与草稿绑定。切换后请重新获取系统题目。当前草稿仍保留在写作记录中。',
+  'writing.topic.flipToSystemMessageEmpty': '切换后请点击「换个题目」获取系统题目。',
   'writing.topic.flipConfirm': '确认切换',
   'writing.topic.customConfirmed': '自拟题目已确定，开始写作吧',
   'writing.topic.customEmpty': '请输入自拟题目后再确定',
@@ -644,9 +646,11 @@ export const enExtra: Record<ExtraMessageKey, string> = {
   'writing.topic.flipToCustomTitle': 'Switch to custom topic',
   'writing.topic.flipToCustomMessage':
     'This clears the title and body, and unbinds the current topic and draft. Enter your own topic next. Existing drafts remain in Writing Records.',
+  'writing.topic.flipToCustomMessageEmpty': 'After switching, enter and confirm your own topic.',
   'writing.topic.flipToSystemTitle': 'Switch to system topics',
   'writing.topic.flipToSystemMessage':
     'This clears the title and body, and unbinds the current topic and draft. Get a system topic next. Existing drafts remain in Writing Records.',
+  'writing.topic.flipToSystemMessageEmpty': 'After switching, tap “New topic” to get a system topic.',
   'writing.topic.flipConfirm': 'Switch',
   'writing.topic.customConfirmed': 'Custom topic confirmed — start writing',
   'writing.topic.customEmpty': 'Enter a custom topic before confirming',
@@ -1204,9 +1208,11 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   'writing.topic.flipToCustomTitle': '自作課題に切替',
   'writing.topic.flipToCustomMessage':
     'タイトルと本文をクリアし、課題と下書きの紐付けを解除します。切替後は自作課題を入力してください。既存の下書きは記録に残ります。',
+  'writing.topic.flipToCustomMessageEmpty': '切替後、自作課題を入力して確定できます。',
   'writing.topic.flipToSystemTitle': 'システム出題に切替',
   'writing.topic.flipToSystemMessage':
     'タイトルと本文をクリアし、課題と下書きの紐付けを解除します。切替後はシステム課題を取得してください。既存の下書きは記録に残ります。',
+  'writing.topic.flipToSystemMessageEmpty': '切替後、「別の課題」でシステム課題を取得してください。',
   'writing.topic.flipConfirm': '切り替える',
   'writing.topic.customConfirmed': '自作課題を確定しました。書き始めましょう',
   'writing.topic.customEmpty': '確定前に自作課題を入力してください',
@@ -1764,9 +1770,11 @@ export const koExtra: Record<ExtraMessageKey, string> = {
   'writing.topic.flipToCustomTitle': '직접 입력 주제로 전환',
   'writing.topic.flipToCustomMessage':
     '제목과 본문을 비우고 주제·초안 연결을 해제합니다. 전환 후 주제를 직접 입력하세요. 기존 초안은 기록에 남습니다.',
+  'writing.topic.flipToCustomMessageEmpty': '전환 후 주제를 직접 입력하고 확정할 수 있습니다.',
   'writing.topic.flipToSystemTitle': '시스템 출제로 전환',
   'writing.topic.flipToSystemMessage':
     '제목과 본문을 비우고 주제·초안 연결을 해제합니다. 전환 후 시스템 주제를 받으세요. 기존 초안은 기록에 남습니다.',
+  'writing.topic.flipToSystemMessageEmpty': '전환 후 「다른 주제」로 시스템 주제를 받으세요.',
   'writing.topic.flipConfirm': '전환',
   'writing.topic.customConfirmed': '직접 입력 주제가 확정되었습니다. 작문을 시작하세요',
   'writing.topic.customEmpty': '확정하기 전에 주제를 입력하세요',

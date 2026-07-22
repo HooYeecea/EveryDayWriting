@@ -75,9 +75,11 @@ export const esExtra = {
   'writing.topic.flipToCustomTitle': "Cambiar a tema propio",
   'writing.topic.flipToCustomMessage':
     "Se borrarán el título y el cuerpo, y se desvincularán el tema y el borrador. Luego escribe tu tema. Los borradores existentes siguen en el historial.",
+  'writing.topic.flipToCustomMessageEmpty': "Después podrás escribir y confirmar tu propio tema.",
   'writing.topic.flipToSystemTitle': "Cambiar a temas del sistema",
   'writing.topic.flipToSystemMessage':
     "Se borrarán el título y el cuerpo, y se desvincularán el tema y el borrador. Luego obtén un tema del sistema. Los borradores existentes siguen en el historial.",
+  'writing.topic.flipToSystemMessageEmpty': "Después pulsa «Nuevo tema» para obtener un tema del sistema.",
   'writing.topic.flipConfirm': "Cambiar",
   'writing.topic.customConfirmed': "Tema propio confirmado — empieza a escribir",
   'writing.topic.customEmpty': "Escribe un tema antes de confirmar",

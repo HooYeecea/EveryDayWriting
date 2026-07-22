@@ -75,9 +75,11 @@ export const deExtra = {
   'writing.topic.flipToCustomTitle': "Zu eigenem Thema wechseln",
   'writing.topic.flipToCustomMessage':
     "Titel und Text werden geleert, Thema und Entwurf entkoppelt. Danach eigenes Thema eingeben. Vorhandene Entwürfe bleiben in den Aufzeichnungen.",
+  'writing.topic.flipToCustomMessageEmpty': "Danach können Sie ein eigenes Thema eingeben und bestätigen.",
   'writing.topic.flipToSystemTitle': "Zu Systemthemen wechseln",
   'writing.topic.flipToSystemMessage':
     "Titel und Text werden geleert, Thema und Entwurf entkoppelt. Danach ein Systemthema holen. Vorhandene Entwürfe bleiben in den Aufzeichnungen.",
+  'writing.topic.flipToSystemMessageEmpty': "Danach mit „Neues Thema“ ein Systemthema holen.",
   'writing.topic.flipConfirm': "Wechseln",
   'writing.topic.customConfirmed': "Eigenes Thema bestätigt — losschreiben",
   'writing.topic.customEmpty': "Vor dem Bestätigen ein Thema eingeben",
