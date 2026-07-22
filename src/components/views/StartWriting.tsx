@@ -98,7 +98,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const [topicTypeFilter, setTopicTypeFilter] = useState<string | undefined>(undefined)
   const [submittedSnapshot, setSubmittedSnapshot] = useState<string | null>(null)
   const [iterateBaselineSnapshot, setIterateBaselineSnapshot] = useState<string | null>(null)
-  const [initialLoading, setInitialLoading] = useState(true)
+  /** 仅草稿/迭代需要挡整页；空白起步立刻就绪，避免有缓存仍先闪「加载开始写作」 */
+  const needsContentBootstrap = Boolean(draftIdParam || iterateFromParam)
+  const [initialLoading, setInitialLoading] = useState(needsContentBootstrap)
 
   useReportReady(!initialLoading, onReady)
   const submitLockRef = useRef(false)
@@ -268,7 +270,13 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         return
       }
 
-      setInitialLoading(true)
+      const shouldBlockForContent = Boolean(draftIdParam || iterateFromParam)
+      // 空白起步不挡门控；仅拉取草稿/迭代正文时才整页等待
+      if (shouldBlockForContent) {
+        setInitialLoading(true)
+      } else {
+        setInitialLoading(false)
+      }
 
       try {
         if (iterateFromParam) {

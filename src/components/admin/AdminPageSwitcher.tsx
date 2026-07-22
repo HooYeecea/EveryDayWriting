@@ -72,14 +72,15 @@ export function AdminPageSwitcher() {
 
     const nextEnter = direction === 'next' ? 'app-page-enter-next' : 'app-page-enter-prev'
     const nextExit = direction === 'next' ? 'app-page-exit-prev' : 'app-page-exit-next'
+    const skipEnterFade = readyPaths.has(pathname)
 
     setExitingPath(previous)
     setExitClass(nextExit)
-    setEnterClass(nextEnter)
+    setEnterClass(skipEnterFade ? '' : nextEnter)
     prevPathRef.current = pathname
 
     const el = activePaneRef.current
-    if (el) {
+    if (el && !skipEnterFade) {
       el.classList.remove('app-page-enter-next', 'app-page-enter-prev')
       void el.offsetWidth
       el.classList.add(nextEnter)
@@ -93,7 +94,7 @@ export function AdminPageSwitcher() {
       setExitClass('')
       exitTimerRef.current = null
     }, 420)
-  }, [pathname, permissions])
+  }, [pathname, permissions, readyPaths])
 
   useEffect(() => {
     return () => {

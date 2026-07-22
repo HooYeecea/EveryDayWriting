@@ -71,14 +71,16 @@ export function AppPageSwitcher() {
 
     const nextEnter = direction === 'next' ? 'app-page-enter-next' : 'app-page-enter-prev'
     const nextExit = direction === 'next' ? 'app-page-exit-prev' : 'app-page-exit-next'
+    // 已就绪的保活页跳过 opacity 淡入，避免切回时被当成二次加载
+    const skipEnterFade = readyPaths.has(pathname)
 
     setExitingPath(previous)
     setExitClass(nextExit)
-    setEnterClass(nextEnter)
+    setEnterClass(skipEnterFade ? '' : nextEnter)
     prevPathRef.current = pathname
 
     const el = activePaneRef.current
-    if (el) {
+    if (el && !skipEnterFade) {
       el.classList.remove('app-page-enter-next', 'app-page-enter-prev')
       void el.offsetWidth
       el.classList.add(nextEnter)
@@ -92,7 +94,7 @@ export function AppPageSwitcher() {
       setExitClass('')
       exitTimerRef.current = null
     }, 420)
-  }, [pathname])
+  }, [pathname, readyPaths])
 
   useEffect(() => {
     return () => {
