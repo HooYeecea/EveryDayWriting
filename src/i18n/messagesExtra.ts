@@ -1,3 +1,8 @@
+import { frExtra } from './locales/frExtra'
+import { deExtra } from './locales/deExtra'
+import { esExtra } from './locales/esExtra'
+import { ptExtra } from './locales/ptExtra'
+import { ruExtra } from './locales/ruExtra'
 import type { AppLocale } from '../types/preferences'
 
 /** 第二期：用户中心 / 写作 / 记录 / 词库 / 测评 等页面文案 */
@@ -1585,9 +1590,16 @@ export const koExtra: Record<ExtraMessageKey, string> = {
   'proficiency.error.evalFailed': 'AI 평가 실패',
 }
 
+export { frExtra, deExtra, esExtra, ptExtra, ruExtra }
+
 export const EXTRA_BY_LOCALE: Record<AppLocale, Record<ExtraMessageKey, string>> = {
   zh: zhExtra,
   en: enExtra,
   ja: jaExtra,
   ko: koExtra,
+  fr: frExtra as unknown as Record<ExtraMessageKey, string>,
+  de: deExtra as unknown as Record<ExtraMessageKey, string>,
+  es: esExtra as unknown as Record<ExtraMessageKey, string>,
+  pt: ptExtra as unknown as Record<ExtraMessageKey, string>,
+  ru: ruExtra as unknown as Record<ExtraMessageKey, string>,
 }

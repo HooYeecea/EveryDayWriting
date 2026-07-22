@@ -15,7 +15,17 @@ const LEGACY_SIDEBAR_KEY = 'sidebar-collapsed'
 const LEGACY_TYPING_KEY = 'ew_typing_animation'
 
 function isLocale(value: unknown): value is AppLocale {
-  return value === 'zh' || value === 'en' || value === 'ja' || value === 'ko'
+  return (
+    value === 'zh' ||
+    value === 'en' ||
+    value === 'ja' ||
+    value === 'ko' ||
+    value === 'fr' ||
+    value === 'de' ||
+    value === 'es' ||
+    value === 'pt' ||
+    value === 'ru'
+  )
 }
 
 function isTheme(value: unknown): value is AppTheme {
@@ -125,6 +135,11 @@ export function detectLocaleFromNavigator(
     if (primary === 'en') return 'en'
     if (primary === 'ja') return 'ja'
     if (primary === 'ko') return 'ko'
+    if (primary === 'fr') return 'fr'
+    if (primary === 'de') return 'de'
+    if (primary === 'es') return 'es'
+    if (primary === 'pt') return 'pt'
+    if (primary === 'ru') return 'ru'
   }
   return DEFAULT_USER_PREFERENCES.locale
 }

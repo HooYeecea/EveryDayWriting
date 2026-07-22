@@ -1,7 +1,12 @@
 import countries from 'i18n-iso-countries'
+import deLocale from 'i18n-iso-countries/langs/de.json'
 import enLocale from 'i18n-iso-countries/langs/en.json'
+import esLocale from 'i18n-iso-countries/langs/es.json'
+import frLocale from 'i18n-iso-countries/langs/fr.json'
 import jaLocale from 'i18n-iso-countries/langs/ja.json'
 import koLocale from 'i18n-iso-countries/langs/ko.json'
+import ptLocale from 'i18n-iso-countries/langs/pt.json'
+import ruLocale from 'i18n-iso-countries/langs/ru.json'
 import zhLocale from 'i18n-iso-countries/langs/zh.json'
 import type { MenuSelectOption } from '../components/common/MenuSelect'
 import type { AppLocale } from '../types/preferences'
@@ -12,6 +17,11 @@ const ALL_LABEL: Record<AppLocale, string> = {
   en: 'All',
   ja: 'すべて',
   ko: '전체',
+  fr: 'Tous',
+  de: 'Alle',
+  es: 'Todos',
+  pt: 'Todos',
+  ru: 'Все',
 }
 
 const ISO_LOCALE: Record<AppLocale, string> = {
@@ -19,6 +29,11 @@ const ISO_LOCALE: Record<AppLocale, string> = {
   en: 'en',
   ja: 'ja',
   ko: 'ko',
+  fr: 'fr',
+  de: 'de',
+  es: 'es',
+  pt: 'pt',
+  ru: 'ru',
 }
 
 let localesRegistered = false
@@ -29,6 +44,11 @@ function ensureLocales() {
   countries.registerLocale(enLocale)
   countries.registerLocale(jaLocale)
   countries.registerLocale(koLocale)
+  countries.registerLocale(frLocale)
+  countries.registerLocale(deLocale)
+  countries.registerLocale(esLocale)
+  countries.registerLocale(ptLocale)
+  countries.registerLocale(ruLocale)
   localesRegistered = true
 }
 

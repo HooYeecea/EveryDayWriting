@@ -5,7 +5,7 @@ import { usePreferences } from '../../context/PreferencesContext'
 import { useAuth } from '../../context/AuthContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { useReportReady } from '../../hooks/useReportReady'
-import { useT, translate } from '../../i18n'
+import { useT, translate, type MessageKey } from '../../i18n'
 import { clearLocalPreferenceCaches } from '../../storage/preferencesStorage'
 import { pushPreferencesToServer } from '../../storage/preferencesSync'
 import {
@@ -84,11 +84,16 @@ function SettingRow({
   )
 }
 
-const LOCALE_LABEL_KEY = {
+const LOCALE_LABEL_KEY: Record<AppLocale, MessageKey> = {
   zh: 'settings.locale.zh',
   en: 'settings.locale.en',
   ja: 'settings.locale.ja',
   ko: 'settings.locale.ko',
+  fr: 'settings.locale.fr',
+  de: 'settings.locale.de',
+  es: 'settings.locale.es',
+  pt: 'settings.locale.pt',
+  ru: 'settings.locale.ru',
 } as const
 
 const THEME_LABEL_KEY = {

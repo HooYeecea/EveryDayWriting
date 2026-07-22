@@ -199,11 +199,256 @@ const koSections: PrivacyPolicySection[] = [
   },
 ]
 
+const frSections: PrivacyPolicySection[] = [
+  {
+    title: '1. Introduction',
+    content:
+      'Bienvenue sur Everyday Writing. Nous accordons une grande importance à votre vie privée et à vos informations personnelles. La présente Politique de confidentialité explique comment nous collectons, utilisons, stockons et protégeons vos informations. En utilisant ce service, vous confirmez avoir lu et compris cette politique.',
+  },
+  {
+    title: '2. Informations que nous collectons',
+    content:
+      'Pour fournir les fonctionnalités d’écriture, d’enregistrement, de soumission et de statistiques d’apprentissage, nous pouvons collecter : les informations de compte (e-mail, pseudonyme, avatar), le contenu rédigé (titre, corps du texte, données liées au sujet), le comportement d’utilisation (heures de connexion, journaux d’activité) et les informations techniques nécessaires à la sécurité (telles que l’adresse IP et le type d’appareil).',
+  },
+  {
+    title: '3. Comment nous utilisons les informations',
+    content:
+      'Vos informations sont utilisées pour : fournir et améliorer les fonctionnalités du produit ; enregistrer et synchroniser les brouillons et les soumissions ; afficher les statistiques d’apprentissage personnelles ; protéger la sécurité du compte et du système ; et respecter les lois applicables. Nous n’utiliserons pas votre contenu rédigé à des fins commerciales au-delà de ce que décrit cette politique.',
+  },
+  {
+    title: '4. Stockage et protection',
+    content:
+      'Nous mettons en œuvre des mesures techniques et organisationnelles raisonnables pour protéger vos données, notamment le chiffrement des transmissions, le contrôle d’accès et le stockage des mots de passe sous forme hachée. Les données d’écriture sont stockées sur des serveurs protégés ou des systèmes de stockage autorisés. Une sécurité absolue ne peut être garantie sur Internet ; veuillez conserver vos identifiants de compte en lieu sûr.',
+  },
+  {
+    title: '5. Tiers et services LLM',
+    content:
+      'Si vous utilisez la correction par IA ou des fonctionnalités similaires, les prompts sont fournis par ce service, tandis que les clés API LLM sont configurées localement dans votre navigateur et se connectent directement à des fournisseurs tiers. Nous ne collectons, ne stockons ni ne transmettons vos jetons API LLM. Le contenu envoyé à des tiers est déclenché par vous ; veuillez consulter la politique de confidentialité de chaque fournisseur.',
+  },
+  {
+    title: '6. Vos droits',
+    content:
+      'Vous pouvez accéder à vos informations personnelles et à vos enregistrements d’écriture, les corriger ou les supprimer lorsque cela est légalement et techniquement possible ; fermer votre compte ; et retirer votre consentement à cette politique (certaines fonctionnalités peuvent devenir indisponibles). Pour exercer ces droits, utilisez le centre de profil intégré à l’application ou contactez l’assistance.',
+  },
+  {
+    title: '7. Protection des mineurs',
+    content:
+      'Si vous avez moins de 18 ans, veuillez lire cette politique avec un tuteur et n’utiliser le service qu’avec son consentement. Nous ne collectons pas sciemment d’informations personnelles auprès de mineurs.',
+  },
+  {
+    title: '8. Mises à jour de la politique',
+    content:
+      'Nous pouvons mettre à jour cette Politique de confidentialité de temps à autre. Les modifications importantes seront annoncées dans l’application ou par d’autres moyens appropriés. La poursuite de l’utilisation après une mise à jour signifie que vous acceptez la politique révisée.',
+  },
+  {
+    title: '9. Nous contacter',
+    content:
+      'Si vous avez des questions concernant cette Politique de confidentialité, contactez-nous via les commentaires intégrés à l’application ou notre e-mail officiel. Nous répondrons dans un délai raisonnable.',
+  },
+]
+
+const deSections: PrivacyPolicySection[] = [
+  {
+    title: '1. Einleitung',
+    content:
+      'Willkommen bei Everyday Writing. Wir legen großen Wert auf Ihre Privatsphäre und Ihre persönlichen Daten. Diese Datenschutzrichtlinie erläutert, wie wir Ihre Informationen erfassen, verwenden, speichern und schützen. Durch die Nutzung dieses Dienstes bestätigen Sie, dass Sie diese Richtlinie gelesen und verstanden haben.',
+  },
+  {
+    title: '2. Von uns erfasste Informationen',
+    content:
+      'Um Funktionen für Schreiben, Speichern, Einreichen und Lernstatistiken bereitzustellen, können wir erfassen: Kontoinformationen (E-Mail, Spitzname, Avatar), Schreibinhalte (Titel, Text, themenbezogene Daten), Nutzungsverhalten (Anmeldezeiten, Aktivitätsprotokolle) und technische Informationen, die für die Sicherheit erforderlich sind (z. B. IP-Adresse und Gerätetyp).',
+  },
+  {
+    title: '3. Wie wir Informationen verwenden',
+    content:
+      'Ihre Informationen werden verwendet, um: Produktfunktionen bereitzustellen und zu verbessern; Entwürfe und Einreichungen zu speichern und zu synchronisieren; persönliche Lernstatistiken anzuzeigen; die Sicherheit von Konto und System zu schützen; und geltende Gesetze einzuhalten. Wir verwenden Ihre Schreibinhalte nicht für kommerzielle Zwecke über das hinaus, was in dieser Richtlinie beschrieben ist.',
+  },
+  {
+    title: '4. Speicherung und Schutz',
+    content:
+      'Wir setzen angemessene technische und organisatorische Maßnahmen zum Schutz Ihrer Daten ein, einschließlich Transportverschlüsselung, Zugriffskontrolle und gehashtem Passwortspeicher. Schreibdaten werden auf geschützten Servern oder autorisierten Speichersystemen gespeichert. Absolute Sicherheit kann im Internet nicht garantiert werden; bitte bewahren Sie Ihre Kontodaten sicher auf.',
+  },
+  {
+    title: '5. Drittanbieter und LLM-Dienste',
+    content:
+      'Wenn Sie KI-Korrektur oder ähnliche Funktionen nutzen, werden Prompts von diesem Dienst bereitgestellt, während LLM-API-Schlüssel lokal in Ihrem Browser konfiguriert werden und direkt mit Drittanbietern verbunden sind. Wir erfassen, speichern oder leiten Ihre LLM-API-Token nicht weiter. Inhalte, die an Dritte gesendet werden, werden von Ihnen ausgelöst; bitte lesen Sie die Datenschutzrichtlinie jedes Anbieters.',
+  },
+  {
+    title: '6. Ihre Rechte',
+    content:
+      'Sie können auf Ihre persönlichen Informationen und Schreibaufzeichnungen zugreifen, diese korrigieren oder löschen, soweit rechtlich und technisch möglich; Ihr Konto schließen; und Ihre Einwilligung zu dieser Richtlinie widerrufen (einige Funktionen sind dann möglicherweise nicht mehr verfügbar). Um diese Rechte auszuüben, nutzen Sie das Profilcenter in der App oder wenden Sie sich an den Support.',
+  },
+  {
+    title: '7. Schutz Minderjähriger',
+    content:
+      'Wenn Sie unter 18 Jahre alt sind, lesen Sie diese Richtlinie bitte gemeinsam mit einem Erziehungsberechtigten und nutzen Sie den Dienst nur mit dessen Einwilligung. Wir erfassen wissentlich keine persönlichen Informationen von Minderjährigen.',
+  },
+  {
+    title: '8. Aktualisierungen der Richtlinie',
+    content:
+      'Wir können diese Datenschutzrichtlinie von Zeit zu Zeit aktualisieren. Wesentliche Änderungen werden in der App oder auf andere geeignete Weise bekannt gegeben. Die fortgesetzte Nutzung nach einer Aktualisierung bedeutet, dass Sie die überarbeitete Richtlinie akzeptieren.',
+  },
+  {
+    title: '9. Kontakt',
+    content:
+      'Wenn Sie Fragen zu dieser Datenschutzrichtlinie haben, kontaktieren Sie uns über das Feedback in der App oder unsere offizielle E-Mail. Wir antworten innerhalb einer angemessenen Frist.',
+  },
+]
+
+const esSections: PrivacyPolicySection[] = [
+  {
+    title: '1. Introducción',
+    content:
+      'Bienvenido a Everyday Writing. Valoramos su privacidad y su información personal. Esta Política de privacidad explica cómo recopilamos, usamos, almacenamos y protegemos su información. Al utilizar este servicio, confirma que ha leído y comprendido esta política.',
+  },
+  {
+    title: '2. Información que recopilamos',
+    content:
+      'Para ofrecer funciones de escritura, guardado, envío y estadísticas de aprendizaje, podemos recopilar: información de la cuenta (correo electrónico, apodo, avatar), contenido escrito (título, cuerpo, datos relacionados con el tema), comportamiento de uso (horarios de inicio de sesión, registros de actividad) e información técnica necesaria para la seguridad (como la dirección IP y el tipo de dispositivo).',
+  },
+  {
+    title: '3. Cómo utilizamos la información',
+    content:
+      'Su información se utiliza para: proporcionar y mejorar las funciones del producto; guardar y sincronizar borradores y envíos; mostrar estadísticas personales de aprendizaje; proteger la seguridad de la cuenta y del sistema; y cumplir con las leyes aplicables. No utilizaremos su contenido escrito con fines comerciales más allá de lo descrito en esta política.',
+  },
+  {
+    title: '4. Almacenamiento y protección',
+    content:
+      'Aplicamos medidas técnicas y organizativas razonables para proteger sus datos, incluido el cifrado en tránsito, el control de acceso y el almacenamiento de contraseñas con hash. Los datos de escritura se almacenan en servidores protegidos o sistemas de almacenamiento autorizados. No se puede garantizar una seguridad absoluta en Internet; mantenga sus credenciales de cuenta seguras.',
+  },
+  {
+    title: '5. Terceros y servicios LLM',
+    content:
+      'Si utiliza la corrección con IA u otras funciones similares, los prompts los proporciona este servicio, mientras que las claves API de LLM se configuran localmente en su navegador y se conectan directamente con proveedores externos. No recopilamos, almacenamos ni reenviamos sus tokens de API de LLM. El contenido enviado a terceros lo activa usted; consulte la política de privacidad de cada proveedor.',
+  },
+  {
+    title: '6. Sus derechos',
+    content:
+      'Puede acceder, corregir o eliminar su información personal y sus registros de escritura cuando sea legal y técnicamente posible; cerrar su cuenta; y retirar su consentimiento a esta política (algunas funciones pueden dejar de estar disponibles). Para ejercer estos derechos, utilice el centro de perfil en la aplicación o contacte con soporte.',
+  },
+  {
+    title: '7. Protección de menores',
+    content:
+      'Si es menor de 18 años, lea esta política con un tutor y utilice el servicio solo con su consentimiento. No recopilamos intencionadamente información personal de menores.',
+  },
+  {
+    title: '8. Actualizaciones de la política',
+    content:
+      'Podemos actualizar esta Política de privacidad periódicamente. Los cambios importantes se anunciarán en la aplicación u otros medios apropiados. El uso continuado después de una actualización significa que acepta la política revisada.',
+  },
+  {
+    title: '9. Contáctenos',
+    content:
+      'Si tiene preguntas sobre esta Política de privacidad, contáctenos a través de los comentarios en la aplicación o nuestro correo electrónico oficial. Responderemos en un plazo razonable.',
+  },
+]
+
+const ptSections: PrivacyPolicySection[] = [
+  {
+    title: '1. Introdução',
+    content:
+      'Bem-vindo ao Everyday Writing. Valorizamos sua privacidade e suas informações pessoais. Esta Política de Privacidade explica como coletamos, usamos, armazenamos e protegemos suas informações. Ao usar este serviço, você confirma que leu e compreendeu esta política.',
+  },
+  {
+    title: '2. Informações que coletamos',
+    content:
+      'Para oferecer recursos de escrita, salvamento, envio e estatísticas de aprendizado, podemos coletar: informações da conta (e-mail, apelido, avatar), conteúdo escrito (título, corpo, dados relacionados ao tema), comportamento de uso (horários de login, registros de atividade) e informações técnicas necessárias para a segurança (como endereço IP e tipo de dispositivo).',
+  },
+  {
+    title: '3. Como usamos as informações',
+    content:
+      'Suas informações são usadas para: fornecer e melhorar os recursos do produto; salvar e sincronizar rascunhos e envios; exibir estatísticas pessoais de aprendizado; proteger a segurança da conta e do sistema; e cumprir as leis aplicáveis. Não usaremos seu conteúdo escrito para fins comerciais além do descrito nesta política.',
+  },
+  {
+    title: '4. Armazenamento e proteção',
+    content:
+      'Adotamos medidas técnicas e organizacionais razoáveis para proteger seus dados, incluindo criptografia em trânsito, controle de acesso e armazenamento de senhas com hash. Os dados de escrita são armazenados em servidores protegidos ou sistemas de armazenamento autorizados. A segurança absoluta não pode ser garantida na internet; mantenha suas credenciais de conta em segurança.',
+  },
+  {
+    title: '5. Terceiros e serviços de LLM',
+    content:
+      'Se você usar correção por IA ou recursos semelhantes, os prompts são fornecidos por este serviço, enquanto as chaves de API de LLM são configuradas localmente no seu navegador e se conectam diretamente a provedores terceiros. Não coletamos, armazenamos nem encaminhamos seus tokens de API de LLM. O conteúdo enviado a terceiros é acionado por você; consulte a política de privacidade de cada provedor.',
+  },
+  {
+    title: '6. Seus direitos',
+    content:
+      'Você pode acessar, corrigir ou excluir suas informações pessoais e registros de escrita quando legal e tecnicamente possível; encerrar sua conta; e retirar o consentimento a esta política (alguns recursos podem ficar indisponíveis). Para exercer esses direitos, use o centro de perfil no aplicativo ou entre em contato com o suporte.',
+  },
+  {
+    title: '7. Proteção de menores',
+    content:
+      'Se você tiver menos de 18 anos, leia esta política com um responsável e use o serviço apenas com o consentimento dele. Não coletamos intencionalmente informações pessoais de menores.',
+  },
+  {
+    title: '8. Atualizações da política',
+    content:
+      'Podemos atualizar esta Política de Privacidade periodicamente. Alterações importantes serão anunciadas no aplicativo ou por outros meios apropriados. O uso continuado após uma atualização significa que você aceita a política revisada.',
+  },
+  {
+    title: '9. Fale conosco',
+    content:
+      'Se tiver dúvidas sobre esta Política de Privacidade, entre em contato conosco pelo feedback no aplicativo ou pelo nosso e-mail oficial. Responderemos em um prazo razoável.',
+  },
+]
+
+const ruSections: PrivacyPolicySection[] = [
+  {
+    title: '1. Введение',
+    content:
+      'Добро пожаловать в Everyday Writing. Мы ценим вашу конфиденциальность и персональные данные. Настоящая Политика конфиденциальности объясняет, как мы собираем, используем, храним и защищаем вашу информацию. Используя этот сервис, вы подтверждаете, что прочитали и поняли эту политику.',
+  },
+  {
+    title: '2. Информация, которую мы собираем',
+    content:
+      'Для предоставления функций письма, сохранения, отправки и статистики обучения мы можем собирать: данные учётной записи (электронная почта, псевдоним, аватар), содержимое текстов (заголовок, основной текст, данные, связанные с темой), данные об использовании (время входа, журналы активности) и техническую информацию, необходимую для безопасности (например, IP-адрес и тип устройства).',
+  },
+  {
+    title: '3. Как мы используем информацию',
+    content:
+      'Ваша информация используется для: предоставления и улучшения функций продукта; сохранения и синхронизации черновиков и отправленных работ; отображения персональной статистики обучения; защиты безопасности учётной записи и системы; соблюдения применимого законодательства. Мы не будем использовать ваши тексты в коммерческих целях сверх того, что описано в этой политике.',
+  },
+  {
+    title: '4. Хранение и защита',
+    content:
+      'Мы применяем разумные технические и организационные меры для защиты ваших данных, включая шифрование при передаче, контроль доступа и хранение паролей в виде хеша. Данные текстов хранятся на защищённых серверах или в авторизованных системах хранения. Абсолютную безопасность в интернете гарантировать невозможно; пожалуйста, храните учётные данные в безопасности.',
+  },
+  {
+    title: '5. Третьи стороны и сервисы LLM',
+    content:
+      'Если вы используете проверку с помощью ИИ или аналогичные функции, подсказки (prompts) предоставляет этот сервис, а ключи API LLM настраиваются локально в вашем браузере и напрямую подключаются к сторонним провайдерам. Мы не собираем, не храним и не передаём ваши токены API LLM. Отправка содержимого третьим сторонам инициируется вами; ознакомьтесь с политикой конфиденциальности каждого провайдера.',
+  },
+  {
+    title: '6. Ваши права',
+    content:
+      'Вы можете получить доступ к своим персональным данным и записям текстов, исправить или удалить их, если это допустимо по закону и технически возможно; закрыть учётную запись; отозвать согласие с этой политикой (некоторые функции могут стать недоступными). Для реализации этих прав используйте центр профиля в приложении или обратитесь в службу поддержки.',
+  },
+  {
+    title: '7. Защита несовершеннолетних',
+    content:
+      'Если вам не исполнилось 18 лет, прочитайте эту политику вместе с опекуном и пользуйтесь сервисом только с его согласия. Мы сознательно не собираем персональные данные несовершеннолетних.',
+  },
+  {
+    title: '8. Обновления политики',
+    content:
+      'Мы можем время от времени обновлять эту Политику конфиденциальности. Существенные изменения будут объявлены в приложении или другими подходящими способами. Продолжение использования после обновления означает принятие пересмотренной политики.',
+  },
+  {
+    title: '9. Связаться с нами',
+    content:
+      'Если у вас есть вопросы об этой Политике конфиденциальности, свяжитесь с нами через обратную связь в приложении или по официальной электронной почте. Мы ответим в разумный срок.',
+  },
+]
+
 const PRIVACY_POLICY_BY_LOCALE: Record<AppLocale, PrivacyPolicySection[]> = {
   zh: zhSections,
   en: enSections,
   ja: jaSections,
   ko: koSections,
+  fr: frSections,
+  de: deSections,
+  es: esSections,
+  pt: ptSections,
+  ru: ruSections,
 }
 
 /** 按界面语言返回前端本地隐私协议正文 */

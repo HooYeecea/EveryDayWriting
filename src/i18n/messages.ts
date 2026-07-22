@@ -1,5 +1,10 @@
 import type { AppLocale } from '../types/preferences'
-import { enExtra, jaExtra, koExtra, zhExtra } from './messagesExtra'
+import { enExtra, jaExtra, koExtra, zhExtra, frExtra, deExtra, esExtra, ptExtra, ruExtra } from './messagesExtra'
+import { frBase as frBaseCatalog } from './locales/frBase'
+import { deBase as deBaseCatalog } from './locales/deBase'
+import { esBase as esBaseCatalog } from './locales/esBase'
+import { ptBase as ptBaseCatalog } from './locales/ptBase'
+import { ruBase as ruBaseCatalog } from './locales/ruBase'
 
 /** 中文为文案源；其它语言缺 key 时回退中文 */
 const zhBase = {
@@ -56,6 +61,11 @@ const zhBase = {
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
+  'settings.locale.fr': 'Français',
+  'settings.locale.de': 'Deutsch',
+  'settings.locale.es': 'Español',
+  'settings.locale.pt': 'Português',
+  'settings.locale.ru': 'Русский',
   'settings.sidebarCollapsed': '侧栏默认折叠',
   'settings.sidebarCollapsed.desc': '桌面端侧栏是否处于折叠状态；保存后生效，也可随时在侧栏按钮切换。',
   'settings.reduceMotion': '减弱动效',
@@ -253,6 +263,11 @@ const enBase: Record<keyof typeof zhBase, string> = {
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
+  'settings.locale.fr': 'Français',
+  'settings.locale.de': 'Deutsch',
+  'settings.locale.es': 'Español',
+  'settings.locale.pt': 'Português',
+  'settings.locale.ru': 'Русский',
   'settings.sidebarCollapsed': 'Collapse sidebar by default',
   'settings.sidebarCollapsed.desc':
     'Desktop sidebar collapsed state after save. You can still toggle it anytime.',
@@ -448,6 +463,11 @@ const jaBase: Record<keyof typeof zhBase, string> = {
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
+  'settings.locale.fr': 'Français',
+  'settings.locale.de': 'Deutsch',
+  'settings.locale.es': 'Español',
+  'settings.locale.pt': 'Português',
+  'settings.locale.ru': 'Русский',
   'settings.sidebarCollapsed': 'サイドバーを折りたたむ',
   'settings.sidebarCollapsed.desc':
     'デスクトップでサイドバーを折りたたんだ状態にするか。保存後に反映され、いつでも切り替え可能です。',
@@ -643,6 +663,11 @@ const koBase: Record<keyof typeof zhBase, string> = {
   'settings.locale.en': 'English',
   'settings.locale.ja': '日本語',
   'settings.locale.ko': '한국어',
+  'settings.locale.fr': 'Français',
+  'settings.locale.de': 'Deutsch',
+  'settings.locale.es': 'Español',
+  'settings.locale.pt': 'Português',
+  'settings.locale.ru': 'Русский',
   'settings.sidebarCollapsed': '사이드바 기본 접기',
   'settings.sidebarCollapsed.desc':
     '데스크톱에서 사이드바를 접은 상태로 둘지 여부입니다. 저장 후 적용되며 언제든 전환할 수 있습니다.',
@@ -786,11 +811,32 @@ const koBase: Record<keyof typeof zhBase, string> = {
 
 export const koMessages: MessageCatalog = { ...koBase, ...koExtra }
 
+
+const frBase: Record<keyof typeof zhBase, string> = { ...frBaseCatalog }
+export const frMessages: MessageCatalog = { ...frBase, ...frExtra }
+
+const deBase: Record<keyof typeof zhBase, string> = { ...deBaseCatalog }
+export const deMessages: MessageCatalog = { ...deBase, ...deExtra }
+
+const esBase: Record<keyof typeof zhBase, string> = { ...esBaseCatalog }
+export const esMessages: MessageCatalog = { ...esBase, ...esExtra }
+
+const ptBase: Record<keyof typeof zhBase, string> = { ...ptBaseCatalog }
+export const ptMessages: MessageCatalog = { ...ptBase, ...ptExtra }
+
+const ruBase: Record<keyof typeof zhBase, string> = { ...ruBaseCatalog }
+export const ruMessages: MessageCatalog = { ...ruBase, ...ruExtra }
+
 const CATALOGS: Record<AppLocale, MessageCatalog> = {
   zh: zhMessages,
   en: enMessages,
   ja: jaMessages,
   ko: koMessages,
+  fr: frMessages,
+  de: deMessages,
+  es: esMessages,
+  pt: ptMessages,
+  ru: ruMessages,
 }
 
 export const LOCALE_HTML_LANG: Record<AppLocale, string> = {
@@ -798,6 +844,11 @@ export const LOCALE_HTML_LANG: Record<AppLocale, string> = {
   en: 'en',
   ja: 'ja',
   ko: 'ko',
+  fr: 'fr',
+  de: 'de',
+  es: 'es',
+  pt: 'pt',
+  ru: 'ru',
 }
 
 export function translate(
