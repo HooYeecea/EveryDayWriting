@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, Check, FlipHorizontal2, Info, Maximize2, RefreshCw, RotateCcw, Wand2, X } from 'lucide-react'
 import { LoginRequiredModal } from '../auth/LoginRequiredModal'
 import { useConfirmDialog } from '../common/ConfirmDialog'
+import { HoverTooltip } from '../common/HoverTooltip'
 import { autoSaveDraft, loadDraftById, getSubmittedWritingById, iterateSubmit, persistSubmitAiResults, saveWritingDraft, submitWriting } from '../../api/writing'
 import { runPreSubmitGrading } from '../../api/aiGrading'
 import { saveGradingPreview, type GradingStageKey } from '../../storage/gradingPreviewStorage'
@@ -1014,23 +1015,30 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   // 手机：类型 + 主操作横排；桌面：上主操作 / 下类型，同宽竖排
   const topicControls = (
     <div className="flex w-full shrink-0 items-center gap-2 self-start sm:w-[6.5rem] sm:flex-col sm:items-stretch sm:justify-center sm:gap-2 sm:self-stretch">
-      <button
-        type="button"
-        onClick={() => {
-          if (topicMode === 'custom') {
-            handleConfirmCustomTopic()
-            return
-          }
-          void handleChangeTopic()
-        }}
-        aria-disabled={topicLocked}
-        className={`${changeTopicButtonClass} order-2 sm:order-1 ${topicLocked ? 'cursor-not-allowed opacity-45 hover:border-neutral-200 hover:bg-white hover:text-neutral-600 active:scale-100' : ''}`}
-        title={primaryTopicActionTitle}
+      <HoverTooltip
+        content={primaryTopicActionTitle}
+        onlyWhenTruncated={!topicLocked}
+        className="order-2 min-w-0 flex-1 sm:order-1 sm:w-full sm:flex-none"
       >
-        <RefreshCw size={14} className={`shrink-0 ${topicMode === 'custom' ? 'hidden' : ''}`} />
-        <Check size={14} className={`shrink-0 ${topicMode === 'custom' ? '' : 'hidden'}`} />
-        <span className="truncate">{primaryTopicActionLabel}</span>
-      </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (topicMode === 'custom') {
+              handleConfirmCustomTopic()
+              return
+            }
+            void handleChangeTopic()
+          }}
+          aria-disabled={topicLocked}
+          className={`${changeTopicButtonClass} w-full ${topicLocked ? 'cursor-not-allowed opacity-45 hover:border-neutral-200 hover:bg-white hover:text-neutral-600 active:scale-100' : ''}`}
+        >
+          <RefreshCw size={14} className={`shrink-0 ${topicMode === 'custom' ? 'hidden' : ''}`} />
+          <Check size={14} className={`shrink-0 ${topicMode === 'custom' ? '' : 'hidden'}`} />
+          <span data-truncate-check className="truncate">
+            {primaryTopicActionLabel}
+          </span>
+        </button>
+      </HoverTooltip>
       <div className={`relative order-1 sm:order-2 sm:w-full ${topicLocked ? 'cursor-not-allowed' : ''}`}>
         <TopicTypeSelect
           value={topicTypeFilter}
@@ -1040,28 +1048,30 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           className="!px-2 sm:!w-full sm:!min-w-0"
         />
         {topicLocked && (
-          <button
-            type="button"
-            className="absolute inset-0 z-10 rounded-lg"
-            aria-label="题目类型已锁定"
-            title="当前草稿题目已锁定"
-            onClick={notifyTopicLocked}
-          />
+          <HoverTooltip content="当前草稿题目已锁定" className="absolute inset-0 z-10">
+            <button
+              type="button"
+              className="h-full w-full rounded-lg"
+              aria-label="题目类型已锁定"
+              onClick={notifyTopicLocked}
+            />
+          </HoverTooltip>
         )}
       </div>
     </div>
   )
 
   const flipTopicModeButton = (
-    <button
-      type="button"
-      onClick={() => void handleFlipTopicMode()}
-      className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]"
-      title={t('writing.topic.flip')}
-      aria-label={t('writing.topic.flip')}
-    >
-      <FlipHorizontal2 size={16} strokeWidth={1.75} />
-    </button>
+    <HoverTooltip content={t('writing.topic.flip')}>
+      <button
+        type="button"
+        onClick={() => void handleFlipTopicMode()}
+        className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 active:scale-[0.97]"
+        aria-label={t('writing.topic.flip')}
+      >
+        <FlipHorizontal2 size={16} strokeWidth={1.75} />
+      </button>
+    </HoverTooltip>
   )
 
   return (
