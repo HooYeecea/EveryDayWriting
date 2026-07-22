@@ -191,6 +191,20 @@ export interface VocabularyCheckResult {
   suggestions: VocabSuggestionItem[]
 }
 
+/** realtime_assist：边写边辅助短建议（临时展示，不落库） */
+export type RealtimeAssistTipType = 'grammar' | 'wording' | 'polish' | string
+
+export interface RealtimeAssistTip {
+  type: RealtimeAssistTipType
+  original: string
+  suggestion: string
+  note: string
+}
+
+export interface RealtimeAssistResult {
+  tips: RealtimeAssistTip[]
+}
+
 /** structure 目的：IELTS 9分制综合评分 + 逐段点评 */
 export interface StructureSubScores {
   taskResponse: number

@@ -1449,7 +1449,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           )
         : null}
 
-      <WritingAssistPanel />
+      <WritingAssistPanel editorHtml={content} />
 
       <LoginRequiredModal
         open={showLoginModal}

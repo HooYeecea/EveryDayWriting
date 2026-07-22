@@ -15,6 +15,8 @@ import {
 import { ASSIST_FEATURES, getAssistFeature, type AssistFeatureId } from './assistConfig'
 import { formatSecondsForRail, WritingTimerAssist } from './WritingTimerAssist'
 import { WritingAiAssist, type AiAssistToggleKey } from './WritingAiAssist'
+import { RealtimeAssistBadge, RealtimeAssistTips } from './RealtimeAssistTips'
+import { useRealtimeWritingAssist } from '../../hooks/useRealtimeWritingAssist'
 import { useT } from '../../i18n'
 import {
   loadAiAssistSettings,
@@ -130,6 +132,7 @@ interface MobileDraggableAssistFabProps {
   timerRunning: boolean
   timerPaused: boolean
   timerDisplaySeconds: number
+  tipBadgeCount?: number
   fabRef: RefObject<HTMLButtonElement | null>
 }
 
@@ -140,6 +143,7 @@ function MobileDraggableAssistFab({
   timerRunning,
   timerPaused,
   timerDisplaySeconds,
+  tipBadgeCount = 0,
   fabRef,
 }: MobileDraggableAssistFabProps) {
   const t = useT()
@@ -235,7 +239,10 @@ function MobileDraggableAssistFab({
       aria-label={t('assist.open')}
       title="点击打开，按住拖动"
     >
-      <LayoutGrid size={18} strokeWidth={1.75} />
+      <span className="relative inline-flex">
+        <LayoutGrid size={18} strokeWidth={1.75} />
+        <RealtimeAssistBadge count={tipBadgeCount} />
+      </span>
       辅助
       {timerRunning && (
         <span className="font-mono text-xs text-amber-600">
@@ -351,6 +358,8 @@ interface AssistPanelContentProps {
   highlightAiKey?: AiAssistToggleKey | null
   highlightAiNonce?: number
   highlightTimerNonce?: number
+  realtimeEnabled?: boolean
+  realtimeTips?: ReactNode
 }
 
 function AssistPanelContent({
@@ -366,6 +375,8 @@ function AssistPanelContent({
   highlightAiKey = null,
   highlightAiNonce = 0,
   highlightTimerNonce = 0,
+  realtimeEnabled = false,
+  realtimeTips = null,
 }: AssistPanelContentProps) {
   const t = useT()
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
@@ -396,6 +407,7 @@ function AssistPanelContent({
 
       {panelOpen && !activeFeature && (
         <div className="flex-1 overflow-y-auto p-4">
+          {realtimeEnabled && realtimeTips ? <div className="mb-4">{realtimeTips}</div> : null}
           <div className="space-y-2">
             <p className="mb-3 text-xs text-neutral-500">{t('assist.pickFeature')}</p>
             {ASSIST_FEATURES.map((feature) => {
@@ -431,6 +443,7 @@ function AssistPanelContent({
       )}
 
       <div className={showAiDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
+        {realtimeEnabled && realtimeTips ? <div className="mb-4">{realtimeTips}</div> : null}
         <WritingAiAssist
           onSettingsSaved={onAiSettingsSaved}
           highlightKey={highlightAiKey}
@@ -448,7 +461,12 @@ function AssistPanelContent({
   )
 }
 
-export function WritingAssistPanel() {
+interface WritingAssistPanelProps {
+  /** 当前编辑器 HTML；开启实时辅助时用于防抖请求 */
+  editorHtml?: string
+}
+
+export function WritingAssistPanel({ editorHtml = '' }: WritingAssistPanelProps) {
   const t = useT()
   const isDesktop = useIsDesktop()
   const [desktopExpanded, setDesktopExpanded] = useState(false)
@@ -461,11 +479,38 @@ export function WritingAssistPanel() {
   const [highlightAiKey, setHighlightAiKey] = useState<AiAssistToggleKey | null>(null)
   const [highlightAiNonce, setHighlightAiNonce] = useState(0)
   const [highlightTimerNonce, setHighlightTimerNonce] = useState(0)
+  const [tipsSeenAt, setTipsSeenAt] = useState(0)
   const [mobilePosition, setMobilePosition] = useState(getDefaultMobilePanelPosition)
   const [fabPosition, setFabPosition] = useState(
     () => loadStoredFabPosition() ?? getDefaultFabPosition(),
   )
   const mobileFabRef = useRef<HTMLButtonElement>(null)
+
+  const realtimeEnabled = aiSettings.realtimeAssist
+  const realtime = useRealtimeWritingAssist({
+    enabled: realtimeEnabled,
+    editorHtml,
+  })
+
+  const panelOpen = isDesktop ? desktopExpanded : mobileOpen
+  const unreadTipCount =
+    realtime.tips.length > 0 && realtime.updatedAt > tipsSeenAt ? realtime.tips.length : 0
+
+  useEffect(() => {
+    if (!panelOpen || !realtimeEnabled) return
+    if (realtime.updatedAt > 0) {
+      setTipsSeenAt(realtime.updatedAt)
+    }
+  }, [panelOpen, realtimeEnabled, realtime.updatedAt])
+
+  const realtimeTipsNode = (
+    <RealtimeAssistTips
+      enabled={realtimeEnabled}
+      tips={realtime.tips}
+      status={realtime.status}
+      errorMessage={realtime.errorMessage}
+    />
+  )
 
   const handleTimerRunningChange = useCallback(
     (running: boolean, displaySeconds: number, paused: boolean) => {
@@ -482,9 +527,13 @@ export function WritingAssistPanel() {
 
   const openDesktopAiToggle = useCallback((key: AiAssistToggleKey) => {
     setDesktopExpanded(true)
-    setActiveFeature('ai-assistant')
-    setHighlightAiKey(key)
-    setHighlightAiNonce((n) => n + 1)
+    setActiveFeature(key === 'realtimeAssist' ? null : 'ai-assistant')
+    if (key !== 'realtimeAssist') {
+      setHighlightAiKey(key)
+      setHighlightAiNonce((n) => n + 1)
+    } else {
+      setHighlightAiKey(null)
+    }
   }, [])
 
   const openDesktopTimer = useCallback(() => {
@@ -493,7 +542,6 @@ export function WritingAssistPanel() {
     setHighlightTimerNonce((n) => n + 1)
   }, [])
 
-  const panelOpen = isDesktop ? desktopExpanded : mobileOpen
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
   const showAiDetail = panelOpen && activeFeature === 'ai-assistant'
@@ -524,6 +572,8 @@ export function WritingAssistPanel() {
     panelOpen: mobileOpen,
     onTimerRunningChange: handleTimerRunningChange,
     onAiSettingsSaved: handleAiSettingsSaved,
+    realtimeEnabled,
+    realtimeTips: realtimeTipsNode,
   }
 
   return (
@@ -565,6 +615,7 @@ export function WritingAssistPanel() {
 
         {desktopExpanded && !activeFeature && (
           <div className="flex-1 overflow-y-auto p-4">
+            {realtimeEnabled ? <div className="mb-4">{realtimeTipsNode}</div> : null}
             <div className="space-y-2">
               <p className="mb-3 text-xs text-neutral-500">{t('assist.pickFeature')}</p>
               {ASSIST_FEATURES.map((feature) => {
@@ -602,11 +653,14 @@ export function WritingAssistPanel() {
 
         <div className={showAiDetail && isDesktop ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
           {isDesktop && (
-            <WritingAiAssist
-              onSettingsSaved={handleAiSettingsSaved}
-              highlightKey={highlightAiKey}
-              highlightNonce={highlightAiNonce}
-            />
+            <>
+              {realtimeEnabled ? <div className="mb-4">{realtimeTipsNode}</div> : null}
+              <WritingAiAssist
+                onSettingsSaved={handleAiSettingsSaved}
+                highlightKey={highlightAiKey}
+                highlightNonce={highlightAiNonce}
+              />
+            </>
           )}
         </div>
 
@@ -628,7 +682,10 @@ export function WritingAssistPanel() {
               aria-label={t('assist.expand')}
               title={t('assist.title')}
             >
-              <ChevronLeft size={18} />
+              <span className="relative">
+                <ChevronLeft size={18} />
+                <RealtimeAssistBadge count={unreadTipCount} />
+              </span>
               <LayoutGrid size={18} strokeWidth={1.75} />
               <span className="text-[11px] font-medium tracking-wide text-neutral-500 [writing-mode:vertical-rl]">
                 {t('assist.title')}
@@ -642,11 +699,16 @@ export function WritingAssistPanel() {
                     key={key}
                     type="button"
                     onClick={() => openDesktopAiToggle(key)}
-                    className="rounded-md p-1.5 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                    aria-label={`打开${label}`}
+                    className="relative rounded-md p-1.5 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                    aria-label={
+                      key === 'realtimeAssist' && unreadTipCount > 0
+                        ? t('assist.realtime.badgeAria', { n: unreadTipCount })
+                        : `打开${label}`
+                    }
                     title={label}
                   >
                     <Icon size={15} strokeWidth={1.75} />
+                    {key === 'realtimeAssist' ? <RealtimeAssistBadge count={unreadTipCount} /> : null}
                   </button>
                 ))}
                 {timerRunning && (
@@ -682,6 +744,7 @@ export function WritingAssistPanel() {
               timerRunning={timerRunning}
               timerPaused={timerPaused}
               timerDisplaySeconds={timerDisplaySeconds}
+              tipBadgeCount={unreadTipCount}
             />
           )}
 

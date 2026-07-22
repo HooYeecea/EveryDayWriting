@@ -30,7 +30,7 @@ export async function runPreSubmitGrading(content: string): Promise<PreSubmitGra
   const providerId = hasOwnKey ? settings.providerId : 'free'
   const modelId = hasOwnKey ? settings.modelId : 'free'
 
-  if (!hasOwnKey && !settings.realtimeAssist && !settings.postSubmitReview && !settings.postSubmitStructure && !settings.postSubmitSuggestions) {
+  if (!settings.postSubmitReview && !settings.postSubmitStructure && !settings.postSubmitSuggestions) {
     return { completedTasks: [], failedTasks: [], stageContents: {} }
   }
 

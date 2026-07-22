@@ -53,10 +53,14 @@ export async function callAiProxy(
     gradingSessionId?: string
   },
   encryptedKey?: string,
+  signal?: AbortSignal,
 ): Promise<AiProxyResult> {
   const fetchOptions: RequestInit = {}
   if (encryptedKey) {
     fetchOptions.headers = { 'X-Encrypted-Key': encryptedKey }
+  }
+  if (signal) {
+    fetchOptions.signal = signal
   }
   return post<AiProxyResult>(API_PATHS.ai.proxy(purpose), payload, { fetchOptions })
 }
