@@ -106,15 +106,44 @@ function readLegacySeed(): Partial<UserPreferences> {
   return seed
 }
 
+/**
+ * 根据浏览器语言偏好映射到 AppLocale；对不上则回退产品默认（中文）。
+ * 仅用于本机尚无偏好记录时的首访猜测。
+ */
+export function detectLocaleFromNavigator(
+  languages: readonly string[] = typeof navigator === 'undefined'
+    ? []
+    : navigator.languages?.length
+      ? [...navigator.languages]
+      : navigator.language
+        ? [navigator.language]
+        : [],
+): AppLocale {
+  for (const tag of languages) {
+    const primary = tag.trim().toLowerCase().split('-')[0]
+    if (primary === 'zh') return 'zh'
+    if (primary === 'en') return 'en'
+    if (primary === 'ja') return 'ja'
+    if (primary === 'ko') return 'ko'
+  }
+  return DEFAULT_USER_PREFERENCES.locale
+}
+
+function createInitialPreferences(): UserPreferences {
+  const seeded = mergePreferences(readLegacySeed())
+  seeded.locale = detectLocaleFromNavigator()
+  return seeded
+}
+
 export function loadUserPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(PREFERENCES_KEY)
     if (raw) return mergePreferences(JSON.parse(raw) as unknown)
-    const seeded = mergePreferences(readLegacySeed())
+    const seeded = createInitialPreferences()
     saveUserPreferences(seeded)
     return seeded
   } catch {
-    return structuredClone(DEFAULT_USER_PREFERENCES)
+    return createInitialPreferences()
   }
 }
 
