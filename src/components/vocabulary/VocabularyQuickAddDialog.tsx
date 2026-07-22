@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { BookOpen, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { createPortal } from 'react-dom'
@@ -6,6 +6,7 @@ import { createVocabularyItem } from '../../api/vocabulary'
 import type { CreateVocabularyPayload, VocabularyType } from '../../types'
 import { DEFAULT_PART_OF_SPEECH, PART_OF_SPEECH_OPTIONS } from '../../data/partOfSpeech'
 import { MenuSelect } from '../common/MenuSelect'
+import { useT, type MessageKey } from '../../i18n'
 
 export interface VocabularyQuickAddInitial {
   word: string
@@ -21,20 +22,28 @@ interface VocabularyQuickAddDialogProps {
   onSuccess?: () => void
 }
 
-const TYPE_LABELS: Record<VocabularyType, string> = {
-  NewWord: '生词',
-  WrongWord: '错词',
+const POS_VALUE_TO_KEY: Record<string, MessageKey> = {
+  'n.': 'vocab.pos.n',
+  'pron.': 'vocab.pos.pron',
+  'v.': 'vocab.pos.v',
+  'vt.': 'vocab.pos.vt',
+  'vi.': 'vocab.pos.vi',
+  'aux.': 'vocab.pos.aux',
+  'mod.': 'vocab.pos.mod',
+  'adj.': 'vocab.pos.adj',
+  'adv.': 'vocab.pos.adv',
+  'prep.': 'vocab.pos.prep',
+  'conj.': 'vocab.pos.conj',
+  'interj.': 'vocab.pos.interj',
+  'art.': 'vocab.pos.art',
+  'num.': 'vocab.pos.num',
+  'det.': 'vocab.pos.det',
+  'phr.v.': 'vocab.pos.phrv',
+  'phr.': 'vocab.pos.phr',
+  'abbr.': 'vocab.pos.abbr',
+  'pref.': 'vocab.pos.pref',
+  'suf.': 'vocab.pos.suf',
 }
-
-const VOCABULARY_TYPE_OPTIONS = [
-  { value: 'NewWord', label: TYPE_LABELS.NewWord },
-  { value: 'WrongWord', label: TYPE_LABELS.WrongWord },
-]
-
-const POS_OPTIONS = PART_OF_SPEECH_OPTIONS.map((item) => ({
-  value: item.value,
-  label: item.label,
-}))
 
 const DEFAULT_WIDTH = 448
 const DEFAULT_HEIGHT = 420
@@ -59,6 +68,23 @@ export function VocabularyQuickAddDialog({
   onClose,
   onSuccess,
 }: VocabularyQuickAddDialogProps) {
+  const t = useT()
+  const posOptions = useMemo(
+    () =>
+      PART_OF_SPEECH_OPTIONS.map((item) => ({
+        value: item.value,
+        label: t(POS_VALUE_TO_KEY[item.value] ?? 'vocab.pos.n'),
+      })),
+    [t],
+  )
+  const vocabularyTypeOptions = useMemo(
+    () => [
+      { value: 'NewWord', label: t('vocab.quickAdd.typeNew') },
+      { value: 'WrongWord', label: t('vocab.quickAdd.typeWrong') },
+    ],
+    [t],
+  )
+
   const [form, setForm] = useState<CreateVocabularyPayload>({
     word: '',
     partOfSpeech: DEFAULT_PART_OF_SPEECH,
@@ -168,7 +194,7 @@ export function VocabularyQuickAddDialog({
       setSaved(true)
       onSuccess?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '添加失败')
+      setError(err instanceof Error ? err.message : t('proficiency.error.generic'))
     } finally {
       setSubmitting(false)
     }
@@ -197,14 +223,14 @@ export function VocabularyQuickAddDialog({
           <div className="flex items-center gap-2">
             <BookOpen size={18} className="text-neutral-500" />
             <h2 id="vocab-quick-add-title" className="text-base font-semibold text-neutral-900">
-              加入个人词库
+              {t('vocab.quickAdd.title')}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-            aria-label="关闭"
+            aria-label={t('vocab.quickAdd.closeAria')}
           >
             <X size={18} />
           </button>
@@ -213,21 +239,21 @@ export function VocabularyQuickAddDialog({
         <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
           {saved ? (
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <p className="text-sm text-green-700">「{form.word}」已加入个人词库。</p>
+              <p className="text-sm text-green-700">{t('vocab.quickAdd.saved', { word: form.word })}</p>
               <div className="mt-4 flex gap-2">
                 <button
                   type="button"
                   onClick={onClose}
                   className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
                 >
-                  完成
+                  {t('vocab.quickAdd.done')}
                 </button>
                 <Link
                   to="/vocabulary"
                   className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
                   onClick={onClose}
                 >
-                  查看词库
+                  {t('vocab.quickAdd.viewList')}
                 </Link>
               </div>
             </div>
@@ -237,26 +263,26 @@ export function VocabularyQuickAddDialog({
               className="flex min-h-0 flex-1 flex-col gap-3"
             >
               <p className="shrink-0 text-xs text-neutral-500">
-                已选中「{initial.word}」，补充释义后即可保存。
+                {t('vocab.quickAdd.selectedHint', { word: initial.word })}
               </p>
               <div className="grid shrink-0 gap-3 sm:grid-cols-2">
                 <input
                   value={form.word}
                   onChange={(event) => setForm({ ...form, word: event.target.value })}
-                  placeholder="单词"
+                  placeholder={t('vocab.quickAdd.wordPlaceholder')}
                   required
                   className="rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
                 />
                 <MenuSelect
                   value={form.partOfSpeech}
                   onChange={(partOfSpeech) => setForm({ ...form, partOfSpeech })}
-                  options={POS_OPTIONS}
-                  ariaLabel="词性"
+                  options={posOptions}
+                  ariaLabel={t('vocab.quickAdd.posAria')}
                 />
                 <input
                   value={form.translation}
                   onChange={(event) => setForm({ ...form, translation: event.target.value })}
-                  placeholder="释义（必填）"
+                  placeholder={t('vocab.quickAdd.translationPlaceholder')}
                   required
                   autoFocus
                   className="sm:col-span-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
@@ -264,13 +290,13 @@ export function VocabularyQuickAddDialog({
                 <MenuSelect
                   value={form.type}
                   onChange={(type) => setForm({ ...form, type: type as VocabularyType })}
-                  options={VOCABULARY_TYPE_OPTIONS}
-                  ariaLabel="词条类型"
+                  options={vocabularyTypeOptions}
+                  ariaLabel={t('vocab.quickAdd.typeAria')}
                 />
               </div>
               {form.contextSentence ? (
                 <div className="flex min-h-0 flex-1 flex-col">
-                  <label className="shrink-0 text-xs text-neutral-400">例句 / 上下文</label>
+                  <label className="shrink-0 text-xs text-neutral-400">{t('vocab.quickAdd.contextLabel')}</label>
                   <textarea
                     value={form.contextSentence}
                     onChange={(event) =>
@@ -289,14 +315,14 @@ export function VocabularyQuickAddDialog({
                   disabled={submitting}
                   className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
-                  {submitting ? '保存中…' : '保存到词库'}
+                  {submitting ? t('vocab.quickAdd.saving') : t('vocab.quickAdd.save')}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
                   className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-600"
                 >
-                  取消
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>

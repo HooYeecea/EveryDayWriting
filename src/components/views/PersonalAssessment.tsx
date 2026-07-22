@@ -40,7 +40,7 @@ export function PersonalAssessment({ onReady }: { onReady?: () => void } = {}) {
         if (!cancelled) setStats(data)
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : '加载失败')
+        if (!cancelled) setError(err instanceof Error ? err.message : t('assessment.loadFailed'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -129,7 +129,9 @@ export function PersonalAssessment({ onReady }: { onReady?: () => void } = {}) {
 
             {stats.scoreTrend.length > 0 && (
               <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                <h2 className="text-sm font-medium text-neutral-900">分数趋势（按月）</h2>
+                <h2 className="text-sm font-medium text-neutral-900">
+                  {t('assessment.chart.scoreTrend')}
+                </h2>
                 <ul className="mt-4 space-y-2">
                   {stats.scoreTrend.map((item) => (
                     <li
@@ -137,7 +139,9 @@ export function PersonalAssessment({ onReady }: { onReady?: () => void } = {}) {
                       className="flex items-center justify-between text-sm text-neutral-700"
                     >
                       <span>{item.date}</span>
-                      <span className="font-medium">{item.score} 分</span>
+                      <span className="font-medium">
+                        {t('records.scorePoints', { n: item.score })}
+                      </span>
                     </li>
                   ))}
                 </ul>

@@ -18,6 +18,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useAppAlert } from '../../context/AppAlertContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { useT } from '../../i18n'
+import { usePreferences } from '../../context/PreferencesContext'
+import { APP_LOCALE_TO_BCP47 } from '../../types/preferences'
 import { loadGradingPreview, gradingPreviewFromAiResults, mergeGradingPreview } from '../../storage/gradingPreviewStorage'
 import { groupSubmitListItems, type GroupedSubmitListItem } from '../../utils/submitListGrouper'
 import {
@@ -59,8 +61,8 @@ type RecordsLocationState = {
   selectedId?: string
 }
 
-function formatTime(time: string) {
-  return new Date(time).toLocaleString()
+function formatTime(time: string, locale: string) {
+  return new Date(time).toLocaleString(locale)
 }
 
 /** 兼容 AI 返回的逐段点评字段名差异 */
@@ -180,6 +182,8 @@ function resolveVersionList(
 export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
   const { user, isAuthenticated } = useAuth()
   const t = useT()
+  const { preferences } = usePreferences()
+  const dateLocale = APP_LOCALE_TO_BCP47[preferences.locale]
   const { alert } = useAppAlert()
   const { confirm } = useAppConfirm()
   const navigate = useNavigate()
@@ -592,14 +596,14 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     }`}
                   >
                     <p className="truncate text-sm font-medium text-neutral-900">
-                      {record.title || '无标题'}
+                      {record.title || t('records.untitled')}
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
                       <Clock size={11} />
-                      {formatTime(record.updatedAt)}
+                      {formatTime(record.updatedAt, dateLocale)}
                       {record.sourceSubmitId && (
                         <span className="rounded bg-neutral-100 px-1 py-0.5 text-[10px] text-neutral-500">
-                          迭代中
+                          {t('records.iterating')}
                         </span>
                       )}
                     </div>
@@ -614,7 +618,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-gutter:stable]">
                 {submitsLoading && submits.length === 0 && (
-                  <p className="px-3 py-4 text-sm text-neutral-400">加载中…</p>
+                  <p className="px-3 py-4 text-sm text-neutral-400">{t('records.loading')}</p>
                 )}
                 {!submitsLoading && submits.length === 0 && (
                   <p className="py-8 text-center text-sm text-neutral-400">{t('records.empty.submits')}</p>
@@ -633,17 +637,19 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     }`}
                   >
                     <p className="truncate text-sm font-medium text-neutral-900">
-                      {record.title || '无标题'}
+                      {record.title || t('records.untitled')}
                     </p>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="truncate text-[11px] text-neutral-400">{record.topicType}</span>
                       <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
                         {record.aiScore !== null && (
-                          <span className="font-medium text-neutral-600">{record.aiScore} 分</span>
+                          <span className="font-medium text-neutral-600">
+                            {t('records.scorePoints', { n: record.aiScore })}
+                          </span>
                         )}
                         {record.versionCount > 1 && (
                           <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
-                            {record.versionCount} 版
+                            {t('records.versionCount', { n: record.versionCount })}
                           </span>
                         )}
                         {record.iterationNumber != null && record.versionCount <= 1 && (
@@ -653,7 +659,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-400">
                       <Clock size={11} />
-                      {formatTime(record.submittedAt)}
+                      {formatTime(record.submittedAt, dateLocale)}
                     </div>
                   </button>
                 ))}
@@ -682,7 +688,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
                   >
                     <ArrowLeft size={16} />
-                    返回列表
+                    {t('records.backToList')}
                   </button>
                 )}
 
@@ -707,11 +713,11 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
                             <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
-                              草稿
+                              {t('records.badge.draft')}
                             </span>
                             <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
                               {(saves.find((item) => item.id === draftDetail.id) ?? selectedDraft)
-                                .title || '无标题'}
+                                .title || t('records.untitled')}
                             </h3>
                           </div>
                           <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
@@ -724,7 +730,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                               className="flex items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                             >
                               <PenLine size={14} />
-                              继续编辑
+                              {t('records.continueEdit')}
                             </button>
                             <button
                               type="button"
@@ -738,18 +744,19 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         </div>
                         <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-5 text-sm">
                           <div>
-                            <dt className="text-neutral-400">最后更新</dt>
+                            <dt className="text-neutral-400">{t('records.lastUpdated')}</dt>
                             <dd className="mt-0.5 text-neutral-700">
                               {formatTime(
                                 (saves.find((item) => item.id === draftDetail.id) ?? selectedDraft)
                                   .updatedAt,
+                                dateLocale,
                               )}
                             </dd>
                           </div>
                         </dl>
                         <div className="mt-4">
                           <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4">
-                            <h4 className="text-sm font-medium text-neutral-500">正文预览</h4>
+                            <h4 className="text-sm font-medium text-neutral-500">{t('records.bodyPreview')}</h4>
                             <div
                               className="notion-editor mt-3 text-sm text-neutral-800"
                               dangerouslySetInnerHTML={{
@@ -764,10 +771,10 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     ) : (
                       <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                         <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
-                          草稿
+                          {t('records.badge.draft')}
                         </span>
                         <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
-                          {selectedDraft.title || '无标题'}
+                          {selectedDraft.title || t('records.untitled')}
                         </h3>
                         <p className="mt-4 text-sm text-neutral-400">{t('records.draftLoadFailed')}</p>
                       </div>
@@ -792,7 +799,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     className="mb-4 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 lg:hidden"
                   >
                     <ArrowLeft size={16} />
-                    返回列表
+                    {t('records.backToList')}
                   </button>
                 )}
 
@@ -815,10 +822,10 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   >
                     {!submitDetail ? (
                       _submitDetailLoading ? (
-                        <BrandLoading label="加载记录详情…" minHeight={280} />
+                        <BrandLoading label={t('records.loading')} minHeight={280} />
                       ) : (
                         <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                          <p className="text-sm text-neutral-400">未能加载该记录</p>
+                          <p className="text-sm text-neutral-400">{t('records.detailLoadFailed')}</p>
                         </div>
                       )
                     ) : (() => {
@@ -885,17 +892,19 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="min-w-0">
                   <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-500">
-                    提交记录
+                    {t('records.badge.submit')}
                   </span>
                   <h3 className="mt-3 text-lg font-semibold text-neutral-900 sm:text-xl">
-                    {submitDetail.title || '无标题'}
+                    {submitDetail.title || t('records.untitled')}
                   </h3>
                   {submitDetail.aiScore !== null && (
                     <p className="mt-2 flex items-center gap-1.5 text-sm text-neutral-600">
                       <Sparkles size={14} />
-                      AI 评分：{submitDetail.aiScore}
+                      {t('records.aiScoreLabel', { n: submitDetail.aiScore })}
                       {submitDetail.iterationNumber != null && (
-                        <span className="text-neutral-400">· 第 {submitDetail.iterationNumber} 版</span>
+                        <span className="text-neutral-400">
+                          {t('records.versionOrdinal', { n: submitDetail.iterationNumber })}
+                        </span>
                       )}
                     </p>
                   )}
@@ -904,14 +913,14 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                       type="button"
                       onClick={() => navigate(`/writing?iterateFrom=${latestVersionId}`)}
                       disabled={!detailReady || !isLatestVersion}
-                      title={!isLatestVersion ? '请基于最新版继续修改' : undefined}
+                      title={!isLatestVersion ? t('records.continueReviseHint') : undefined}
                       className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <RotateCcw size={14} />
-                      继续修改
+                      {t('records.continueRevise')}
                     </button>
                     {!isLatestVersion && (
-                      <span className="text-xs text-neutral-400">请基于最新版继续修改</span>
+                      <span className="text-xs text-neutral-400">{t('records.continueReviseHint')}</span>
                     )}
                     <button
                       type="button"
@@ -926,20 +935,20 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
 
                 <dl className="mt-6 space-y-3 border-t border-neutral-100 pt-5 text-sm">
                   <div>
-                    <dt className="text-neutral-400">题目</dt>
+                    <dt className="text-neutral-400">{t('records.topic')}</dt>
                     <dd className="mt-0.5 leading-relaxed text-neutral-800">{submitDetail.topic}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-400">题目类型</dt>
+                    <dt className="text-neutral-400">{t('records.topicType')}</dt>
                     <dd className="mt-0.5 text-neutral-700">{submitDetail.topicType}</dd>
                   </div>
                   <div>
                     <dt className="text-neutral-400">{t('records.submittedAt')}</dt>
-                    <dd className="mt-0.5 text-neutral-700">{formatTime(submitDetail.submittedAt)}</dd>
+                    <dd className="mt-0.5 text-neutral-700">{formatTime(submitDetail.submittedAt, dateLocale)}</dd>
                   </div>
                   {submitDetail.aiEvaluation && (
                     <div>
-                      <dt className="text-neutral-400">总评</dt>
+                      <dt className="text-neutral-400">{t('records.overallComment')}</dt>
                       <dd className="mt-0.5 leading-relaxed text-neutral-700">
                         {submitDetail.aiEvaluation}
                       </dd>
@@ -949,7 +958,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
               </div>
 
               <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
-                <h4 className="text-sm font-medium text-neutral-500">正文内容</h4>
+                <h4 className="text-sm font-medium text-neutral-500">{t('records.bodyContent')}</h4>
                 <div
                   className="notion-editor mt-4 text-neutral-800"
                   dangerouslySetInnerHTML={{ __html: submitDetail.content || '<p></p>' }}
@@ -959,7 +968,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
               <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-neutral-400" />
-                  <h4 className="text-sm font-medium text-neutral-700">AI 批改结果</h4>
+                  <h4 className="text-sm font-medium text-neutral-700">{t('records.aiResults')}</h4>
                 </div>
 
                 {/* ── 结构与评分（新版 structure） ── */}
@@ -967,9 +976,9 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <BarChart3 size={14} className="text-neutral-400" />
-                      <h5 className="text-[13px] font-medium text-neutral-700">结构与评分</h5>
+                      <h5 className="text-[13px] font-medium text-neutral-700">{t('records.structureScoring')}</h5>
                       <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                        IELTS 9分制
+                        {t('records.ieltsScale')}
                       </span>
                     </div>
 
@@ -979,21 +988,21 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                         <span className="text-2xl font-bold">{structurePreview.score}</span>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-neutral-400">综合评分</p>
-                        <p className="text-[11px] text-neutral-400">满分 9.0</p>
+                        <p className="text-xs text-neutral-400">{t('records.overallScore')}</p>
+                        <p className="text-[11px] text-neutral-400">{t('records.maxScore')}</p>
                       </div>
                     </div>
 
                     {/* 四项子评分 */}
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       {([
-                        { key: 'taskResponse' as const, label: '任务回应' },
-                        { key: 'coherenceCohesion' as const, label: '连贯与衔接' },
-                        { key: 'lexicalResource' as const, label: '词汇资源' },
-                        { key: 'grammaticalRange' as const, label: '语法范围' },
-                      ]).map(({ key, label }) => (
+                        { key: 'taskResponse' as const, labelKey: 'records.dim.taskResponse' as const },
+                        { key: 'coherenceCohesion' as const, labelKey: 'records.dim.coherence' as const },
+                        { key: 'lexicalResource' as const, labelKey: 'records.dim.lexical' as const },
+                        { key: 'grammaticalRange' as const, labelKey: 'records.dim.grammar' as const },
+                      ]).map(({ key, labelKey }) => (
                         <div key={key} className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2">
-                          <p className="text-[10px] text-neutral-400">{label}</p>
+                          <p className="text-[10px] text-neutral-400">{t(labelKey)}</p>
                           <p className="mt-0.5 text-lg font-semibold text-neutral-800">
                             {structurePreview.subScores?.[key] ?? '—'}
                           </p>
@@ -1005,7 +1014,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     {(structurePreview.overall?.strengths?.length ?? 0) > 0 && (
                       <div className="mt-4">
                         <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
-                          <Check size={12} /> 优势
+                          <Check size={12} /> {t('records.strengths')}
                         </p>
                         <ul className="mt-1.5 space-y-1">
                           {structurePreview.overall.strengths.map((item, i) => (
@@ -1020,7 +1029,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     {(structurePreview.overall?.weaknesses?.length ?? 0) > 0 && (
                       <div className="mt-3">
                         <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                          <AlertTriangle size={12} /> 待改进
+                          <AlertTriangle size={12} /> {t('records.weaknesses')}
                         </p>
                         <ul className="mt-1.5 space-y-1">
                           {structurePreview.overall.weaknesses.map((item, i) => (
@@ -1036,7 +1045,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     {/* 总评摘要 */}
                     {structurePreview.overall?.summary && (
                       <div className="mt-4 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5">
-                        <p className="text-xs font-medium text-neutral-500">总体评价</p>
+                        <p className="text-xs font-medium text-neutral-500">{t('records.overallSummary')}</p>
                         <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
                           {structurePreview.overall.summary}
                         </p>
@@ -1051,7 +1060,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                       if (pbs.length === 0) return null
                       return (
                         <div className="mt-4">
-                          <p className="text-xs font-medium text-neutral-500">逐段点评</p>
+                          <p className="text-xs font-medium text-neutral-500">{t('records.paragraphFeedback')}</p>
                           <div className="mt-2 space-y-2">
                             {pbs.map((fb) => (
                               <div
@@ -1059,7 +1068,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                                 className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2"
                               >
                                 <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">
-                                  第 {fb.index} 段
+                                  {t('records.paragraphN', { n: fb.index })}
                                 </span>
                                 <p className="mt-1.5 text-sm leading-relaxed text-neutral-700">
                                   {fb.text}
@@ -1078,7 +1087,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Lightbulb size={14} className="text-neutral-400" />
-                      <h5 className="text-[13px] font-medium text-neutral-700">提升建议</h5>
+                      <h5 className="text-[13px] font-medium text-neutral-700">{t('records.suggestions')}</h5>
                     </div>
                     <AiMarkdownContent content={evaluationProse} className="mt-2" />
                   </div>
@@ -1089,10 +1098,10 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Wand2 size={14} className="text-neutral-400" />
-                      <h5 className="text-[13px] font-medium text-neutral-700">检查与修改</h5>
+                      <h5 className="text-[13px] font-medium text-neutral-700">{t('records.grammarCheck')}</h5>
                       {mergedGrammarErrors.length > 0 && (
                         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                          {mergedGrammarErrors.length} 条
+                          {t('records.countItems', { n: mergedGrammarErrors.length })}
                         </span>
                       )}
                     </div>
@@ -1119,7 +1128,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     ) : grammarProse ? (
                       <AiMarkdownContent content={grammarProse} className="mt-2" />
                     ) : (
-                      <p className="mt-3 text-sm text-neutral-400">未发现语法错误，写得不错！</p>
+                      <p className="mt-3 text-sm text-neutral-400">{t('records.noGrammarIssues')}</p>
                     )}
                   </div>
                 )}
@@ -1129,10 +1138,10 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                   <div className="mt-4">
                     <div className="flex items-center gap-1.5 border-b border-neutral-100 pb-2">
                       <Lightbulb size={14} className="text-neutral-400" />
-                      <h5 className="text-[13px] font-medium text-neutral-700">提升建议</h5>
+                      <h5 className="text-[13px] font-medium text-neutral-700">{t('records.suggestions')}</h5>
                       {mergedVocabSuggestions.length > 0 && (
                         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                          {mergedVocabSuggestions.length} 条
+                          {t('records.countItems', { n: mergedVocabSuggestions.length })}
                         </span>
                       )}
                     </div>
@@ -1164,7 +1173,7 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                     ) : vocabProse ? (
                       <AiMarkdownContent content={vocabProse} className="mt-2" />
                     ) : (
-                      <p className="mt-3 text-sm text-neutral-400">未发现需优化的词汇，用词准确！</p>
+                      <p className="mt-3 text-sm text-neutral-400">{t('records.noVocabIssues')}</p>
                     )}
                   </div>
                 )}
@@ -1172,13 +1181,11 @@ export function WritingRecords({ onReady }: { onReady?: () => void } = {}) {
                 {/* 未开启 AI 辅助时无批改数据 */}
                 {!hasAnyAiResult && (
                   <p className="mt-4 text-sm text-neutral-400">
-                    这篇作文你未开启 AI 辅助功能，该部分为空。
+                    {t('records.aiDisabledEmpty')}
                   </p>
                 )}
               </div>
-              <p className="mt-4 text-xs text-neutral-400">
-                选中英文单词或短语后，点击浮层按钮或右键加入个人词库；双击可直接打开添加弹窗。
-              </p>
+              <p className="mt-4 text-xs text-neutral-400">{t('vocab.selection.hint')}</p>
               </SubmitVersionNav>
               </>
             )

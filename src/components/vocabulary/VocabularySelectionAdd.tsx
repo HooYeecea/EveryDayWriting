@@ -13,6 +13,7 @@ import {
   VocabularyQuickAddDialog,
   type VocabularyQuickAddInitial,
 } from './VocabularyQuickAddDialog'
+import { useT } from '../../i18n'
 
 interface VocabularySelectionAddProps {
   children: ReactNode
@@ -157,8 +158,10 @@ function snapshotToInitial(snapshot: SelectionSnapshot): VocabularyQuickAddIniti
 export function VocabularySelectionAdd({
   children,
   className = '',
-  hint = '选中英文单词或短语后，点击浮层按钮或右键加入个人词库',
+  hint,
 }: VocabularySelectionAddProps) {
+  const t = useT()
+  const resolvedHint = hint !== undefined ? hint : t('vocab.selection.hint')
   const containerRef = useRef<HTMLDivElement>(null)
   const floatingRef = useRef<HTMLDivElement>(null)
   const pendingSnapshotRef = useRef<SelectionSnapshot | null>(null)
@@ -297,7 +300,7 @@ export function VocabularySelectionAdd({
         onDoubleClick={handleDoubleClick}
       >
         {children}
-        {hint ? <p className="mt-4 text-xs text-neutral-400">{hint}</p> : null}
+        {resolvedHint ? <p className="mt-4 text-xs text-neutral-400">{resolvedHint}</p> : null}
       </div>
 
       {floating &&
@@ -320,7 +323,7 @@ export function VocabularySelectionAdd({
               className="flex h-10 w-[9.25rem] items-center gap-2 px-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
             >
               <BookPlus size={15} className="shrink-0 text-neutral-500" />
-              加入个人词库
+              {t('vocab.quickAdd.floatAction')}
             </button>
           </div>,
           document.body,

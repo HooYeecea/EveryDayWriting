@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Gauge } from 'lucide-react'
 import { getTokenBudget, getTokenUsageDetails, getTokenUsageSummary, setTokenBudget } from '../../api/tokenUsage'
+import { usePreferences } from '../../context/PreferencesContext'
+import { useT } from '../../i18n'
+import type { MessageKey } from '../../i18n'
+import { APP_LOCALE_TO_BCP47 } from '../../types/preferences'
 import type { TokenBudgetStatus, TokenUsageDetailItem, TokenUsageSummary } from '../../types'
 
+const STAT_CARD_KEYS: { labelKey: MessageKey; valueKey: 'month' | 'total' | 'calls' | 'status' }[] = [
+  { labelKey: 'token.monthConsumed', valueKey: 'month' },
+  { labelKey: 'token.totalConsumed', valueKey: 'total' },
+  { labelKey: 'token.callCount', valueKey: 'calls' },
+  { labelKey: 'token.budgetStatus', valueKey: 'status' },
+]
+
 export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
+  const t = useT()
+  const { preferences } = usePreferences()
+  const dateLocale = APP_LOCALE_TO_BCP47[preferences.locale]
   const [summary, setSummary] = useState<TokenUsageSummary | null>(null)
   const [budget, setBudget] = useState<TokenBudgetStatus | null>(null)
   const [details, setDetails] = useState<TokenUsageDetailItem[]>([])
@@ -26,7 +40,7 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
           budgetData.budgetLimit != null ? String(budgetData.budgetLimit) : '',
         )
       })
-      .catch((err) => setError(err instanceof Error ? err.message : '加载失败'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('token.loadFailed')))
       .finally(() => setLoading(false))
   }
 
@@ -48,24 +62,35 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
     try {
       const value = budgetInput.trim() ? Number(budgetInput) : null
       if (budgetInput.trim() && (!Number.isFinite(value) || value! < 0)) {
-        setError('请输入有效的预算数值')
+        setError(t('token.invalidBudget'))
         return
       }
       await setTokenBudget(value)
-      setMessage('预算已更新')
+      setMessage(t('token.budgetUpdated'))
       load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败')
+      setError(err instanceof Error ? err.message : t('token.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
+  const statValues =
+    summary && budget
+      ? {
+          month: summary.consumedThisMonth.toLocaleString(dateLocale),
+          total: summary.totalConsumed.toLocaleString(dateLocale),
+          calls: String(summary.totalCalls),
+          status:
+            budget.status === 'exceeded' ? t('token.statusExceeded') : t('token.statusNormal'),
+        }
+      : null
+
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex items-center gap-2">
         <Gauge size={18} className="text-neutral-500" />
-        <h3 className="text-sm font-medium text-neutral-900">Token 用量</h3>
+        <h3 className="text-sm font-medium text-neutral-900">{t('token.title')}</h3>
       </div>
 
       {loading && (
@@ -73,26 +98,18 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
           className="mt-4 flex min-h-[200px] flex-col items-center justify-center gap-2 text-sm text-neutral-400"
           role="status"
         >
-          加载中…
+          {t('common.loading')}
         </div>
       )}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      {summary && budget && !loading && (
+      {summary && budget && statValues && !loading && (
         <div className="mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: '本月消耗', value: summary.consumedThisMonth.toLocaleString() },
-              { label: '累计消耗', value: summary.totalConsumed.toLocaleString() },
-              { label: '调用次数', value: summary.totalCalls },
-              {
-                label: '预算状态',
-                value: budget.status === 'exceeded' ? '已超限' : '正常',
-              },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl bg-neutral-50 px-3 py-3">
-                <p className="text-lg font-semibold text-neutral-900">{value}</p>
-                <p className="mt-1 text-xs text-neutral-500">{label}</p>
+            {STAT_CARD_KEYS.map(({ labelKey, valueKey }) => (
+              <div key={labelKey} className="rounded-xl bg-neutral-50 px-3 py-3">
+                <p className="text-lg font-semibold text-neutral-900">{statValues[valueKey]}</p>
+                <p className="mt-1 text-xs text-neutral-500">{t(labelKey)}</p>
               </div>
             ))}
           </div>
@@ -100,7 +117,7 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
           {budget.budgetLimit != null && (
             <div>
               <div className="mb-1 flex justify-between text-xs text-neutral-500">
-                <span>本月进度</span>
+                <span>{t('token.monthProgress')}</span>
                 <span>{budget.consumedPercent}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
@@ -115,12 +132,12 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
           <form onSubmit={handleSaveBudget} className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-neutral-600">
-                个人月度预算（Token）
+                {t('token.budgetLabel')}
               </label>
               <input
                 value={budgetInput}
                 onChange={(e) => setBudgetInput(e.target.value.replace(/\D/g, ''))}
-                placeholder="留空则使用系统默认"
+                placeholder={t('token.budgetPlaceholder')}
                 className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-400"
               />
             </div>
@@ -129,7 +146,7 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
               disabled={saving}
               className="rounded-lg border border-neutral-200 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
             >
-              {saving ? '保存中…' : '更新预算'}
+              {saving ? t('common.saving') : t('token.updateBudget')}
             </button>
           </form>
 
@@ -137,7 +154,7 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
 
           {details.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-neutral-500">最近调用</h4>
+              <h4 className="text-xs font-medium text-neutral-500">{t('token.recentCalls')}</h4>
               <ul className="mt-2 space-y-2">
                 {details.map((item) => (
                   <li
@@ -148,7 +165,7 @@ export function TokenUsagePanel({ onReady }: { onReady?: () => void } = {}) {
                     {' · '}
                     {item.totalTokens} tokens
                     {' · '}
-                    {new Date(item.createdAt).toLocaleString('zh-CN')}
+                    {new Date(item.createdAt).toLocaleString(dateLocale)}
                   </li>
                 ))}
               </ul>
