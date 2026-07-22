@@ -231,6 +231,7 @@ export function AdminAgreementsPage({ onReady }: { onReady?: () => void } = {}) 
         open={createOpen}
         title="发布协议新版本"
         onClose={() => setCreateOpen(false)}
+        resizable
         footer={
           <>
             <AdminGhostButton onClick={() => setCreateOpen(false)}>取消</AdminGhostButton>
@@ -254,7 +255,7 @@ export function AdminAgreementsPage({ onReady }: { onReady?: () => void } = {}) 
           </AdminField>
           <AdminField label="内容">
             <textarea
-              className={adminInputClass}
+              className={`${adminInputClass} min-h-[10rem] resize-y`}
               rows={6}
               value={content}
               onChange={(e) => setContent(e.target.value)}

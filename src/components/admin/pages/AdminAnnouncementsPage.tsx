@@ -245,6 +245,7 @@ export function AdminAnnouncementsPage({ onReady }: { onReady?: () => void } = {
         open={formOpen}
         title={editing ? '编辑公告' : '新建公告'}
         onClose={() => setFormOpen(false)}
+        resizable
         footer={
           <>
             <AdminGhostButton onClick={() => setFormOpen(false)}>取消</AdminGhostButton>
@@ -260,7 +261,7 @@ export function AdminAnnouncementsPage({ onReady }: { onReady?: () => void } = {
           </AdminField>
           <AdminField label="内容">
             <textarea
-              className={adminInputClass}
+              className={`${adminInputClass} min-h-[8rem] resize-y`}
               rows={5}
               value={content}
               onChange={(e) => setContent(e.target.value)}
