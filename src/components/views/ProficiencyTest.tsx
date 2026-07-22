@@ -12,6 +12,7 @@ import {
 import { callAiProxy } from '../../api/ai'
 import { isApiError } from '../../api/request'
 import * as proficiencyApi from '../../api/proficiencyTest'
+import { useConfirmDialog } from '../common/ConfirmDialog'
 import { useAuth } from '../../context/AuthContext'
 import { useT } from '../../i18n'
 import { loadAiAssistSettings } from '../../storage/aiSettingsStorage'
@@ -23,6 +24,7 @@ import type {
   ProficiencyStage,
   ProficiencyTestStatusResponse,
   SelfAssessmentQuestion,
+  StartProficiencyTestResponse,
   WritingTask,
 } from '../../types/proficiencyTest'
 import { getDefaultHomePath } from '../../utils/roles'
@@ -88,6 +90,7 @@ export function ProficiencyTestPage() {
   const t = useT()
   const { isAuthenticated, isLoading: authLoading, refreshProfile, roles, permissions } =
     useAuth()
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const homePath = getDefaultHomePath(
     roles,
     permissions,
@@ -203,19 +206,15 @@ export function ProficiencyTestPage() {
       }
 
       if (data.status === 'in_progress' && data.activeTestId) {
-        const start = await proficiencyApi.startProficiencyTest()
-        setTestId(start.testId)
-        setSelfQuestions(start.selfAssessmentQuestions)
-        const current = (data.activeStage ?? start.currentStage) as ProficiencyStage
-        setStage(current === 'done' ? 'done' : current)
-        if (current === 'done' || start.currentStage === 'done') {
+        // 评估中（写作已交）：自动继续评估；其余未完成进度先回到欢迎页，可续测或整份重开
+        if (data.activeStage === 'done') {
+          const start = await proficiencyApi.startProficiencyTest()
+          setTestId(start.testId)
+          setSelfQuestions(start.selfAssessmentQuestions)
           void runEvaluation(start.testId)
           return
         }
-        if (current === 'B' || current === 'C') {
-          await restoreFromStage(start.testId, current)
-        }
-        setView('testing')
+        setView('welcome')
         return
       }
 
@@ -224,13 +223,49 @@ export function ProficiencyTestPage() {
       setError(err instanceof Error ? err.message : t('proficiency.error.loadStatusFailed'))
       setView('error')
     }
-  }, [restoreFromStage, runEvaluation, t])
+  }, [runEvaluation, t])
 
   useEffect(() => {
     if (authLoading) return
     if (!getToken() || !isAuthenticated) return
     void loadStatus()
   }, [authLoading, isAuthenticated, loadStatus])
+
+  const beginFreshSession = useCallback(
+    async (start: StartProficiencyTestResponse) => {
+      setTestId(start.testId)
+      setSelfQuestions(start.selfAssessmentQuestions)
+      setStage(start.currentStage === 'done' ? 'done' : start.currentStage)
+      setSelfAnswers({})
+      setObjectiveAnswers({})
+      setObjectiveIndex(0)
+      setObjectiveQuestions([])
+      setWritingTexts({})
+      setWritingTasks([])
+      setWritingIndex(0)
+      setResult(null)
+      setStatus((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'in_progress',
+              activeTestId: start.testId,
+              activeStage: start.currentStage === 'done' ? 'done' : start.currentStage,
+              hasActivePlan: false,
+              showGuideRedDot: true,
+            }
+          : prev,
+      )
+      if (start.currentStage === 'done') {
+        await refreshProfile()
+        void runEvaluation(start.testId)
+        return
+      }
+      setView('testing')
+      await refreshProfile()
+    },
+    [refreshProfile, runEvaluation],
+  )
 
   const handleStart = async () => {
     setBusy(true)
@@ -258,6 +293,33 @@ export function ProficiencyTestPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('proficiency.error.startFailed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleRestart = async (mode: 'abandon' | 'retake') => {
+    const ok = await confirm({
+      title: t('proficiency.restart.confirmTitle'),
+      message:
+        mode === 'abandon'
+          ? t('proficiency.restart.confirmAbandon')
+          : t('proficiency.restart.confirmRetake'),
+      confirmLabel: t('proficiency.restart.confirmAction'),
+      variant: 'warning',
+    })
+    if (!ok) return
+
+    setBusy(true)
+    setError('')
+    try {
+      const start = await proficiencyApi.restartProficiencyTest()
+      await beginFreshSession(start)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('proficiency.error.restartFailed'))
+      if (view !== 'testing' && view !== 'welcome' && view !== 'result') {
+        setView('error')
+      }
     } finally {
       setBusy(false)
     }
@@ -415,6 +477,7 @@ export function ProficiencyTestPage() {
           busy={busy}
           error={error}
           onStart={() => void handleStart()}
+          onRestart={() => void handleRestart('abandon')}
           onSkip={() => void handleSkip()}
           onHome={() => navigate(homePath, { replace: true })}
         />
@@ -467,6 +530,10 @@ export function ProficiencyTestPage() {
               {t('proficiency.stageA.next')}
               <ArrowRight size={16} />
             </button>
+            <RestartDuringTestLink
+              busy={busy}
+              onRestart={() => void handleRestart('abandon')}
+            />
           </div>
         </StageCard>
       )}
@@ -541,6 +608,10 @@ export function ProficiencyTestPage() {
               </button>
             )}
           </div>
+          <RestartDuringTestLink
+            busy={busy}
+            onRestart={() => void handleRestart('abandon')}
+          />
         </StageCard>
       )}
 
@@ -651,6 +722,10 @@ export function ProficiencyTestPage() {
               </button>
             )}
           </div>
+          <RestartDuringTestLink
+            busy={busy}
+            onRestart={() => void handleRestart('abandon')}
+          />
         </StageCard>
       )}
 
@@ -670,7 +745,10 @@ export function ProficiencyTestPage() {
           overallLevel={overallLevel}
           overallScore={overallScore}
           result={result}
+          busy={busy}
+          error={error}
           onPlan={() => navigate('/user-center', { replace: true, state: { tab: 'plan' } })}
+          onRetake={() => void handleRestart('retake')}
           onHome={() => navigate(homePath, { replace: true })}
         />
       )}
@@ -696,6 +774,7 @@ export function ProficiencyTestPage() {
           </div>
         </div>
       )}
+      {confirmDialog}
     </Shell>
   )
 }
@@ -750,6 +829,7 @@ function WelcomePanel({
   busy,
   error,
   onStart,
+  onRestart,
   onSkip,
   onHome,
 }: {
@@ -757,11 +837,13 @@ function WelcomePanel({
   busy: boolean
   error: string
   onStart: () => void
+  onRestart: () => void
   onSkip: () => void
   onHome: () => void
 }) {
   const t = useT()
-  const isResume = status?.status === 'in_progress' || status?.status === 'skipped'
+  const isInProgress = status?.status === 'in_progress'
+  const isResume = isInProgress || status?.status === 'skipped'
   const features = [
     {
       icon: ClipboardList,
@@ -819,10 +901,23 @@ function WelcomePanel({
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 py-3 text-sm font-medium uppercase tracking-wide text-white hover:bg-neutral-800 disabled:opacity-60"
       >
         {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-        {status?.status === 'in_progress'
-          ? t('proficiency.welcome.continue')
-          : t('proficiency.welcome.start')}
+        {isInProgress ? t('proficiency.welcome.continue') : t('proficiency.welcome.start')}
       </button>
+      {isInProgress && (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onRestart}
+            className="mt-3 w-full rounded-lg border border-neutral-200 px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 disabled:opacity-60"
+          >
+            {t('proficiency.welcome.restart')}
+          </button>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-neutral-400">
+            {t('proficiency.welcome.restartHint')}
+          </p>
+        </>
+      )}
       <button
         type="button"
         disabled={busy}
@@ -842,6 +937,26 @@ function WelcomePanel({
         {t('proficiency.welcome.enterSite')}
       </button>
     </div>
+  )
+}
+
+function RestartDuringTestLink({
+  busy,
+  onRestart,
+}: {
+  busy: boolean
+  onRestart: () => void
+}) {
+  const t = useT()
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onRestart}
+      className="mt-4 w-full text-center text-xs text-neutral-400 underline-offset-2 hover:text-neutral-600 hover:underline disabled:opacity-50"
+    >
+      {t('proficiency.restart.inTest')}
+    </button>
   )
 }
 
@@ -929,13 +1044,19 @@ function ResultPanel({
   overallLevel,
   overallScore,
   result,
+  busy,
+  error,
   onPlan,
+  onRetake,
   onHome,
 }: {
   overallLevel: string | null
   overallScore: number | null
   result: ProficiencyEvaluationResult | null
+  busy: boolean
+  error: string
   onPlan: () => void
+  onRetake: () => void
   onHome: () => void
 }) {
   const t = useT()
@@ -1019,6 +1140,8 @@ function ResultPanel({
         </div>
       )}
 
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
       <button
         type="button"
         onClick={onPlan}
@@ -1034,6 +1157,18 @@ function ResultPanel({
       >
         {t('proficiency.result.startWriting')}
       </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onRetake}
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 disabled:opacity-60"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : null}
+        {t('proficiency.result.retake')}
+      </button>
+      <p className="mt-2 text-center text-[11px] text-neutral-400">
+        {t('proficiency.result.retakeHint')}
+      </p>
       <p className="mt-3 text-center text-[11px] text-neutral-400">
         {t('proficiency.result.planHintBefore')}{' '}
         <Link to="/user-center" className="underline underline-offset-2">

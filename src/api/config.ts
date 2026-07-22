@@ -92,6 +92,7 @@ export const API_PATHS = {
   proficiencyTest: {
     status: '/proficiency-test/status',
     start: '/proficiency-test/start',
+    restart: '/proficiency-test/restart',
     skip: '/proficiency-test/skip',
     dismissRedDot: '/proficiency-test/dismiss-red-dot',
     selfAssessmentQuestions: '/proficiency-test/self-assessment-questions',

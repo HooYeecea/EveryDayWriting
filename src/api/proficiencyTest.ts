@@ -22,6 +22,11 @@ export async function startProficiencyTest(): Promise<StartProficiencyTestRespon
   return post<StartProficiencyTestResponse>(API_PATHS.proficiencyTest.start)
 }
 
+/** 整份重测：作废进行中会话，或在已完成后新开一轮（旧计划会停用）。 */
+export async function restartProficiencyTest(reason = 'user_requested'): Promise<StartProficiencyTestResponse> {
+  return post<StartProficiencyTestResponse>(API_PATHS.proficiencyTest.restart, { reason })
+}
+
 export async function skipProficiencyTest(): Promise<void> {
   await post(API_PATHS.proficiencyTest.skip)
 }
