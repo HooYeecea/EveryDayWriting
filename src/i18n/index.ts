@@ -12,6 +12,7 @@ export { getRouteLabelKey, LOCALE_HTML_LANG, translate } from './messages'
 
 export function applyDocumentLang(locale: AppLocale): void {
   document.documentElement.lang = LOCALE_HTML_LANG[locale] ?? 'zh-CN'
+  document.title = `Everyday Writing - ${translate(locale, 'nav.brandSubtitle')}`
 }
 
 /** 当前已保存语言的翻译函数 */
