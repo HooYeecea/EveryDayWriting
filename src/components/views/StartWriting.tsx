@@ -448,7 +448,15 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   }
 
   // ── 自动保存：localStorage + 服务器 ──
-  const localStorageKey = topic ? `auto_save_draft_${topic.id}` : 'auto_save_draft_0'
+  // 有草稿 Id 时按 Id 区分；自拟题用题目文本避免全部挤在 topicId=0
+  const localStorageKey = (() => {
+    if (draftId) return `auto_save_draft_id_${draftId}`
+    const topicText = topicToPrompt(topic).trim().slice(0, 48)
+    if (topicMode === 'custom') {
+      return `auto_save_draft_custom_${topicText || 'pending'}`
+    }
+    return `auto_save_draft_${topic.id || 0}`
+  })()
 
   // 内容变化 → localStorage（仅作会话内备份；刷新后不恢复，避免题目与正文错位）
   useEffect(() => {
@@ -460,9 +468,12 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     } catch { /* ignore */ }
   }, [title, content, isAuthenticated, localStorageKey])
 
-  // 服务器自动保存（停止输入后按系统设置间隔触发；与手动保存共用同一草稿）
+  // 服务器自动保存（停止输入后按系统设置间隔触发；与手动保存共用同一草稿 Id，避免重复创建）
   useEffect(() => {
-    if (!isAuthenticated || !topic || topic.id === 0) return
+    if (!isAuthenticated) return
+    const topicText = topicToPrompt(topic).trim()
+    // 未获取系统题 / 未确定自拟题时不自动保存
+    if (!topicText) return
 
     const hash = `${title}||${content}`
     if (hash === lastAutoSavedHashRef.current) return
@@ -475,9 +486,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       if (isEditorEmpty(content)) return
 
       const sourceSubmitId = iterateFromIdRef.current
+      const custom = topicMode === 'custom'
       const payload: WritingSavePayload = {
-        topicId: topic.id > 0 ? topic.id : null,
-        topic: topicToPrompt(topic),
+        topicId: custom ? 0 : topic.id > 0 ? topic.id : null,
+        topic: topicText,
         title: title.trim(),
         content,
         ...(sourceSubmitId ? { sourceSubmitId } : {}),
@@ -486,6 +498,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
       void enqueueDraftSave(async () => {
         try {
+          // 有 draftId 则 PUT 更新，无则 POST 创建一次，之后复用同一 Id
           const result = await autoSaveDraft(draftIdRef.current, payload)
           preserveWritingSessionRef.current = true
           assignDraftMeta(result.id, result.updatedAt)
@@ -502,7 +515,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, topic, isAuthenticated, preferences.writing.autoSaveIntervalSec])
+  }, [title, content, topic, topicMode, isAuthenticated, preferences.writing.autoSaveIntervalSec])
 
   // 页面关闭前紧急写入 localStorage
   useEffect(() => {
