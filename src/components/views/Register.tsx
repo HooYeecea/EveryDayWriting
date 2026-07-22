@@ -5,10 +5,16 @@ import { isApiError } from '../../api/request'
 import { sendEmailCode } from '../../api/auth'
 import { acceptAgreement } from '../../api/agreements'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
-import { AuthFormAlert } from '../auth/AuthFormAlert'
+import { AuthBubble } from '../auth/AuthBubble'
+import { AuthFieldHint } from '../auth/AuthFieldHint'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
-import { validatePassword } from '../../utils/authValidation'
+import { useAuthBubble } from '../../hooks/useAuthBubble'
+import {
+  PASSWORD_FIELD_HINT,
+  validateEmail,
+  validatePassword,
+} from '../../utils/authValidation'
 import { useEmailCodeCooldown } from '../../hooks/useEmailCodeCooldown'
 import { emailCodeCooldownLabel } from '../../storage/emailCodeCooldown'
 
@@ -19,6 +25,7 @@ export function Register() {
   const { register, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { message: bubble, show } = useAuthBubble()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -26,7 +33,6 @@ export function Register() {
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [privacyAgreementId, setPrivacyAgreementId] = useState<string | undefined>()
   const [privacyWarning, setPrivacyWarning] = useState(false)
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
   const { cooldown, startCooldown } = useEmailCodeCooldown('register', email)
@@ -47,20 +53,21 @@ export function Register() {
   }
 
   const handleSendCode = async () => {
-    if (!email.trim()) {
-      setError('请先输入邮箱')
+    const emailError = validateEmail(email)
+    if (emailError) {
+      show(emailError)
       return
     }
     setSendingCode(true)
-    setError('')
     try {
       await sendEmailCode(email.trim(), 'register')
       startCooldown()
+      show('验证码已发送，请查收邮箱')
     } catch (err) {
       if (isApiError(err) && err.isRateLimited) {
         startCooldown()
       }
-      setError(err instanceof Error ? err.message : '验证码发送失败')
+      show(err instanceof Error ? err.message : '验证码发送失败')
     } finally {
       setSendingCode(false)
     }
@@ -68,26 +75,38 @@ export function Register() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
 
-    if (!privacyAgreed) {
-      setPrivacyWarning(true)
+    const emailError = validateEmail(email)
+    if (emailError) {
+      show(emailError)
       return
     }
-
     if (!code.trim()) {
-      setError('请输入邮箱验证码')
+      show('请填写验证码')
       return
     }
-
+    if (!password) {
+      show('请设置密码')
+      return
+    }
+    if (!confirmPassword) {
+      show('请再次输入密码')
+      return
+    }
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致')
+      show('两次输入的密码不一致')
       return
     }
 
     const passwordError = validatePassword(password)
     if (passwordError) {
-      setError(passwordError)
+      show(passwordError)
+      return
+    }
+
+    if (!privacyAgreed) {
+      setPrivacyWarning(true)
+      show('请先阅读并同意隐私协议')
       return
     }
 
@@ -107,7 +126,7 @@ export function Register() {
         { replace: true },
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : '注册失败')
+      show(err instanceof Error ? err.message : '注册失败')
     } finally {
       setSubmitting(false)
     }
@@ -139,16 +158,16 @@ export function Register() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <AuthFormAlert message={error} />
+      <AuthBubble message={bubble} />
+      <form noValidate onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label className="mb-1 block text-sm font-medium text-neutral-700">邮箱</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
+            placeholder="name@example.com"
+            autoComplete="email"
             className={fieldClass}
           />
         </div>
@@ -159,8 +178,7 @@ export function Register() {
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="6 位验证码"
-              required
+              placeholder="验证码"
               maxLength={6}
               className={`min-w-0 flex-1 ${fieldClass}`}
             />
@@ -173,6 +191,7 @@ export function Register() {
               {emailCodeCooldownLabel(cooldown, sendingCode)}
             </button>
           </div>
+          <AuthFieldHint>发送至邮箱的 6 位数字</AuthFieldHint>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -181,10 +200,11 @@ export function Register() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="至少 8 位，含大小写和数字"
-              required
+              placeholder="设置密码"
+              autoComplete="new-password"
               className={fieldClass}
             />
+            <AuthFieldHint>{PASSWORD_FIELD_HINT}</AuthFieldHint>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-700">确认密码</label>
@@ -192,8 +212,8 @@ export function Register() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="再次输入"
-              required
+              placeholder="再输入一次"
+              autoComplete="new-password"
               className={fieldClass}
             />
           </div>

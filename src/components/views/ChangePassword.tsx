@@ -1,11 +1,13 @@
 ﻿import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { isApiError } from '../../api/request'
-import { AuthFormAlert } from '../auth/AuthFormAlert'
+import { AuthBubble } from '../auth/AuthBubble'
+import { AuthFieldHint } from '../auth/AuthFieldHint'
 import { AuthLayout } from '../layout/AuthLayout'
 import { useAuth } from '../../context/AuthContext'
+import { useAuthBubble } from '../../hooks/useAuthBubble'
 import { getToken } from '../../storage/tokenStorage'
-import { validatePassword } from '../../utils/authValidation'
+import { PASSWORD_FIELD_HINT, validatePassword } from '../../utils/authValidation'
 import { getDefaultHomePath } from '../../utils/roles'
 import { DEFAULT_PATH } from '../../config/routes'
 
@@ -13,10 +15,10 @@ export function ChangePassword() {
   const navigate = useNavigate()
   const { mustChangePassword, isLoading, logout, completeForcedPasswordChange, roles, permissions } =
     useAuth()
+  const { message: bubble, show } = useAuthBubble()
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const homePath = getDefaultHomePath(roles, permissions)
 
@@ -43,24 +45,31 @@ export function ChangePassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (!oldPassword) {
-      setError('请输入当前密码')
+      show('请填写当前密码')
+      return
+    }
+    if (!newPassword) {
+      show('请设置新密码')
+      return
+    }
+    if (!confirmPassword) {
+      show('请再次输入新密码')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('两次输入的新密码不一致')
+      show('两次输入的密码不一致')
       return
     }
 
     const passwordError = validatePassword(newPassword)
     if (passwordError) {
-      setError(passwordError)
+      show(passwordError)
       return
     }
     if (oldPassword === newPassword) {
-      setError('新密码不能与当前密码相同')
+      show('新密码不能与当前密码相同')
       return
     }
 
@@ -69,7 +78,7 @@ export function ChangePassword() {
       await completeForcedPasswordChange(oldPassword, newPassword)
       navigate(homePath, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '修改密码失败')
+      show(err instanceof Error ? err.message : '修改密码失败')
       if (isApiError(err) && err.isUnauthorized) {
         await logout()
         navigate(DEFAULT_PATH, { replace: true })
@@ -101,16 +110,15 @@ export function ChangePassword() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <AuthFormAlert message={error} />
+      <AuthBubble message={bubble} />
+      <form noValidate onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">当前密码</label>
           <input
             type="password"
             value={oldPassword}
             onChange={(e) => setOldPassword(e.target.value)}
-            placeholder="请输入当前密码"
-            required
+            placeholder="当前密码"
             autoComplete="current-password"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
@@ -121,11 +129,11 @@ export function ChangePassword() {
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="至少 8 位，含大小写字母和数字"
-            required
+            placeholder="设置新密码"
             autoComplete="new-password"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
+          <AuthFieldHint>{PASSWORD_FIELD_HINT}</AuthFieldHint>
         </div>
         <div>
           <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">确认新密码</label>
@@ -133,8 +141,7 @@ export function ChangePassword() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="再次输入新密码"
-            required
+            placeholder="再输入一次"
             autoComplete="new-password"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />

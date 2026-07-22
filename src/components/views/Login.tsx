@@ -9,10 +9,13 @@ import {
 import { isApiError } from '../../api/request'
 import type { AuthLoginResult, LoginErrorData } from '../../types'
 import { PrivacyAgreementField } from '../auth/PrivacyAgreementField'
-import { AuthFormAlert } from '../auth/AuthFormAlert'
+import { AuthBubble } from '../auth/AuthBubble'
+import { AuthFieldHint } from '../auth/AuthFieldHint'
 import { useAuth } from '../../context/AuthContext'
 import { AuthLayout } from '../layout/AuthLayout'
+import { useAuthBubble } from '../../hooks/useAuthBubble'
 import { buildGraphCaptchaImageSrc } from '../../utils/graphCaptchaImage'
+import { validateEmail } from '../../utils/authValidation'
 import { getDefaultHomePath } from '../../utils/roles'
 
 function isCaptchaExpiredMessage(message: string): boolean {
@@ -23,6 +26,7 @@ export function Login() {
   const { login, isAuthenticated, isLoading, roles, permissions } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { message: bubble, show } = useAuthBubble()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [captchaCode, setCaptchaCode] = useState('')
@@ -32,7 +36,6 @@ export function Login() {
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [privacyAgreementId, setPrivacyAgreementId] = useState<string | undefined>()
   const [privacyWarning, setPrivacyWarning] = useState(false)
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [loadingCaptcha, setLoadingCaptcha] = useState(false)
   const [captchaCooldown, setCaptchaCooldown] = useState(0)
@@ -59,12 +62,12 @@ export function Login() {
         applyCaptcha(data, mode === 'refresh')
       } catch (err) {
         setCaptchaCooldown(getGraphCaptchaCooldownRemaining())
-        setError(err instanceof Error ? err.message : '图形验证码加载失败')
+        show(err instanceof Error ? err.message : '图形验证码加载失败')
       } finally {
         setLoadingCaptcha(false)
       }
     },
-    [applyCaptcha],
+    [applyCaptcha, show],
   )
 
   useEffect(() => {
@@ -99,20 +102,30 @@ export function Login() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
+
+    const emailError = validateEmail(email)
+    if (emailError) {
+      show(emailError)
+      return
+    }
+    if (!password) {
+      show('请填写密码')
+      return
+    }
 
     if (!privacyAgreed) {
       setPrivacyWarning(true)
+      show('请先阅读并同意隐私协议')
       return
     }
 
     if (requireCaptcha) {
       if (!captchaId) {
-        setError('图形验证码加载中，请稍候')
+        show('图形验证码加载中，请稍候')
         return
       }
       if (!captchaCode.trim()) {
-        setError('请输入图形验证码')
+        show('请输入图形验证码')
         return
       }
     }
@@ -156,7 +169,7 @@ export function Login() {
           void loadGraphCaptcha('refresh')
         }
       }
-      setError(err instanceof Error ? err.message : '登录失败')
+      show(err instanceof Error ? err.message : '登录失败')
     } finally {
       setSubmitting(false)
     }
@@ -200,16 +213,16 @@ export function Login() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <AuthFormAlert message={error} />
+      <AuthBubble message={bubble} />
+      <form noValidate onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="mb-1.5 block font-sans text-xs font-semibold tracking-wide text-neutral-500 uppercase">邮箱</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
+            placeholder="name@example.com"
+            autoComplete="email"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
@@ -219,8 +232,8 @@ export function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="请输入密码"
-            required
+            placeholder="密码"
+            autoComplete="current-password"
             className="w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
           />
         </div>
@@ -255,16 +268,13 @@ export function Login() {
                 type="text"
                 value={captchaCode}
                 onChange={(e) => setCaptchaCode(e.target.value.replace(/\s/g, '').slice(0, 8))}
-                placeholder="请输入图中字符"
-                required
+                placeholder="图中字符"
                 maxLength={8}
                 autoComplete="off"
                 className="min-w-0 flex-1 rounded-lg border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-400"
               />
             </div>
-            <p className="mt-1.5 text-xs text-neutral-400">
-              密码错误次数过多，请输入图形验证码（60 秒内仅可刷新一次）
-            </p>
+            <AuthFieldHint>密码错误次数过多时需填写；验证码 60 秒内仅可刷新一次</AuthFieldHint>
           </div>
         )}
         <button
