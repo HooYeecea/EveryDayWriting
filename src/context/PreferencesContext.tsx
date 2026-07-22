@@ -9,16 +9,20 @@ import {
 } from 'react'
 import type { UserPreferences } from '../types/preferences'
 import { applyDocumentLang } from '../i18n'
+import { useAuth } from './AuthContext'
 import {
   applyAppearancePreferences,
   loadUserPreferences,
   saveUserPreferences,
 } from '../storage/preferencesStorage'
+import { syncPreferencesFromServer } from '../storage/preferencesSync'
 
 interface PreferencesContextValue {
   preferences: UserPreferences
   setPreferences: (next: UserPreferences) => void
   patchPreferences: (patch: Partial<UserPreferences> | ((current: UserPreferences) => UserPreferences)) => void
+  /** 从服务端拉取并应用到本机（已登录时） */
+  syncFromServer: () => Promise<UserPreferences>
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null)
@@ -30,6 +34,7 @@ function applyAll(next: UserPreferences) {
 }
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [preferences, setPreferencesState] = useState<UserPreferences>(() => loadUserPreferences())
 
   useEffect(() => {
@@ -37,7 +42,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     applyDocumentLang(preferences.locale)
   }, [preferences])
 
-  // 跟随系统主题时监听系统变化
   useEffect(() => {
     if (preferences.ui.theme !== 'system') return
     const media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -70,9 +74,31 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const syncFromServer = useCallback(async () => {
+    const next = await syncPreferencesFromServer()
+    setPreferencesState(next)
+    return next
+  }, [])
+
+  // 登录 / 恢复会话后拉取账号偏好
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return
+    let cancelled = false
+    void syncPreferencesFromServer()
+      .then((next) => {
+        if (!cancelled) setPreferencesState(next)
+      })
+      .catch(() => {
+        // 保持本机偏好
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, isAuthenticated])
+
   const value = useMemo(
-    () => ({ preferences, setPreferences, patchPreferences }),
-    [preferences, setPreferences, patchPreferences],
+    () => ({ preferences, setPreferences, patchPreferences, syncFromServer }),
+    [preferences, setPreferences, patchPreferences, syncFromServer],
   )
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>

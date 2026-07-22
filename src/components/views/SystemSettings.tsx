@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Globe2, PenLine, RotateCcw, Settings2, Sparkles } from 'lucide-react'
 import { TOPIC_TYPE_FILTER_OPTIONS } from '../../api/topics'
 import { usePreferences } from '../../context/PreferencesContext'
+import { useAuth } from '../../context/AuthContext'
 import { useAppConfirm } from '../../context/AppConfirmContext'
 import { useReportReady } from '../../hooks/useReportReady'
 import { useT, translate } from '../../i18n'
 import { clearLocalPreferenceCaches } from '../../storage/preferencesStorage'
+import { pushPreferencesToServer } from '../../storage/preferencesSync'
 import {
   APP_LOCALES,
   APP_THEMES,
@@ -109,10 +111,12 @@ const HOME_PATH_LABEL_KEY = {
 
 export function SystemSettings({ onReady }: { onReady?: () => void } = {}) {
   const { preferences, setPreferences } = usePreferences()
+  const { isAuthenticated } = useAuth()
   const { confirm } = useAppConfirm()
   const t = useT()
   const [draft, setDraft] = useState<UserPreferences>(() => clonePrefs(preferences))
   const [message, setMessage] = useState('')
+  const [saving, setSaving] = useState(false)
   const committedRef = useRef(preferences)
 
   useReportReady(true, onReady)
@@ -212,11 +216,23 @@ export function SystemSettings({ onReady }: { onReady?: () => void } = {}) {
     setDraft((current) => patch(current))
   }
 
-  const handleSave = () => {
-    if (!isDirty) return
+  const handleSave = async () => {
+    if (!isDirty || saving) return
     const next = clonePrefs(draft)
     setPreferences(next)
-    setMessage(translate(next.locale, 'settings.saved'))
+    if (!isAuthenticated) {
+      setMessage(translate(next.locale, 'settings.saved'))
+      return
+    }
+    setSaving(true)
+    try {
+      await pushPreferencesToServer(next)
+      setMessage(translate(next.locale, 'settings.saved'))
+    } catch {
+      setMessage(translate(next.locale, 'settings.savedLocalOnly'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDiscard = () => {
@@ -246,7 +262,19 @@ export function SystemSettings({ onReady }: { onReady?: () => void } = {}) {
     const defaults = clonePrefs(DEFAULT_USER_PREFERENCES)
     setPreferences(defaults)
     setDraft(defaults)
-    setMessage(t('settings.clearLocal.done'))
+    if (!isAuthenticated) {
+      setMessage(t('settings.clearLocal.done'))
+      return
+    }
+    setSaving(true)
+    try {
+      await pushPreferencesToServer(defaults)
+      setMessage(t('settings.clearLocal.done'))
+    } catch {
+      setMessage(t('settings.clearLocal.doneLocalOnly'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -567,7 +595,7 @@ export function SystemSettings({ onReady }: { onReady?: () => void } = {}) {
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-end gap-2">
           <button
             type="button"
-            disabled={!isDirty}
+            disabled={!isDirty || saving}
             onClick={handleDiscard}
             className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -575,11 +603,11 @@ export function SystemSettings({ onReady }: { onReady?: () => void } = {}) {
           </button>
           <button
             type="button"
-            disabled={!isDirty}
-            onClick={handleSave}
+            disabled={!isDirty || saving}
+            onClick={() => void handleSave()}
             className="rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {t('settings.save')}
+            {saving ? t('settings.saving') : t('settings.save')}
           </button>
         </div>
       </div>

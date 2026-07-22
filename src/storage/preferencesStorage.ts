@@ -42,7 +42,7 @@ function isHomePath(value: unknown): value is DefaultHomePath {
   return value === '/writing' || value === '/records' || value === '/user-center'
 }
 
-function mergePreferences(raw: unknown): UserPreferences {
+export function mergePreferences(raw: unknown): UserPreferences {
   const base = structuredClone(DEFAULT_USER_PREFERENCES)
   if (!raw || typeof raw !== 'object') return base
   const data = raw as Partial<UserPreferences>

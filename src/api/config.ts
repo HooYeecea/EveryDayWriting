@@ -33,6 +33,7 @@ export const API_PATHS = {
   user: {
     profile: '/user/profile',
     password: '/user/password',
+    preferences: '/user/preferences',
   },
   files: {
     upload: '/files/upload',

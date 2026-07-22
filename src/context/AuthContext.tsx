@@ -23,6 +23,7 @@ import { clearStoredRoles, getStoredRoles, setStoredRoles } from '../storage/rol
 import { getToken } from '../storage/tokenStorage'
 import { getDefaultHomePath, parseAuthPermissions, parseAuthRoles } from '../utils/roles'
 import { loadUserPreferences } from '../storage/preferencesStorage'
+import { syncPreferencesFromServer } from '../storage/preferencesSync'
 
 interface AuthContextValue {
   user: UserProfile | null
@@ -97,10 +98,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStoredRoles(sessionRoles)
       setPermissions(sessionPermissions)
       setStoredPermissions(sessionPermissions)
+
+      let homePrefs = loadUserPreferences()
+      if (!sessionMustChange) {
+        try {
+          homePrefs = await syncPreferencesFromServer()
+        } catch {
+          // 同步失败仍用本机偏好决定落地页
+        }
+      }
+
       const redirectTo = getDefaultHomePath(
         sessionRoles,
         sessionPermissions,
-        loadUserPreferences().ui.defaultHomePath,
+        homePrefs.ui.defaultHomePath,
       )
 
       if (sessionMustChange) {

@@ -42,10 +42,12 @@ const zhBase = {
   // settings
   'settings.title': '系统设置',
   'settings.unsaved': '未保存',
-  'settings.hint': '修改后需点击「保存设置」才会生效。偏好保存在本机，登录同步将在后续接入服务端。',
+  'settings.hint': '修改后需点击「保存设置」才会生效。已登录时会同步到账号，可在其他设备拉取。',
   'settings.save': '保存设置',
   'settings.discard': '还原修改',
   'settings.saved': '设置已保存',
+  'settings.savedLocalOnly': '已保存到本机；同步到账号失败，请稍后重试',
+  'settings.saving': '保存中…',
   'settings.discarded': '已还原未保存的修改',
   'settings.section.ui': '界面与语言',
   'settings.locale.label': '界面语言',
@@ -103,12 +105,13 @@ const zhBase = {
   'settings.clearLocal.action': '清除并重置',
   'settings.clearLocal.confirmTitle': '清除本地偏好缓存',
   'settings.clearLocal.confirmMessage':
-    '将重置本机系统设置、侧栏与题目面板高度等，不会退出登录，也不影响云端数据。',
+    '将重置本机系统设置、侧栏与题目面板高度等。已登录时会同时把账号偏好恢复为默认。不会退出登录，也不影响云端写作数据。',
   'settings.clearLocal.confirmLabel': '清除',
   'settings.clearLocal.unsavedTitle': '有未保存的修改',
   'settings.clearLocal.unsavedMessage': '清除本机偏好前，当前未保存的修改会被丢弃。是否继续？',
   'settings.clearLocal.unsavedConfirm': '继续清除',
-  'settings.clearLocal.done': '已清除本地偏好，并恢复默认设置',
+  'settings.clearLocal.done': '已恢复默认设置',
+  'settings.clearLocal.doneLocalOnly': '已恢复本机默认；同步到账号失败，请稍后在设置中重新保存',
 
   // user center
   'userCenter.title': '用户中心',
@@ -236,10 +239,12 @@ const enBase: Record<keyof typeof zhBase, string> = {
   'settings.title': 'System settings',
   'settings.unsaved': 'Unsaved',
   'settings.hint':
-    'Click “Save settings” to apply changes. Preferences stay on this device; account sync comes later.',
+    'Click “Save settings” to apply. When signed in, preferences sync to your account for other devices.',
   'settings.save': 'Save settings',
   'settings.discard': 'Discard changes',
   'settings.saved': 'Settings saved',
+  'settings.savedLocalOnly': 'Saved on this device; account sync failed. Try again later.',
+  'settings.saving': 'Saving…',
   'settings.discarded': 'Changes discarded',
   'settings.section.ui': 'Interface & language',
   'settings.locale.label': 'Language',
@@ -300,13 +305,15 @@ const enBase: Record<keyof typeof zhBase, string> = {
   'settings.clearLocal.action': 'Clear & reset',
   'settings.clearLocal.confirmTitle': 'Clear local preferences',
   'settings.clearLocal.confirmMessage':
-    'This resets local settings, sidebar, and topic panel height. You stay signed in; cloud data is untouched.',
+    'This resets local settings, sidebar, and topic panel height. If signed in, account preferences are also restored to defaults. You stay signed in; cloud writings are untouched.',
   'settings.clearLocal.confirmLabel': 'Clear',
   'settings.clearLocal.unsavedTitle': 'Unsaved changes',
   'settings.clearLocal.unsavedMessage':
     'Unsaved edits will be discarded before clearing local preferences. Continue?',
   'settings.clearLocal.unsavedConfirm': 'Continue',
-  'settings.clearLocal.done': 'Local preferences cleared and defaults restored',
+  'settings.clearLocal.done': 'Defaults restored',
+  'settings.clearLocal.doneLocalOnly':
+    'Local defaults restored; account sync failed. Save again from settings later.',
 
   'userCenter.title': 'Profile',
   'userCenter.tab.overview': 'Overview',
@@ -427,10 +434,12 @@ const jaBase: Record<keyof typeof zhBase, string> = {
   'settings.title': 'システム設定',
   'settings.unsaved': '未保存',
   'settings.hint':
-    '「設定を保存」を押すと反映されます。設定はこの端末に保存され、アカウント同期は後日対応予定です。',
+    '「設定を保存」を押すと反映されます。ログイン中はアカウントに同期され、他の端末でも取得できます。',
   'settings.save': '設定を保存',
   'settings.discard': '変更を破棄',
   'settings.saved': '設定を保存しました',
+  'settings.savedLocalOnly': '端末には保存しましたが、アカウント同期に失敗しました。後でもう一度お試しください。',
+  'settings.saving': '保存中…',
   'settings.discarded': '変更を破棄しました',
   'settings.section.ui': '表示と言語',
   'settings.locale.label': '表示言語',
@@ -491,13 +500,15 @@ const jaBase: Record<keyof typeof zhBase, string> = {
   'settings.clearLocal.action': 'クリアしてリセット',
   'settings.clearLocal.confirmTitle': 'ローカル設定をクリア',
   'settings.clearLocal.confirmMessage':
-    '端末の設定・サイドバー・課題パネル高さなどをリセットします。ログアウトせず、クラウドデータも消えません。',
+    '端末の設定・サイドバー・課題パネル高さなどをリセットします。ログイン中はアカウント設定も既定値に戻します。ログアウトせず、クラウドの作文は消えません。',
   'settings.clearLocal.confirmLabel': 'クリア',
   'settings.clearLocal.unsavedTitle': '未保存の変更があります',
   'settings.clearLocal.unsavedMessage':
     'クリアすると未保存の変更は破棄されます。続行しますか？',
   'settings.clearLocal.unsavedConfirm': '続行',
-  'settings.clearLocal.done': 'ローカル設定をクリアし、既定値に戻しました',
+  'settings.clearLocal.done': '既定値に戻しました',
+  'settings.clearLocal.doneLocalOnly':
+    '端末は既定値に戻しましたが、アカウント同期に失敗しました。設定から再度保存してください。',
 
   'userCenter.title': 'マイページ',
   'userCenter.tab.overview': '概要',
@@ -618,10 +629,12 @@ const koBase: Record<keyof typeof zhBase, string> = {
   'settings.title': '시스템 설정',
   'settings.unsaved': '저장 안 됨',
   'settings.hint':
-    '「설정 저장」을 눌러야 적용됩니다. 환경설정은 이 기기에 저장되며, 계정 동기화는 추후 제공됩니다.',
+    '「설정 저장」을 눌러야 적용됩니다. 로그인 중이면 계정에 동기화되어 다른 기기에서도 불러올 수 있습니다.',
   'settings.save': '설정 저장',
   'settings.discard': '변경 취소',
   'settings.saved': '설정이 저장되었습니다',
+  'settings.savedLocalOnly': '이 기기에는 저장됐지만 계정 동기화에 실패했습니다. 나중에 다시 시도하세요.',
+  'settings.saving': '저장 중…',
   'settings.discarded': '변경 사항을 취소했습니다',
   'settings.section.ui': '화면 및 언어',
   'settings.locale.label': '표시 언어',
@@ -682,13 +695,15 @@ const koBase: Record<keyof typeof zhBase, string> = {
   'settings.clearLocal.action': '지우고 초기화',
   'settings.clearLocal.confirmTitle': '로컬 환경설정 지우기',
   'settings.clearLocal.confirmMessage':
-    '로컬 설정, 사이드바, 주제 패널 높이 등을 초기화합니다. 로그아웃되지 않으며 클라우드 데이터는 유지됩니다.',
+    '로컬 설정, 사이드바, 주제 패널 높이 등을 초기화합니다. 로그인 중이면 계정 환경설정도 기본값으로 되돌립니다. 로그아웃되지 않으며 클라우드 글은 유지됩니다.',
   'settings.clearLocal.confirmLabel': '지우기',
   'settings.clearLocal.unsavedTitle': '저장되지 않은 변경',
   'settings.clearLocal.unsavedMessage':
     '지우기 전에 저장되지 않은 변경이 버려집니다. 계속할까요?',
   'settings.clearLocal.unsavedConfirm': '계속',
-  'settings.clearLocal.done': '로컬 환경설정을 지우고 기본값으로 되돌렸습니다',
+  'settings.clearLocal.done': '기본값으로 되돌렸습니다',
+  'settings.clearLocal.doneLocalOnly':
+    '기기 기본값은 복구됐지만 계정 동기화에 실패했습니다. 설정에서 다시 저장해 주세요.',
 
   'userCenter.title': '내 정보',
   'userCenter.tab.overview': '개요',
