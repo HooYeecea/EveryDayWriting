@@ -334,14 +334,16 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             setEditorKey((key) => key + 1)
             setFeedback({
               tone: 'info',
-              message: `正在基于第 ${submit.iterationNumber ?? 1} 版提交进行迭代改进`,
+              message: t('writing.load.iterateFromSubmit', {
+                n: submit.iterationNumber ?? 1,
+              }),
             })
             return
           } catch (err) {
             if (cancelled) return
             setFeedback({
               tone: 'error',
-              message: err instanceof Error ? err.message : '加载原提交失败',
+              message: err instanceof Error ? err.message : t('writing.load.submitFailed'),
             })
           }
         }
@@ -371,13 +373,15 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 setIterateBaselineSnapshot(buildSubmitSnapshot(source.title, source.content))
                 setFeedback({
                   tone: 'info',
-                  message: `正在基于第 ${source.iterationNumber ?? 1} 版提交进行迭代改进（来自草稿）`,
+                  message: t('writing.load.iterateFromDraft', {
+                    n: source.iterationNumber ?? 1,
+                  }),
                 })
               } catch {
                 setIterateBaselineSnapshot(null)
                 setFeedback({
                   tone: 'info',
-                  message: '已加载迭代草稿，保存后提交将挂到关联的提交记录',
+                  message: t('writing.load.iterateDraftReady'),
                 })
               }
             } else {
@@ -390,7 +394,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
             if (cancelled) return
             setFeedback({
               tone: 'info',
-              message: err instanceof Error ? err.message : '未找到指定草稿，请重新获取题目或从写作记录进入',
+              message: err instanceof Error ? err.message : t('writing.load.draftMissing'),
             })
           }
         }
@@ -416,7 +420,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         if (cancelled) return
         setFeedback({
           tone: 'error',
-          message: err instanceof Error ? err.message : '加载失败',
+          message: err instanceof Error ? err.message : t('writing.load.failed'),
         })
       } finally {
         if (!cancelled) setInitialLoading(false)
@@ -542,7 +546,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const notifyTopicLocked = () => {
     setFeedback({
       tone: 'info',
-      message: '当前草稿题目已锁定。如需换题，请先点击「重写」后重新获取题目。',
+      message: t('writing.topic.lockedHint'),
     })
   }
 
@@ -620,14 +624,17 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     if (result.wordCount !== undefined) setWordCount(result.wordCount)
     if (result.wordLimit !== undefined) setWordLimit(result.wordLimit)
 
-    const headline = createdNew ? '已另存为新草稿' : '保存成功'
+    const headline = createdNew ? t('writing.save.savedAsNew') : t('writing.save.success')
     const stats =
       result.wordCount !== undefined && result.wordLimit !== undefined
-        ? `（${result.wordCount} / ${result.wordLimit} 词）`
+        ? t('writing.save.wordStats', {
+            count: result.wordCount,
+            limit: result.wordLimit,
+          })
         : ''
     setFeedback({
       tone: 'success',
-      message: `${headline}${stats}，可前往写作记录查看草稿`,
+      message: t('writing.save.successHint', { headline, stats }),
       recordsTab: 'saves',
     })
   }
@@ -684,19 +691,19 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     const hasBoundDraft = Boolean(draftIdRef.current || iterateFromId)
     if (hasContent || hasBoundDraft || hasTopic || customTopicInput.trim() || customTopicConfirmed) {
       const confirmed = await confirm({
-        title: '确认重写',
+        title: t('writing.rewrite.confirmTitle'),
         message: (
           <>
-            <p>将清空标题、正文，并解除当前题目与草稿绑定。</p>
+            <p>{t('writing.rewrite.confirmBody')}</p>
             <p className="mt-2">
               {topicMode === 'custom'
-                ? '请重新输入并确定自拟题目后再写；当前草稿仍保留在写作记录中。'
-                : '请重新获取题目后再写；当前草稿仍保留在写作记录中。'}
+                ? t('writing.rewrite.confirmCustom')
+                : t('writing.rewrite.confirmSystem')}
             </p>
           </>
         ),
-        confirmLabel: '继续重写',
-        cancelLabel: '取消',
+        confirmLabel: t('writing.rewrite.confirmAction'),
+        cancelLabel: t('common.cancel'),
       })
       if (!confirmed) return
     }
@@ -769,16 +776,16 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           if (isApiError(err) && err.code === 409 && draftIdRef.current) {
             const conflict = err.data as DraftConflictData | null
             const overwrite = await confirm({
-              title: '保存冲突',
+              title: t('writing.save.conflictTitle'),
               variant: 'warning',
               message: (
                 <>
                   <p>{err.message}</p>
-                  <p className="mt-2">选择「覆盖保存」用当前内容保存；选择「加载最新」获取其他设备的版本。</p>
+                  <p className="mt-2">{t('writing.save.conflictBody')}</p>
                 </>
               ),
-              confirmLabel: '覆盖保存',
-              cancelLabel: '加载最新',
+              confirmLabel: t('writing.save.overwrite'),
+              cancelLabel: t('writing.save.loadLatest'),
             })
 
             if (overwrite) {
@@ -788,7 +795,10 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
               } catch (retryErr) {
                 setFeedback({
                   tone: 'error',
-                  message: retryErr instanceof Error ? retryErr.message : '覆盖保存失败',
+                  message:
+                    retryErr instanceof Error
+                      ? retryErr.message
+                      : t('writing.save.overwriteFailed'),
                 })
               }
               return
@@ -799,7 +809,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
               setContent(conflict.content)
               assignDraftMeta(draftIdRef.current, conflict.updatedAt)
               setEditorKey((key) => key + 1)
-              setFeedback({ tone: 'info', message: '已加载其他设备的最新内容' })
+              setFeedback({ tone: 'info', message: t('writing.save.loadedRemote') })
             } else {
               setFeedback({ tone: 'error', message: err.message })
             }
@@ -808,7 +818,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
           setFeedback({
             tone: 'error',
-            message: err instanceof Error ? err.message : '保存失败',
+            message: err instanceof Error ? err.message : t('writing.save.failed'),
           })
         }
       })
@@ -906,16 +916,21 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         assignDraftMeta(undefined, undefined)
 
         const aiSuccess =
-          completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
-        const aiFailed =
-          failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
-        const aiViewHint =
           completedTasks.length > 0
-            ? ' 可前往写作记录查看 AI 批改结果。'
+            ? t('writing.submit.aiDone', { tasks: completedTasks.join('、') })
             : ''
+        const aiFailed =
+          failedTasks.length > 0
+            ? t('writing.submit.aiFailed', { tasks: failedTasks.join('、') })
+            : ''
+        const aiViewHint =
+          completedTasks.length > 0 ? t('writing.submit.aiViewHint') : ''
         const stats =
           result.wordCount !== undefined && result.wordLimit !== undefined
-            ? `（${result.wordCount} / ${result.wordLimit} 词）`
+            ? t('writing.save.wordStats', {
+                count: result.wordCount,
+                limit: result.wordLimit,
+              })
             : ''
 
         assignIterateFrom(result.id)
@@ -924,7 +939,9 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
         setFeedback({
           tone: failedTasks.length > 0 && completedTasks.length === 0 ? 'info' : 'success',
-          message: `迭代提交成功，当前为第 ${result.iterationNumber} 版${stats}${aiSuccess}${aiFailed}${aiViewHint}`,
+          message: `${t('writing.submit.iterateSuccess', {
+            n: result.iterationNumber,
+          })}${stats}${aiSuccess}${aiFailed}${aiViewHint}`,
           recordsTab: 'submits',
           submitId: result.id,
         })
@@ -952,23 +969,30 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
       setWordLimit(undefined)
 
       const aiSuccess =
-        completedTasks.length > 0 ? ` 已完成 ${completedTasks.join('、')}。` : ''
-      const aiFailed =
-        failedTasks.length > 0 ? ` ${failedTasks.join('、')}未能完成。` : ''
-      const aiViewHint =
         completedTasks.length > 0
-          ? ' 可前往写作记录查看 AI 批改结果。'
+          ? t('writing.submit.aiDone', { tasks: completedTasks.join('、') })
           : ''
+      const aiFailed =
+        failedTasks.length > 0
+          ? t('writing.submit.aiFailed', { tasks: failedTasks.join('、') })
+          : ''
+      const aiViewHint =
+        completedTasks.length > 0 ? t('writing.submit.aiViewHint') : ''
 
       const scorePart =
-        result.aiScore !== null ? ` AI 评分 ${result.aiScore} 分。` : ''
+        result.aiScore !== null
+          ? t('writing.submit.aiScore', { score: result.aiScore })
+          : ''
       const stats =
         result.wordCount !== undefined && result.wordLimit !== undefined
-          ? `（${result.wordCount} / ${result.wordLimit} 词）`
+          ? t('writing.save.wordStats', {
+              count: result.wordCount,
+              limit: result.wordLimit,
+            })
           : ''
       setFeedback({
         tone: failedTasks.length > 0 && completedTasks.length === 0 ? 'info' : 'success',
-        message: `提交成功${stats}${scorePart}${aiSuccess}${aiFailed}${aiViewHint}`,
+        message: `${t('writing.submit.success')}${stats}${scorePart}${aiSuccess}${aiFailed}${aiViewHint}`,
         recordsTab: 'submits',
         submitId: result.id,
       })
@@ -976,7 +1000,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     } catch (err) {
       setFeedback({
         tone: 'error',
-        message: err instanceof Error ? err.message : '提交失败',
+        message: err instanceof Error ? err.message : t('writing.submit.failed'),
       })
     } finally {
       submitLockRef.current = false
@@ -993,15 +1017,21 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
         : t('writing.topic.needFirst')
     }
     if (wordCount !== undefined && wordLimit !== undefined) {
-      const mode = draftId ? '编辑中' : '新写作'
-      return `${wordCount} / ${wordLimit} 词 · ${mode}`
+      const mode = draftId ? t('writing.status.editing') : t('writing.status.newWriting')
+      return t('writing.status.wordsMode', {
+        count: wordCount,
+        limit: wordLimit,
+        mode,
+      })
     }
     if (iterateFromId) {
-      if (isIterateUnchanged) return `${t('writing.noChange')} · 修改后可提交`
-      return '迭代改进中 · 提交将创建新版本'
+      if (isIterateUnchanged) {
+        return t('writing.status.iterateCanSubmit', { noChange: t('writing.noChange') })
+      }
+      return t('writing.status.iterating')
     }
-    if (draftId) return '编辑中 · 题目已锁定 · 保存将更新当前草稿'
-    return '新写作 · 保存将创建草稿'
+    if (draftId) return t('writing.status.editingLocked')
+    return t('writing.status.newWillCreate')
   })()
 
   const feedbackToneClass =
@@ -1022,7 +1052,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const primaryTopicActionLabel =
     topicMode === 'custom' ? t('writing.topic.confirm') : t('writing.topic.change')
   const primaryTopicActionTitle = topicLocked
-    ? '当前草稿题目已锁定'
+    ? t('writing.topic.locked')
     : primaryTopicActionLabel
 
   // 手机：类型 + 主操作横排；桌面：上主操作 / 下类型，同宽竖排
@@ -1061,11 +1091,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           className="!px-2 sm:!w-full sm:!min-w-0"
         />
         {topicLocked && (
-          <HoverTooltip content="当前草稿题目已锁定" className="absolute inset-0 z-10">
+          <HoverTooltip content={t('writing.topic.locked')} className="absolute inset-0 z-10">
             <button
               type="button"
               className="h-full w-full rounded-lg"
-              aria-label="题目类型已锁定"
+              aria-label={t('writing.topic.typeLockedAria')}
               onClick={notifyTopicLocked}
             />
           </HoverTooltip>
@@ -1135,12 +1165,17 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                     }
                     role={topicLocked ? 'button' : undefined}
                     tabIndex={topicLocked ? 0 : undefined}
-                    title={topicLocked ? '当前草稿题目已锁定' : undefined}
+                    title={topicLocked ? t('writing.topic.locked') : undefined}
                   >
                     <TopicPromptBox
                       fill
                       prompt={topicPrompt}
-                      type={topic.type || (topicMode === 'custom' ? t('writing.topic.customLabel') : '题目')}
+                      type={
+                        topic.type ||
+                        (topicMode === 'custom'
+                          ? t('writing.topic.customLabel')
+                          : t('writing.topic.genericType'))
+                      }
                     />
                   </div>
                 ) : (
@@ -1163,7 +1198,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           <div
             role="separator"
             aria-orientation="horizontal"
-            aria-label="拖动调节题目区域高度"
+            aria-label={t('writing.topic.resizeAria')}
             aria-valuemin={TOPIC_PANEL_MIN_HEIGHT_DESKTOP}
             aria-valuemax={Math.floor(
               (pageRef.current?.clientHeight ?? 800) * TOPIC_PANEL_MAX_RATIO,
@@ -1224,8 +1259,8 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 type="button"
                 onClick={() => setWritingFullscreen(true)}
                 className="absolute bottom-3 right-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white/95 text-neutral-500 shadow-sm transition-colors hover:bg-neutral-50 hover:text-neutral-800 active:scale-95"
-                title="全屏写作"
-                aria-label="全屏写作"
+                title={t('writing.fullscreen.aria')}
+                aria-label={t('writing.fullscreen.aria')}
               >
                 <Maximize2 size={16} strokeWidth={1.75} />
               </button>
@@ -1235,11 +1270,11 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
 
         <div className={PANEL_FOOTER_CLASS}>
           <div className={`${PANEL_FOOTER_INNER_CLASS} mx-auto max-w-5xl flex-col lg:flex-row`}>
-            <div className="flex w-full flex-wrap items-center gap-3 text-left text-xs leading-snug lg:min-w-0 lg:flex-1">
+            <div className="flex w-full min-w-0 items-center gap-3 overflow-hidden text-left text-xs leading-snug lg:flex-1">
               <button
                 type="button"
                 onClick={handleToggleTypingAnim}
-                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95 ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-200 active:scale-95 ${
                   typingAnimOn
                     ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
                     : 'border-neutral-200 bg-white text-neutral-400'
@@ -1252,55 +1287,82 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
                 {t('writing.typingAnim.label')}
               </button>
               {feedback ? (
-                <div
-                  className={`inline-flex max-w-full items-start gap-2 rounded-lg border px-2.5 py-1.5 font-sans text-xs leading-snug ${feedbackToneClass}`}
-                  role="status"
+                <HoverTooltip
+                  content={feedback.message}
+                  onlyWhenTruncated
+                  tapToToggle
+                  placement="top"
+                  className="min-w-0 flex-1"
+                  tipClassName="!max-w-[min(28rem,calc(100vw-1.5rem))] whitespace-pre-wrap"
                 >
-                  <FeedbackIcon
-                    size={14}
-                    strokeWidth={1.75}
-                    className={`mt-0.5 shrink-0 ${
-                      feedback.tone === 'success'
-                        ? 'text-neutral-500'
-                        : feedback.tone === 'error'
-                          ? 'text-red-500'
-                          : 'text-neutral-400'
-                    }`}
-                  />
-                  <div className="min-w-0">
-                    <p>{feedback.message}</p>
+                  <div
+                    className={`inline-flex w-full min-w-0 max-w-full cursor-default items-center gap-2 rounded-lg border px-2.5 py-1.5 font-sans text-xs leading-snug ${feedbackToneClass}`}
+                    role="status"
+                  >
+                    <FeedbackIcon
+                      size={14}
+                      strokeWidth={1.75}
+                      className={`shrink-0 ${
+                        feedback.tone === 'success'
+                          ? 'text-neutral-500'
+                          : feedback.tone === 'error'
+                            ? 'text-red-500'
+                            : 'text-neutral-400'
+                      }`}
+                    />
+                    <p data-truncate-check className="min-w-0 flex-1 truncate">
+                      {feedback.message}
+                    </p>
                     {feedback.tone === 'success' && feedback.recordsTab && (
                       <Link
                         to="/records"
                         state={{ tab: feedback.recordsTab, selectedId: feedback.submitId }}
-                        className="mt-1 inline-block font-medium text-neutral-800 underline underline-offset-2 hover:text-neutral-950"
+                        className="shrink-0 font-medium text-neutral-800 underline underline-offset-2 hover:text-neutral-950"
+                        onClick={(event) => event.stopPropagation()}
                       >
                         {t('writing.goToRecords')}
                       </Link>
                     )}
                   </div>
-                </div>
+                </HoverTooltip>
               ) : (
-                <p className="font-sans leading-none text-neutral-400">{idleFooterStatus}</p>
+                <HoverTooltip
+                  content={idleFooterStatus}
+                  onlyWhenTruncated
+                  tapToToggle
+                  className="min-w-0 flex-1"
+                  tipClassName="!max-w-[min(28rem,calc(100vw-1.5rem))]"
+                >
+                  <p
+                    data-truncate-check
+                    className="min-w-0 truncate font-sans leading-none text-neutral-400"
+                  >
+                    {idleFooterStatus}
+                  </p>
+                </HoverTooltip>
               )}
             </div>
             <div className="flex w-full shrink-0 items-center gap-2 lg:w-auto lg:gap-3">
-              <button
-                type="button"
-                onClick={handleRewrite}
-                disabled={isSaving || isSubmitting}
-                className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:flex-none lg:px-4"
-                title={
+              <HoverTooltip
+                content={
                   topicLocked
                     ? topicMode === 'custom'
-                      ? '清空并解除题目绑定，请重新输入自拟题目'
-                      : '清空并解除题目绑定，请重新获取题目'
-                    : '清空标题和正文，下次保存创建新草稿'
+                      ? t('writing.rewrite.titleCustom')
+                      : t('writing.rewrite.titleSystem')
+                    : t('writing.rewrite.titleDefault')
                 }
+                className="flex h-9 flex-1 lg:flex-none"
               >
-                <RotateCcw size={14} />
-                {t('writing.rewrite')}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleRewrite}
+                  disabled={isSaving || isSubmitting}
+                  className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-600 transition-all duration-200 hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.97] disabled:opacity-50 lg:px-4"
+                >
+                  <RotateCcw size={14} />
+                  {t('writing.rewrite')}
+                </button>
+              </HoverTooltip>
               <button
                 type="button"
                 onClick={() => void handleSave()}

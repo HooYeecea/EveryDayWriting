@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactElement,
   type ReactNode,
 } from 'react'
@@ -17,9 +18,13 @@ interface HoverTooltipProps {
   children: ReactElement
   /** 仅当文案被截断时才显示；默认始终可显示 */
   onlyWhenTruncated?: boolean
+  /** 点击/点按也可开关（便于手机查看完整文案） */
+  tapToToggle?: boolean
   placement?: TooltipPlacement
   delayMs?: number
   className?: string
+  /** 提示气泡额外 class（如加宽） */
+  tipClassName?: string
 }
 
 interface TipCoords {
@@ -29,15 +34,17 @@ interface TipCoords {
 
 /**
  * 自定义悬浮提示，替代浏览器原生 title。
- * 自动避开视口边缘，避免贴边按钮提示被裁切。
+ * 自动避开视口边缘；可选点击切换，便于长文案在手机上查看。
  */
 export function HoverTooltip({
   content,
   children,
   onlyWhenTruncated = false,
+  tapToToggle = false,
   placement = 'top',
   delayMs = 280,
   className = '',
+  tipClassName = '',
 }: HoverTooltipProps) {
   const tipId = useId()
   const wrapRef = useRef<HTMLSpanElement>(null)
@@ -45,6 +52,7 @@ export function HoverTooltip({
   const showTimerRef = useRef<number | null>(null)
   const [open, setOpen] = useState(false)
   const [coords, setCoords] = useState<TipCoords | null>(null)
+  const pinnedRef = useRef(false)
 
   const clearShowTimer = () => {
     if (showTimerRef.current != null) {
@@ -107,15 +115,32 @@ export function HoverTooltip({
   }
 
   const hide = () => {
+    if (pinnedRef.current) return
     clearShowTimer()
     setOpen(false)
     setCoords(null)
   }
 
+  const togglePin = (event: ReactMouseEvent) => {
+    if (!tapToToggle) return
+    if (!isTruncated()) return
+    // 避免触发子按钮的无关逻辑时，仅在点 wrapper 空白/文案区域使用
+    event.preventDefault()
+    event.stopPropagation()
+    clearShowTimer()
+    if (open && pinnedRef.current) {
+      pinnedRef.current = false
+      setOpen(false)
+      setCoords(null)
+      return
+    }
+    pinnedRef.current = true
+    setOpen(true)
+  }
+
   useLayoutEffect(() => {
     if (!open) return
     updatePosition()
-    // 内容渲染后再量一次，修正长文案尺寸
     const raf = window.requestAnimationFrame(() => updatePosition())
     return () => window.cancelAnimationFrame(raf)
   }, [open, placement, content])
@@ -130,6 +155,19 @@ export function HoverTooltip({
       window.removeEventListener('scroll', onReposition, true)
     }
   }, [open, placement])
+
+  useEffect(() => {
+    if (!open || !tapToToggle) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (wrapRef.current?.contains(target) || tipRef.current?.contains(target)) return
+      pinnedRef.current = false
+      setOpen(false)
+      setCoords(null)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open, tapToToggle])
 
   useEffect(() => () => clearShowTimer(), [])
 
@@ -149,6 +187,7 @@ export function HoverTooltip({
         onMouseLeave={hide}
         onFocus={show}
         onBlur={hide}
+        onClick={tapToToggle ? togglePin : undefined}
         aria-describedby={open ? tipId : undefined}
       >
         {children}
@@ -160,7 +199,7 @@ export function HoverTooltip({
             id={tipId}
             role="tooltip"
             style={style}
-            className="pointer-events-none fixed z-[70] max-w-[min(14rem,calc(100vw-1rem))] rounded-lg border border-neutral-200 bg-neutral-900 px-2.5 py-1.5 font-sans text-xs font-medium leading-snug text-white shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
+            className={`pointer-events-none fixed z-[70] max-w-[min(14rem,calc(100vw-1rem))] rounded-lg border border-neutral-200 bg-neutral-900 px-2.5 py-1.5 font-sans text-xs font-medium leading-snug text-white shadow-[0_8px_24px_rgb(0_0_0/0.18)] ${tipClassName}`}
           >
             {content}
           </span>,

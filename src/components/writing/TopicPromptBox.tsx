@@ -58,12 +58,12 @@ export function TopicPromptBox({ prompt, type, fill = false }: TopicPromptBoxPro
               type="button"
               onClick={() => setExpanded(false)}
               className="absolute right-4 top-4 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-              aria-label="关闭"
+              aria-label={t('common.close')}
             >
               <X size={18} />
             </button>
 
-            <p className={PANEL_TITLE_CLASS}>题目</p>
+            <p className={PANEL_TITLE_CLASS}>{t('writing.topic.genericType')}</p>
             <p className={PANEL_SUBTITLE_CLASS}>{type}</p>
             <p className="mt-4 text-sm leading-relaxed text-neutral-800 sm:text-[15px]">
               {prompt}

@@ -177,8 +177,8 @@ export function TopicTypeSelect({
         className={`flex h-9 w-[5.75rem] items-center justify-between gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-neutral-200 disabled:hover:bg-white sm:w-auto sm:min-w-[92px] sm:gap-2 sm:px-3 ${className}`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="题目类型筛选"
-        title={disabled ? '当前草稿题目已锁定' : undefined}
+        aria-label={t('writing.topic.type')}
+        title={disabled ? t('writing.topic.locked') : undefined}
       >
         <span className={`truncate ${value ? 'font-medium text-neutral-700' : 'text-neutral-300'}`}>
           {value ?? t('writing.topic.type')}
