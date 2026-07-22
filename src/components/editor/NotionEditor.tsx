@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useEffect } from 'react'
@@ -8,6 +8,16 @@ interface NotionEditorProps {
   content?: string
   onChange?: (html: string) => void
   placeholder?: string
+}
+
+/** 编辑器销毁过程中 getHTML 会读到 null.cached（ProseMirror fromSchema） */
+function readEditorHtml(editor: Editor): string | null {
+  if (editor.isDestroyed) return null
+  try {
+    return editor.getHTML()
+  } catch {
+    return null
+  }
 }
 
 export function NotionEditor({
@@ -24,21 +34,31 @@ export function NotionEditor({
       TypingAnimation,
     ],
     content,
+    // 挂载后再创建实例，降低 StrictMode / 快速换 key 时的销毁竞态
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
     editorProps: {
       attributes: {
         class: 'tiptap',
       },
     },
     onUpdate: ({ editor: ed }) => {
-      onChange?.(ed.getHTML())
+      const html = readEditorHtml(ed)
+      if (html == null) return
+      onChange?.(html)
     },
   })
 
   useEffect(() => {
-    if (!editor) return
-    const current = editor.getHTML()
+    if (!editor || editor.isDestroyed) return
+    const current = readEditorHtml(editor)
+    if (current == null) return
     if (content !== current) {
-      editor.commands.setContent(content || '')
+      try {
+        editor.commands.setContent(content || '', { emitUpdate: false })
+      } catch {
+        // 销毁中忽略
+      }
     }
   }, [editor, content])
 

@@ -368,7 +368,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           setIterateBaselineSnapshot(null)
           setWordCount(undefined)
           setWordLimit(undefined)
-          setEditorKey((key) => key + 1)
+          // 不 bump editorKey：初始已是空白，强制重建会与 getHTML 同步竞态
           lastAutoSavedHashRef.current = ''
         }
       } catch (err) {
