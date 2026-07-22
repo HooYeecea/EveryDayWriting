@@ -20,6 +20,13 @@ import {
   adminInputClass,
 } from '../AdminUi'
 import { useReportReady } from '../../../hooks/useReportReady'
+import { MenuSelect } from '../../common/MenuSelect'
+
+const AGREEMENT_TYPE_OPTIONS = [
+  { value: 'privacy', label: '隐私协议 (privacy)' },
+  { value: 'terms', label: '服务条款 (terms)' },
+  { value: 'user', label: '用户协议 (user)' },
+]
 
 function isEffective(item: AdminAgreementListItem): boolean {
   return new Date(item.effectiveAt).getTime() <= Date.now()
@@ -235,11 +242,12 @@ export function AdminAgreementsPage({ onReady }: { onReady?: () => void } = {}) 
       >
         <div className="space-y-3">
           <AdminField label="类型">
-            <select className={adminInputClass} value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="privacy">privacy</option>
-              <option value="terms">terms</option>
-              <option value="user">user</option>
-            </select>
+            <MenuSelect
+              value={type}
+              options={AGREEMENT_TYPE_OPTIONS}
+              onChange={setType}
+              ariaLabel="协议类型"
+            />
           </AdminField>
           <AdminField label="标题">
             <input className={adminInputClass} value={title} onChange={(e) => setTitle(e.target.value)} />

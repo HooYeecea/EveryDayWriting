@@ -20,8 +20,15 @@ import {
   adminInputClass,
 } from '../AdminUi'
 import { useReportReady } from '../../../hooks/useReportReady'
+import { MenuSelect } from '../../common/MenuSelect'
 
 const CONTENT_CACHE_KEY = 'ew_admin_announcement_content'
+
+const PRIORITY_OPTIONS = [
+  { value: 'Normal', label: '普通' },
+  { value: 'Important', label: '重要' },
+  { value: 'Urgent', label: '紧急' },
+]
 
 function readContentCache(): Record<string, string> {
   try {
@@ -265,15 +272,12 @@ export function AdminAnnouncementsPage({ onReady }: { onReady?: () => void } = {
             />
           </AdminField>
           <AdminField label="优先级">
-            <select
-              className={adminInputClass}
+            <MenuSelect
               value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-            >
-              <option value="Normal">普通</option>
-              <option value="Important">重要</option>
-              <option value="Urgent">紧急</option>
-            </select>
+              options={PRIORITY_OPTIONS}
+              onChange={setPriority}
+              ariaLabel="优先级"
+            />
           </AdminField>
           <AdminField label="过期时间（可选）">
             <input

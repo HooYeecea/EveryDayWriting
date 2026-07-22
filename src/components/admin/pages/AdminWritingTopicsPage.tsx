@@ -28,6 +28,7 @@ import {
   AdminPrimaryButton,
 } from '../AdminUi'
 import { useReportReady } from '../../../hooks/useReportReady'
+import { MenuSelect } from '../../common/MenuSelect'
 
 const AI_COUNTS = [1, 5, 10, 20] as const
 const ENABLED_FILTERS = [
@@ -38,8 +39,6 @@ const ENABLED_FILTERS = [
 
 const inputClass =
   'w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none focus:border-neutral-400 focus:bg-white'
-const selectClass =
-  'w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm outline-none focus:border-neutral-400 focus:bg-white'
 
 export function AdminWritingTopicsPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
@@ -536,18 +535,15 @@ export function AdminWritingTopicsPage({ onReady }: { onReady?: () => void } = {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">题目类型</label>
-                <select
+                <MenuSelect
                   value={aiType}
-                  onChange={(e) => setAiType(e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="mixed">混合类型</option>
-                  {enabledTypes.map((t) => (
-                    <option key={t.id} value={t.name}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: 'mixed', label: '混合类型' },
+                    ...enabledTypes.map((t) => ({ value: t.name, label: t.name })),
+                  ]}
+                  onChange={setAiType}
+                  ariaLabel="题目类型"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">字数要求（可选）</label>
@@ -669,21 +665,18 @@ export function AdminWritingTopicsPage({ onReady }: { onReady?: () => void } = {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">类型</label>
-                <select
+                <MenuSelect
                   value={formType}
-                  onChange={(e) => setFormType(e.target.value)}
-                  className={selectClass}
-                >
-                  {enabledTypes.length === 0 ? (
-                    <option value="">暂无可用类型</option>
-                  ) : (
-                    enabledTypes.map((t) => (
-                      <option key={t.id} value={t.name}>
-                        {t.name}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  options={
+                    enabledTypes.length === 0
+                      ? [{ value: '', label: '暂无可用类型' }]
+                      : enabledTypes.map((t) => ({ value: t.name, label: t.name }))
+                  }
+                  onChange={setFormType}
+                  placeholder="选择类型"
+                  ariaLabel="写作题目类型"
+                  disabled={enabledTypes.length === 0}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">字数要求</label>

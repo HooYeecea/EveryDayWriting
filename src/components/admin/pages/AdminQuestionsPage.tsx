@@ -27,6 +27,7 @@ import {
 } from '../AdminUi'
 import { useReportReady } from '../../../hooks/useReportReady'
 import { QuestionPreviewCard } from '../QuestionPreviewCard'
+import { MenuSelect } from '../../common/MenuSelect'
 
 const EXAM_TYPES = ['', 'CET4', 'CET6', 'IELTS', 'TOEFL', 'Postgraduate', 'General']
 const EXAM_LABELS: Record<string, string> = {
@@ -46,6 +47,25 @@ const STEP_LABELS: Record<number, string> = {
   5: '短写作',
 }
 const AI_COUNTS = [1, 5, 10, 20] as const
+
+const EXAM_SELECT_OPTIONS = EXAM_TYPES.filter(Boolean).map((et) => ({
+  value: et,
+  label: EXAM_LABELS[et],
+}))
+const AI_QUESTION_TYPE_OPTIONS = [
+  { value: 'mixed', label: '混合题型' },
+  { value: 'vocabulary', label: '词汇选择' },
+  { value: 'grammar_judge', label: '语法判断' },
+  { value: 'sentence_rewrite', label: '句型改写' },
+  { value: 'error_correction', label: '段落纠错' },
+  { value: 'short_writing', label: '短写作' },
+]
+const CREATE_QUESTION_TYPE_OPTIONS = AI_QUESTION_TYPE_OPTIONS.filter((o) => o.value !== 'mixed')
+const DIFFICULTY_OPTIONS = [1, 2, 3, 4, 5].map((d) => ({ value: String(d), label: String(d) }))
+const CREATE_STEP_OPTIONS = [1, 2, 3, 4, 5].map((s) => ({
+  value: String(s),
+  label: `${s} - ${STEP_LABELS[s]}`,
+}))
 
 export function AdminQuestionsPage({ onReady }: { onReady?: () => void } = {}) {
   const { confirm } = useAppConfirm()
@@ -401,46 +421,30 @@ export function AdminQuestionsPage({ onReady }: { onReady?: () => void } = {}) {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">考试类型</label>
-                <select
+                <MenuSelect
                   value={aiExam}
-                  onChange={(e) => setAiExam(e.target.value)}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  {EXAM_TYPES.filter(Boolean).map((et) => (
-                    <option key={et} value={et}>
-                      {EXAM_LABELS[et]}
-                    </option>
-                  ))}
-                </select>
+                  options={EXAM_SELECT_OPTIONS}
+                  onChange={setAiExam}
+                  ariaLabel="考试类型"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">题型</label>
-                <select
+                <MenuSelect
                   value={aiType}
-                  onChange={(e) => setAiType(e.target.value)}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  <option value="mixed">混合题型</option>
-                  <option value="vocabulary">词汇选择</option>
-                  <option value="grammar_judge">语法判断</option>
-                  <option value="sentence_rewrite">句型改写</option>
-                  <option value="error_correction">段落纠错</option>
-                  <option value="short_writing">短写作</option>
-                </select>
+                  options={AI_QUESTION_TYPE_OPTIONS}
+                  onChange={setAiType}
+                  ariaLabel="题型"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">目标难度</label>
-                <select
-                  value={aiDifficulty}
-                  onChange={(e) => setAiDifficulty(Number(e.target.value))}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  {[1, 2, 3, 4, 5].map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                <MenuSelect
+                  value={String(aiDifficulty)}
+                  options={DIFFICULTY_OPTIONS}
+                  onChange={(v) => setAiDifficulty(Number(v))}
+                  ariaLabel="目标难度"
+                />
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -551,59 +555,39 @@ export function AdminQuestionsPage({ onReady }: { onReady?: () => void } = {}) {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">步骤</label>
-                <select
-                  value={createStep}
-                  onChange={(e) => setCreateStep(Number(e.target.value))}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <option key={s} value={s}>
-                      {s} - {STEP_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
+                <MenuSelect
+                  value={String(createStep)}
+                  options={CREATE_STEP_OPTIONS}
+                  onChange={(v) => setCreateStep(Number(v))}
+                  ariaLabel="步骤"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">题型</label>
-                <select
+                <MenuSelect
                   value={createType}
-                  onChange={(e) => setCreateType(e.target.value)}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  <option value="vocabulary">词汇选择</option>
-                  <option value="grammar_judge">语法判断</option>
-                  <option value="sentence_rewrite">句型改写</option>
-                  <option value="error_correction">段落纠错</option>
-                  <option value="short_writing">短写作</option>
-                </select>
+                  options={CREATE_QUESTION_TYPE_OPTIONS}
+                  onChange={setCreateType}
+                  ariaLabel="题型"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">考试类型</label>
-                <select
+                <MenuSelect
                   value={createExam}
-                  onChange={(e) => setCreateExam(e.target.value)}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  {EXAM_TYPES.filter(Boolean).map((et) => (
-                    <option key={et} value={et}>
-                      {EXAM_LABELS[et]}
-                    </option>
-                  ))}
-                </select>
+                  options={EXAM_SELECT_OPTIONS}
+                  onChange={setCreateExam}
+                  ariaLabel="考试类型"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-neutral-400">难度</label>
-                <select
-                  value={createDifficulty}
-                  onChange={(e) => setCreateDifficulty(Number(e.target.value))}
-                  className="w-full rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm"
-                >
-                  {[1, 2, 3, 4, 5].map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                <MenuSelect
+                  value={String(createDifficulty)}
+                  options={DIFFICULTY_OPTIONS}
+                  onChange={(v) => setCreateDifficulty(Number(v))}
+                  ariaLabel="难度"
+                />
               </div>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">

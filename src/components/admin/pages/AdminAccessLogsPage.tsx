@@ -48,6 +48,22 @@ import {
   AdminPrimaryButton,
   adminInputClass,
 } from '../AdminUi'
+import { MenuSelect } from '../../common/MenuSelect'
+
+const DEVICE_TYPE_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'desktop', label: '桌面' },
+  { value: 'mobile', label: '手机' },
+  { value: 'tablet', label: '平板' },
+  { value: 'unknown', label: '未知' },
+]
+
+const EVENT_TYPE_OPTIONS = [
+  { value: '', label: '全部' },
+  { value: 'login', label: '登录' },
+  { value: 'api_call', label: '接口' },
+  { value: 'page_view', label: '页面' },
+]
 
 const RANGES: { id: AccessLogRange; label: string }[] = [
   { id: '7d', label: '近 7 天' },
@@ -748,29 +764,20 @@ export function AdminAccessLogsPage({ onReady }: { onReady?: () => void } = {}) 
               />
             </AdminField>
             <AdminField label="设备">
-              <select
-                className={adminInputClass}
+              <MenuSelect
                 value={filters.deviceType}
-                onChange={(e) => setFilters((prev) => ({ ...prev, deviceType: e.target.value }))}
-              >
-                <option value="">全部</option>
-                <option value="desktop">桌面</option>
-                <option value="mobile">手机</option>
-                <option value="tablet">平板</option>
-                <option value="unknown">未知</option>
-              </select>
+                options={DEVICE_TYPE_OPTIONS}
+                onChange={(deviceType) => setFilters((prev) => ({ ...prev, deviceType }))}
+                ariaLabel="设备"
+              />
             </AdminField>
             <AdminField label="事件">
-              <select
-                className={adminInputClass}
+              <MenuSelect
                 value={filters.eventType}
-                onChange={(e) => setFilters((prev) => ({ ...prev, eventType: e.target.value }))}
-              >
-                <option value="">全部</option>
-                <option value="login">登录</option>
-                <option value="api_call">接口</option>
-                <option value="page_view">页面</option>
-              </select>
+                options={EVENT_TYPE_OPTIONS}
+                onChange={(eventType) => setFilters((prev) => ({ ...prev, eventType }))}
+                ariaLabel="事件"
+              />
             </AdminField>
             <AdminField label="路径">
               <input
