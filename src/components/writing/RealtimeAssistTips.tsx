@@ -1,7 +1,10 @@
 import { FileCheck, Loader2, Sparkles } from 'lucide-react'
 import { useT } from '../../i18n'
 import type { RealtimeAssistTip } from '../../types'
-import type { RealtimeAssistStatus } from '../../hooks/useRealtimeWritingAssist'
+import type {
+  RealtimeAssistStatus,
+  RealtimeAssistTipBatch,
+} from '../../hooks/useRealtimeWritingAssist'
 
 const TYPE_LABEL_KEY = {
   grammar: 'assist.realtime.type.grammar',
@@ -11,15 +14,57 @@ const TYPE_LABEL_KEY = {
 
 interface RealtimeAssistTipsProps {
   enabled: boolean
-  tips: RealtimeAssistTip[]
+  batches: RealtimeAssistTipBatch[]
   status: RealtimeAssistStatus
   errorMessage: string | null
   compact?: boolean
 }
 
+function formatBatchTime(createdAt: number) {
+  try {
+    return new Date(createdAt).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+}
+
+function TipCard({
+  tip,
+  typeLabel,
+}: {
+  tip: RealtimeAssistTip
+  typeLabel: (type: string) => string
+}) {
+  return (
+    <li className="rounded-lg border border-neutral-200 bg-white px-2.5 py-2">
+      <div className="flex items-center gap-1.5">
+        <Sparkles size={12} className="shrink-0 text-neutral-400" strokeWidth={1.75} />
+        <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">
+          {typeLabel(tip.type)}
+        </span>
+      </div>
+      {tip.original ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500 line-through decoration-neutral-300">
+          {tip.original}
+        </p>
+      ) : null}
+      {tip.suggestion ? (
+        <p className="mt-0.5 text-xs leading-relaxed text-neutral-800">{tip.suggestion}</p>
+      ) : null}
+      {tip.note ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{tip.note}</p>
+      ) : null}
+    </li>
+  )
+}
+
 export function RealtimeAssistTips({
   enabled,
-  tips,
+  batches,
   status,
   errorMessage,
   compact = false,
@@ -34,6 +79,8 @@ export function RealtimeAssistTips({
     }
     return type
   }
+
+  const hasBatches = batches.length > 0
 
   return (
     <section
@@ -65,41 +112,33 @@ export function RealtimeAssistTips({
         </p>
       )}
 
-      {tips.length === 0 && status === 'ready' && (
+      {!hasBatches && status === 'ready' && (
         <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.empty')}</p>
       )}
 
-      {tips.length === 0 && (status === 'idle' || status === 'waiting') && (
+      {!hasBatches && (status === 'idle' || status === 'waiting' || status === 'loading') && (
         <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.idle')}</p>
       )}
 
-      {tips.length > 0 && (
-        <ul className="mt-2.5 space-y-2">
-          {tips.map((tip, index) => (
-            <li
-              key={`${tip.type}-${tip.original}-${index}`}
-              className="rounded-lg border border-neutral-200 bg-white px-2.5 py-2"
-            >
-              <div className="flex items-center gap-1.5">
-                <Sparkles size={12} className="shrink-0 text-neutral-400" strokeWidth={1.75} />
-                <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">
-                  {typeLabel(tip.type)}
-                </span>
-              </div>
-              {tip.original ? (
-                <p className="mt-1 text-[11px] leading-relaxed text-neutral-500 line-through decoration-neutral-300">
-                  {tip.original}
-                </p>
-              ) : null}
-              {tip.suggestion ? (
-                <p className="mt-0.5 text-xs leading-relaxed text-neutral-800">{tip.suggestion}</p>
-              ) : null}
-              {tip.note ? (
-                <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{tip.note}</p>
-              ) : null}
-            </li>
+      {hasBatches && (
+        <div className="mt-2.5 space-y-3">
+          {batches.map((batch) => (
+            <div key={batch.id}>
+              <p className="mb-1.5 text-[10px] font-medium tracking-wide text-neutral-400">
+                {t('assist.realtime.roundAt', { time: formatBatchTime(batch.createdAt) })}
+              </p>
+              <ul className="space-y-2">
+                {batch.tips.map((tip, index) => (
+                  <TipCard
+                    key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
+                    tip={tip}
+                    typeLabel={typeLabel}
+                  />
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   )

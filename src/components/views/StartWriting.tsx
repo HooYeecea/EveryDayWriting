@@ -98,6 +98,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
   const [customTopicConfirmed, setCustomTopicConfirmed] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [realtimeClearNonce, setRealtimeClearNonce] = useState(0)
   const [draftId, setDraftId] = useState<string | undefined>()
   const [iterateFromId, setIterateFromId] = useState<string | undefined>()
   const [wordCount, setWordCount] = useState<number | undefined>()
@@ -648,6 +649,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
     preserveWritingSessionRef.current = Boolean(options?.preserveSession)
     setTitle('')
     setContent('')
+    setRealtimeClearNonce((n) => n + 1)
     setTopic(EMPTY_TOPIC)
     setCustomTopicInput('')
     setCustomTopicConfirmed(false)
@@ -1449,7 +1451,7 @@ export function StartWriting({ onReady }: { onReady?: () => void } = {}) {
           )
         : null}
 
-      <WritingAssistPanel editorHtml={content} />
+      <WritingAssistPanel editorHtml={content} realtimeClearNonce={realtimeClearNonce} />
 
       <LoginRequiredModal
         open={showLoginModal}

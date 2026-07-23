@@ -464,9 +464,14 @@ function AssistPanelContent({
 interface WritingAssistPanelProps {
   /** 当前编辑器 HTML；开启实时辅助时用于防抖请求 */
   editorHtml?: string
+  /** 递增时清空实时建议历史（如点击「重写」） */
+  realtimeClearNonce?: number
 }
 
-export function WritingAssistPanel({ editorHtml = '' }: WritingAssistPanelProps) {
+export function WritingAssistPanel({
+  editorHtml = '',
+  realtimeClearNonce = 0,
+}: WritingAssistPanelProps) {
   const t = useT()
   const isDesktop = useIsDesktop()
   const [desktopExpanded, setDesktopExpanded] = useState(false)
@@ -490,11 +495,14 @@ export function WritingAssistPanel({ editorHtml = '' }: WritingAssistPanelProps)
   const realtime = useRealtimeWritingAssist({
     enabled: realtimeEnabled,
     editorHtml,
+    clearNonce: realtimeClearNonce,
   })
 
   const panelOpen = isDesktop ? desktopExpanded : mobileOpen
   const unreadTipCount =
-    realtime.tips.length > 0 && realtime.updatedAt > tipsSeenAt ? realtime.tips.length : 0
+    realtime.lastBatchTipCount > 0 && realtime.updatedAt > tipsSeenAt
+      ? realtime.lastBatchTipCount
+      : 0
 
   useEffect(() => {
     if (!panelOpen || !realtimeEnabled) return
@@ -506,7 +514,7 @@ export function WritingAssistPanel({ editorHtml = '' }: WritingAssistPanelProps)
   const realtimeTipsNode = (
     <RealtimeAssistTips
       enabled={realtimeEnabled}
-      tips={realtime.tips}
+      batches={realtime.batches}
       status={realtime.status}
       errorMessage={realtime.errorMessage}
     />
