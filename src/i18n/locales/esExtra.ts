@@ -190,6 +190,7 @@ export const esExtra = {
   'assist.realtime.type.wording': "Léxico",
   'assist.realtime.type.polish': "Estilo",
   'assist.realtime.badgeAria': "{n} consejos nuevos",
+  'assist.realtime.analyzingBadge': "Analizando…",
   'assist.timer.title': "Temporizador de escritura",
   'assist.timer.description': "Establece una duración, cuenta atrás o adelante, avisa al terminar",
   'assist.timer.intro': "Modo enfoque al iniciar: otros menús se bloquean; pausa y reanuda; recordatorio opcional al final.",

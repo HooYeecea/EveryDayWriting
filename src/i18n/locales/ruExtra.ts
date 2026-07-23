@@ -190,6 +190,7 @@ export const ruExtra = {
   'assist.realtime.type.wording': "Лексика",
   'assist.realtime.type.polish': "Стиль",
   'assist.realtime.badgeAria': "новых подсказок: {n}",
+  'assist.realtime.analyzingBadge': "Идёт анализ",
   'assist.timer.title': "Таймер письма",
   'assist.timer.description': "Задать длительность, обратный или прямой отсчёт, напоминание по окончании",
   'assist.timer.intro': "После запуска — режим фокуса: меню блокируется; можно ставить на паузу и продолжать; опционально — напоминание в конце.",

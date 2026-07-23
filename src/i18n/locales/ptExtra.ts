@@ -190,6 +190,7 @@ export const ptExtra = {
   'assist.realtime.type.wording': "Vocabulário",
   'assist.realtime.type.polish': "Estilo",
   'assist.realtime.badgeAria': "{n} novas dicas",
+  'assist.realtime.analyzingBadge': "Analisando…",
   'assist.timer.title': "Cronômetro de escrita",
   'assist.timer.description': "Defina uma duração, conte regressiva ou progressiva, avise quando o tempo acabar",
   'assist.timer.intro': "Modo foco após iniciar: outros menus ficam bloqueados; pause e retome; lembrete opcional ao fim.",

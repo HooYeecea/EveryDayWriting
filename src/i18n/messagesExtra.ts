@@ -203,6 +203,7 @@ export const zhExtra = {
   'assist.realtime.type.wording': '用词',
   'assist.realtime.type.polish': '润色',
   'assist.realtime.badgeAria': '{n} 条新建议',
+  'assist.realtime.analyzingBadge': '实时分析中',
   'assist.timer.title': '写作计时',
   'assist.timer.description': '设定时长，倒计时或正计时，到点提醒',
   'assist.timer.intro': '开始后进入专注模式：不可切换其它菜单，可暂停后继续；时长到点可提醒。',
@@ -837,6 +838,7 @@ export const enExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.type.wording': 'Wording',
   'assist.realtime.type.polish': 'Polish',
   'assist.realtime.badgeAria': '{n} new tips',
+  'assist.realtime.analyzingBadge': 'Analyzing…',
   'assist.timer.title': 'Writing timer',
   'assist.timer.description': 'Set a duration, count down or up, remind when time is up',
   'assist.timer.intro':
@@ -1472,6 +1474,7 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.type.wording': '語彙',
   'assist.realtime.type.polish': '推敲',
   'assist.realtime.badgeAria': '新しい提案 {n} 件',
+  'assist.realtime.analyzingBadge': 'リアルタイム分析中',
   'assist.timer.title': '執筆タイマー',
   'assist.timer.description': '時間を設定し、カウントダウン／アップと終了通知',
   'assist.timer.intro':
@@ -2107,6 +2110,7 @@ export const koExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.type.wording': '어휘',
   'assist.realtime.type.polish': '다듬기',
   'assist.realtime.badgeAria': '새 제안 {n}개',
+  'assist.realtime.analyzingBadge': '실시간 분석 중',
   'assist.timer.title': '글쓰기 타이머',
   'assist.timer.description': '시간 설정, 카운트다운/업, 종료 알림',
   'assist.timer.intro':

@@ -190,6 +190,7 @@ export const deExtra = {
   'assist.realtime.type.wording': "Wortwahl",
   'assist.realtime.type.polish': "Stil",
   'assist.realtime.badgeAria': "{n} neue Tipps",
+  'assist.realtime.analyzingBadge': "Analyse läuft",
   'assist.timer.title': "Schreibtimer",
   'assist.timer.description': "Dauer festlegen, herunter- oder hochzählen, bei Ablauf erinnern",
   'assist.timer.intro': "Fokusmodus nach Start: andere Menüs gesperrt; pausieren und fortsetzen; optional Erinnerung am Ende.",

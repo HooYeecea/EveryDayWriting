@@ -359,10 +359,43 @@ export function RealtimeAssistTips({
   )
 }
 
-export function RealtimeAssistBadge({ count }: { count: number }) {
+export function RealtimeAssistBadge({
+  count = 0,
+  analyzing = false,
+  analyzingLabel,
+  placement = 'icon',
+}: {
+  count?: number
+  analyzing?: boolean
+  analyzingLabel?: string
+  /** icon：角标；bubble：旁侧气泡文案（窄栏更合适） */
+  placement?: 'icon' | 'bubble'
+}) {
+  if (analyzing) {
+    if (placement === 'bubble') {
+      return (
+        <span
+          className="pointer-events-none absolute right-full top-1/2 z-10 mr-1.5 -translate-y-1/2 whitespace-nowrap rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-800 shadow-sm"
+          title={analyzingLabel}
+        >
+          {analyzingLabel}
+        </span>
+      )
+    }
+    return (
+      <span
+        className="absolute -right-1.5 -top-1.5 z-10 inline-flex max-w-[4.5rem] items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium leading-none text-amber-800 shadow-sm"
+        title={analyzingLabel}
+      >
+        <Loader2 size={9} className="shrink-0 animate-spin" strokeWidth={2} />
+        <span className="truncate">{analyzingLabel}</span>
+      </span>
+    )
+  }
+
   if (count <= 0) return null
   return (
-    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-900 px-1 text-[10px] font-medium leading-none text-white">
+    <span className="absolute -right-1 -top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium leading-none text-white shadow-sm">
       {count > 9 ? '9+' : count}
     </span>
   )

@@ -137,6 +137,7 @@ interface MobileDraggableAssistFabProps {
   timerPaused: boolean
   timerDisplaySeconds: number
   tipBadgeCount?: number
+  tipAnalyzing?: boolean
   fabRef: RefObject<HTMLButtonElement | null>
 }
 
@@ -148,6 +149,7 @@ function MobileDraggableAssistFab({
   timerPaused,
   timerDisplaySeconds,
   tipBadgeCount = 0,
+  tipAnalyzing = false,
   fabRef,
 }: MobileDraggableAssistFabProps) {
   const t = useT()
@@ -230,6 +232,8 @@ function MobileDraggableAssistFab({
     return () => window.removeEventListener('resize', keepInView)
   }, [fabRef, onPositionChange, position.x, position.y])
 
+  const analyzingLabel = t('assist.realtime.analyzingBadge')
+
   return (
     <button
       ref={fabRef}
@@ -240,12 +244,22 @@ function MobileDraggableAssistFab({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       className={`fixed z-40 flex cursor-grab touch-none items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-md transition-transform duration-200 active:scale-95 active:cursor-grabbing ${timerRunning && !timerPaused ? 'animate-pulse-soft' : ''}`}
-      aria-label={t('assist.open')}
+      aria-label={
+        tipAnalyzing
+          ? analyzingLabel
+          : tipBadgeCount > 0
+            ? t('assist.realtime.badgeAria', { n: tipBadgeCount })
+            : t('assist.open')
+      }
       title="点击打开，按住拖动"
     >
       <span className="relative inline-flex">
         <LayoutGrid size={18} strokeWidth={1.75} />
-        <RealtimeAssistBadge count={tipBadgeCount} />
+        <RealtimeAssistBadge
+          count={tipBadgeCount}
+          analyzing={tipAnalyzing}
+          analyzingLabel={analyzingLabel}
+        />
       </span>
       辅助
       {timerRunning && (
@@ -539,6 +553,11 @@ export function WritingAssistPanel({
     realtime.lastBatchTipCount > 0 && realtime.updatedAt > tipsSeenAt
       ? realtime.lastBatchTipCount
       : 0
+  const isRealtimeAnalyzing =
+    realtimeEnabled &&
+    !panelOpen &&
+    (realtime.status === 'waiting' || realtime.status === 'loading')
+  const analyzingLabel = t('assist.realtime.analyzingBadge')
 
   useEffect(() => {
     if (!panelOpen || !realtimeEnabled) return
@@ -627,8 +646,8 @@ export function WritingAssistPanel({
   return (
     <>
       <aside
-        className={`hidden shrink-0 flex-col overflow-hidden border-l border-neutral-200 bg-white transition-[width] duration-300 ease-out lg:flex ${
-          desktopExpanded ? 'w-80' : 'w-11'
+        className={`hidden shrink-0 flex-col border-l border-neutral-200 bg-white transition-[width] duration-300 ease-out lg:flex ${
+          desktopExpanded ? 'w-80 overflow-hidden' : 'w-11 overflow-visible'
         }`}
       >
         {desktopExpanded && (
@@ -740,7 +759,12 @@ export function WritingAssistPanel({
             >
               <span className="relative">
                 <ChevronLeft size={18} />
-                <RealtimeAssistBadge count={unreadTipCount} />
+                <RealtimeAssistBadge
+                  count={unreadTipCount}
+                  analyzing={isRealtimeAnalyzing}
+                  analyzingLabel={analyzingLabel}
+                  placement="bubble"
+                />
               </span>
               <LayoutGrid size={18} strokeWidth={1.75} />
               <span className="text-[11px] font-medium tracking-wide text-neutral-500 [writing-mode:vertical-rl]">
@@ -748,7 +772,7 @@ export function WritingAssistPanel({
               </span>
             </button>
 
-            {(enabledAiRailIndicators.length > 0 || timerRunning) && (
+            {(enabledAiRailIndicators.length > 0 || timerRunning || isRealtimeAnalyzing) && (
               <div className="flex flex-col items-center gap-2.5 px-1 pb-4">
                 {enabledAiRailIndicators.map(({ key, label, icon: Icon }) => (
                   <button
@@ -757,14 +781,25 @@ export function WritingAssistPanel({
                     onClick={() => openDesktopAiToggle(key)}
                     className="relative rounded-md p-1.5 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
                     aria-label={
-                      key === 'realtimeAssist' && unreadTipCount > 0
-                        ? t('assist.realtime.badgeAria', { n: unreadTipCount })
-                        : `打开${label}`
+                      key === 'realtimeAssist' && isRealtimeAnalyzing
+                        ? analyzingLabel
+                        : key === 'realtimeAssist' && unreadTipCount > 0
+                          ? t('assist.realtime.badgeAria', { n: unreadTipCount })
+                          : `打开${label}`
                     }
-                    title={label}
+                    title={
+                      key === 'realtimeAssist' && isRealtimeAnalyzing ? analyzingLabel : label
+                    }
                   >
                     <Icon size={15} strokeWidth={1.75} />
-                    {key === 'realtimeAssist' ? <RealtimeAssistBadge count={unreadTipCount} /> : null}
+                    {key === 'realtimeAssist' ? (
+                      <RealtimeAssistBadge
+                        count={unreadTipCount}
+                        analyzing={isRealtimeAnalyzing}
+                        analyzingLabel={analyzingLabel}
+                        placement="bubble"
+                      />
+                    ) : null}
                   </button>
                 ))}
                 {timerRunning && (
@@ -801,6 +836,7 @@ export function WritingAssistPanel({
               timerPaused={timerPaused}
               timerDisplaySeconds={timerDisplaySeconds}
               tipBadgeCount={unreadTipCount}
+              tipAnalyzing={isRealtimeAnalyzing}
             />
           )}
 

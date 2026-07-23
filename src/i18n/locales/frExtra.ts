@@ -190,6 +190,7 @@ export const frExtra = {
   'assist.realtime.type.wording': "Lexique",
   'assist.realtime.type.polish': "Style",
   'assist.realtime.badgeAria': "{n} nouveaux conseils",
+  'assist.realtime.analyzingBadge': "Analyse en cours",
   'assist.timer.title': "Minuteur d'écriture",
   'assist.timer.description': "Définir une durée, compter à rebours ou en continu, rappel à la fin",
   'assist.timer.intro': "Mode concentration après le démarrage : les autres menus sont verrouillés ; pause et reprise ; rappel de fin optionnel.",
