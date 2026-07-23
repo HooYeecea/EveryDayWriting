@@ -773,6 +773,7 @@ html.ew-reduce-motion .animate-scale-in,
 html.ew-reduce-motion .animate-shimmer,
 html.ew-reduce-motion .animate-pulse-soft,
 html.ew-reduce-motion .animate-assist-target-flash,
+html.ew-reduce-motion .animate-realtime-tip-fade,
 html.ew-reduce-motion .typing-char-animation { animation: none !important; }
 html.ew-reduce-motion .auth-route-layer-enter,
 html.ew-reduce-motion .auth-route-layer-exit { animation: none; }
@@ -883,6 +884,21 @@ html.ew-reduce-motion .auth-route-layer-exit { animation: none; }
 
 .animate-assist-target-flash {
   animation: assist-target-flash 0.42s cubic-bezier(0.22, 1, 0.36, 1) 2;
+}
+
+@keyframes realtime-tip-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-realtime-tip-fade {
+  animation: realtime-tip-fade 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ── Stagger children helpers ── */

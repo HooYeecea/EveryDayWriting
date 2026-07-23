@@ -48,3 +48,75 @@ export function parseRealtimeAssistResult(content: string): RealtimeAssistResult
   const tips = list.map(normalizeTip).filter((tip): tip is RealtimeAssistTip => tip != null)
   return { tips }
 }
+
+/**
+ * 从尚未完整的流式 JSON 中提取已闭合的 tip 对象，便于边收边展示。
+ */
+export function extractStreamingTips(partialContent: string): RealtimeAssistTip[] {
+  const text = stripPartialMarkdownFence(partialContent)
+  const tipsMatch = /"tips"\s*:\s*\[/.exec(text)
+  if (!tipsMatch || tipsMatch.index == null) return []
+
+  const arrayStart = text.indexOf('[', tipsMatch.index)
+  if (arrayStart < 0) return []
+
+  const tips: RealtimeAssistTip[] = []
+  let i = arrayStart + 1
+
+  while (i < text.length) {
+    while (i < text.length && /[\s,]/.test(text[i]!)) i += 1
+    if (i >= text.length || text[i] === ']') break
+    if (text[i] !== '{') break
+
+    const start = i
+    let depth = 0
+    let inString = false
+    let escape = false
+    let closed = false
+
+    for (; i < text.length; i += 1) {
+      const ch = text[i]!
+      if (inString) {
+        if (escape) {
+          escape = false
+        } else if (ch === '\\') {
+          escape = true
+        } else if (ch === '"') {
+          inString = false
+        }
+        continue
+      }
+      if (ch === '"') {
+        inString = true
+        continue
+      }
+      if (ch === '{') depth += 1
+      else if (ch === '}') {
+        depth -= 1
+        if (depth === 0) {
+          i += 1
+          closed = true
+          break
+        }
+      }
+    }
+
+    if (!closed) break
+
+    try {
+      const tip = normalizeTip(JSON.parse(text.slice(start, i)))
+      if (tip) tips.push(tip)
+    } catch {
+      // 忽略损坏片段
+    }
+  }
+
+  return tips
+}
+
+function stripPartialMarkdownFence(content: string): string {
+  const trimmed = content.trim()
+  const fence = trimmed.match(/^```(?:json)?\s*([\s\S]*)$/i)
+  if (fence) return fence[1]!.trim()
+  return trimmed
+}

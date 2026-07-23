@@ -10,6 +10,10 @@ import {
 } from 'lucide-react'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { useT } from '../../i18n'
+import {
+  loadAiAssistSettings,
+  type RealtimeStreamEffect,
+} from '../../storage/aiSettingsStorage'
 import type { RealtimeAssistTip } from '../../types'
 import type {
   RealtimeAssistStatus,
@@ -61,15 +65,53 @@ function loadStoredHeight(): number {
   }
 }
 
+function TypewriterText({ text, active }: { text: string; active: boolean }) {
+  const [visible, setVisible] = useState(active ? '' : text)
+
+  useEffect(() => {
+    if (!active) {
+      setVisible(text)
+      return
+    }
+    setVisible('')
+    if (!text) return
+
+    let index = 0
+    const step = Math.max(1, Math.ceil(text.length / 48))
+    const timer = window.setInterval(() => {
+      index = Math.min(text.length, index + step)
+      setVisible(text.slice(0, index))
+      if (index >= text.length) window.clearInterval(timer)
+    }, 28)
+
+    return () => window.clearInterval(timer)
+  }, [text, active])
+
+  return <>{visible}</>
+}
+
 function TipCard({
   tip,
   typeLabel,
+  effect,
+  animate,
 }: {
   tip: RealtimeAssistTip
   typeLabel: (type: string) => string
+  effect: RealtimeStreamEffect
+  animate: boolean
 }) {
+  // 仅在首次挂载时锁定动效，避免后续 tips 追加导致 animate 被清掉而打断打字机
+  const [shouldAnimate] = useState(animate)
+  const motionClass =
+    shouldAnimate && (effect === 'tips-fade' || effect === 'fade')
+      ? 'animate-realtime-tip-fade'
+      : ''
+
   return (
-    <li className="rounded-lg border border-neutral-200 bg-white px-2.5 py-2">
+    <li
+      className={`rounded-lg border border-neutral-200 bg-white px-2.5 py-2 ${motionClass}`.trim()}
+    >
       <div className="flex items-center gap-1.5">
         <Sparkles size={12} className="shrink-0 text-neutral-400" strokeWidth={1.75} />
         <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">
@@ -86,10 +128,22 @@ function TipCard({
         </p>
       ) : null}
       {tip.suggestion ? (
-        <p className="mt-0.5 text-xs leading-relaxed text-neutral-800">{tip.suggestion}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-neutral-800">
+          {effect === 'typewriter' && shouldAnimate ? (
+            <TypewriterText text={tip.suggestion} active />
+          ) : (
+            tip.suggestion
+          )}
+        </p>
       ) : null}
       {tip.note ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{tip.note}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
+          {effect === 'typewriter' && shouldAnimate ? (
+            <TypewriterText text={tip.note} active />
+          ) : (
+            tip.note
+          )}
+        </p>
       ) : null}
       {!tip.suggestion && !tip.note && tip.original ? (
         <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">—</p>
@@ -112,7 +166,30 @@ export function RealtimeAssistTips({
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
   const [panelHeight, setPanelHeight] = useState(loadStoredHeight)
   const [isResizing, setIsResizing] = useState(false)
+  const [streamEffect, setStreamEffect] = useState<RealtimeStreamEffect>(
+    () => loadAiAssistSettings().realtimeStreamEffect,
+  )
   const sectionRef = useRef<HTMLElement>(null)
+  const revealedTipKeysRef = useRef<Set<string>>(new Set())
+  const [freshTipKeys, setFreshTipKeys] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setStreamEffect(loadAiAssistSettings().realtimeStreamEffect)
+  }, [batches, status])
+
+  useEffect(() => {
+    const fresh = new Set<string>()
+    for (const batch of batches) {
+      batch.tips.forEach((tip, index) => {
+        const tipKey = `${batch.id}-${index}-${tip.type}-${tip.original}-${tip.suggestion}`
+        if (!revealedTipKeysRef.current.has(tipKey)) {
+          fresh.add(tipKey)
+          revealedTipKeysRef.current.add(tipKey)
+        }
+      })
+    }
+    setFreshTipKeys(fresh)
+  }, [batches])
 
   useEffect(() => {
     setCollapsedIds((prev) => {
@@ -152,7 +229,11 @@ export function RealtimeAssistTips({
       cancelLabel: t('common.cancel'),
       variant: 'warning',
     })
-    if (confirmed) onClearAll()
+    if (confirmed) {
+      revealedTipKeysRef.current.clear()
+      setFreshTipKeys(new Set())
+      onClearAll()
+    }
   }
 
   const handleRemoveBatch = async (batchId: string) => {
@@ -297,6 +378,11 @@ export function RealtimeAssistTips({
                         className="min-w-0 flex-1 truncate text-left text-[10px] font-medium tracking-wide text-neutral-400 hover:text-neutral-600"
                       >
                         {t('assist.realtime.roundAt', { time: formatBatchTime(batch.createdAt) })}
+                        {batch.streaming ? (
+                          <span className="ml-1 text-amber-600/80">
+                            · {t('assist.realtime.streaming')}
+                          </span>
+                        ) : null}
                         {collapsed ? (
                           <span className="ml-1 text-neutral-300">({batch.tips.length})</span>
                         ) : null}
@@ -311,23 +397,35 @@ export function RealtimeAssistTips({
                         <Trash2 size={12} strokeWidth={1.75} />
                       </button>
                     </div>
-                    {!collapsed && (
-                      batch.tips.length > 0 ? (
-                        <ul className="space-y-2">
-                          {batch.tips.map((tip, index) => (
-                            <TipCard
-                              key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
-                              tip={tip}
-                              typeLabel={typeLabel}
-                            />
-                          ))}
+                    {!collapsed &&
+                      (batch.tips.length > 0 ? (
+                        <ul
+                          className={
+                            streamEffect === 'fade' && batch.streaming === false
+                              ? 'space-y-2 animate-realtime-tip-fade'
+                              : 'space-y-2'
+                          }
+                        >
+                          {batch.tips.map((tip, index) => {
+                            const tipKey = `${batch.id}-${index}-${tip.type}-${tip.original}-${tip.suggestion}`
+                            return (
+                              <TipCard
+                                key={tipKey}
+                                tip={tip}
+                                typeLabel={typeLabel}
+                                effect={streamEffect}
+                                animate={freshTipKeys.has(tipKey)}
+                              />
+                            )
+                          })}
                         </ul>
                       ) : (
                         <p className="rounded-lg border border-dashed border-neutral-200 bg-white/70 px-2.5 py-2 text-[11px] text-neutral-400">
-                          {t('assist.realtime.empty')}
+                          {batch.streaming
+                            ? t('assist.realtime.streamingEmpty')
+                            : t('assist.realtime.empty')}
                         </p>
-                      )
-                    )}
+                      ))}
                   </div>
                 )
               })}
@@ -351,7 +449,7 @@ export function RealtimeAssistTips({
             setPanelHeight((current) => {
               const next = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, current + delta))
               try {
-                sessionStorage.setItem(HEIGHT_STORAGE_KEY, String(next))
+                sessionStorage.setItem(HEIGHT_STORAGE_KEY, String(current))
               } catch {
                 // ignore
               }

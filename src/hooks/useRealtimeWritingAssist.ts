@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { callAiProxy } from '../api/ai'
+import { callAiProxy, callAiProxyStream } from '../api/ai'
 import { loadAiAssistSettings } from '../storage/aiSettingsStorage'
 import type { RealtimeAssistTip } from '../types'
-import { htmlToPlainText, parseRealtimeAssistResult } from '../utils/realtimeAssist'
+import {
+  extractStreamingTips,
+  htmlToPlainText,
+  parseRealtimeAssistResult,
+} from '../utils/realtimeAssist'
 
 const DEBOUNCE_MS = 2500
 /** 正文过短不请求，避免无意义调用 */
@@ -17,6 +21,8 @@ export interface RealtimeAssistTipBatch {
   id: string
   createdAt: number
   tips: RealtimeAssistTip[]
+  /** 流式进行中：tips 会逐步增长 */
+  streaming?: boolean
 }
 
 export interface UseRealtimeWritingAssistResult {
@@ -43,6 +49,12 @@ function createBatchId() {
     return crypto.randomUUID()
   }
   return `batch-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function tipsSignature(tips: RealtimeAssistTip[]): string {
+  return tips
+    .map((tip) => `${tip.type}|${tip.original}|${tip.suggestion}|${tip.note}`)
+    .join('\n')
 }
 
 export function useRealtimeWritingAssist({
@@ -115,6 +127,7 @@ export function useRealtimeWritingAssist({
     // 正文已变：取消上一轮请求，避免过期结果写入
     abortRef.current?.abort()
     abortRef.current = null
+    setBatches((prev) => prev.filter((batch) => !batch.streaming))
 
     setStatus('waiting')
 
@@ -134,15 +147,71 @@ export function useRealtimeWritingAssist({
           const hasOwnKey = Boolean(settings.encryptedKey)
           const providerId = hasOwnKey ? settings.providerId || 'free' : 'free'
           const modelId = hasOwnKey ? settings.modelId || 'free' : 'free'
+          const payload = {
+            providerId,
+            modelId,
+            userContent: clipped,
+          }
+          const encryptedKey = hasOwnKey ? settings.encryptedKey : undefined
+
+          if (settings.realtimeStreamEnabled) {
+            const batchId = createBatchId()
+            const createdAt = Date.now()
+            let accumulated = ''
+            let lastSig = ''
+
+            setBatches((prev) => [
+              ...prev,
+              { id: batchId, createdAt, tips: [], streaming: true },
+            ])
+
+            const content = await callAiProxyStream(
+              'realtime_assist',
+              payload,
+              encryptedKey,
+              controller.signal,
+              (event) => {
+                if (requestId !== requestIdRef.current) return
+                if (event.type !== 'delta') return
+
+                accumulated += event.text
+                const partialTips = extractStreamingTips(accumulated)
+                const sig = tipsSignature(partialTips)
+                if (sig === lastSig) return
+                lastSig = sig
+
+                setBatches((prev) =>
+                  prev.map((batch) =>
+                    batch.id === batchId
+                      ? { ...batch, tips: partialTips, streaming: true }
+                      : batch,
+                  ),
+                )
+              },
+            )
+
+            if (requestId !== requestIdRef.current) return
+
+            const parsed = parseRealtimeAssistResult(content || accumulated)
+            lastSentRef.current = clipped
+            setStatus('ready')
+            setErrorMessage(null)
+            setBatches((prev) =>
+              prev.map((batch) =>
+                batch.id === batchId
+                  ? { ...batch, tips: parsed.tips, streaming: false }
+                  : batch,
+              ),
+            )
+            setLastBatchTipCount(parsed.tips.length)
+            setUpdatedAt(createdAt)
+            return
+          }
 
           const result = await callAiProxy(
             'realtime_assist',
-            {
-              providerId,
-              modelId,
-              userContent: clipped,
-            },
-            hasOwnKey ? settings.encryptedKey : undefined,
+            payload,
+            encryptedKey,
             controller.signal,
           )
 
@@ -153,7 +222,6 @@ export function useRealtimeWritingAssist({
           setStatus('ready')
           setErrorMessage(null)
 
-          // 无论 tips 是否为空，都落一批结果，便于按时间看到「本次分析」
           const createdAt = Date.now()
           setBatches((prev) => [
             ...prev,
@@ -166,10 +234,18 @@ export function useRealtimeWritingAssist({
           setLastBatchTipCount(parsed.tips.length)
           setUpdatedAt(createdAt)
         } catch (err) {
-          if (controller.signal.aborted || requestId !== requestIdRef.current) return
+          if (controller.signal.aborted || requestId !== requestIdRef.current) {
+            setBatches((prev) => prev.filter((batch) => !batch.streaming))
+            return
+          }
           const message = err instanceof Error ? err.message : '实时辅助请求失败'
           setStatus('error')
           setErrorMessage(message)
+          setBatches((prev) =>
+            prev
+              .filter((batch) => !(batch.streaming && batch.tips.length === 0))
+              .map((batch) => (batch.streaming ? { ...batch, streaming: false } : batch)),
+          )
         }
       })()
     }, DEBOUNCE_MS)

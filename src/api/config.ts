@@ -64,6 +64,7 @@ export const API_PATHS = {
     config: '/ai/config',
     key: '/ai/key',
     proxy: (purpose: string) => `/ai/proxy/${purpose}`,
+    proxyStream: (purpose: string) => `/ai/proxy/${purpose}/stream`,
     quota: '/ai/quota',
   },
   writings: {

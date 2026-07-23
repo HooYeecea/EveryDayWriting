@@ -231,6 +231,53 @@ export function post<T>(
   return request<T>(path, 'POST', { ...options, body })
 }
 
+/**
+ * POST 并返回原始 Response（用于 SSE 等流式响应）。
+ * 鉴权/刷新逻辑与 request 一致；若服务端以 JSON 报错则抛出 ApiError。
+ */
+export async function postStream(
+  path: string,
+  body?: unknown,
+  options: Omit<RequestOptions, 'body'> = {},
+  retried = false,
+): Promise<Response> {
+  const { params, skipAuth = false, fetchOptions } = options
+  const url = buildUrl(path, params)
+  const requestBody =
+    body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined
+
+  const response = await fetch(url, {
+    ...fetchOptions,
+    method: 'POST',
+    headers: buildHeaders({ ...options, skipAuth }, body),
+    body: requestBody,
+  })
+
+  if (
+    !skipAuth &&
+    (response.status === 401 || response.status === 403) &&
+    getRefreshToken() &&
+    !retried &&
+    !path.includes(API_PATHS.auth.refresh)
+  ) {
+    const refreshed = await ensureRefreshed()
+    if (refreshed) {
+      return postStream(path, body, options, true)
+    }
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('text/event-stream')) {
+    if (!response.ok) {
+      throw new ApiError(response.status, `流式请求失败 (${response.status})`, response.status)
+    }
+    return response
+  }
+
+  // 非 SSE：按常规 JSON 业务响应解析（错误或意外成功）
+  return parseResponse(response).then(() => response)
+}
+
 export function put<T>(
   path: string,
   body?: unknown,

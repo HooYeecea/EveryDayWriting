@@ -6,6 +6,7 @@ import {
   loadAiAssistSettings,
   saveAiAssistSettings,
   type AiAssistSettings,
+  type RealtimeStreamEffect,
 } from '../../storage/aiSettingsStorage'
 
 export type AiAssistToggleKey = keyof Pick<
@@ -22,6 +23,8 @@ interface WritingAiAssistProps {
 
 const TOGGLE_FLASH_DELAY_MS = 320
 
+const STREAM_EFFECT_OPTIONS: RealtimeStreamEffect[] = ['tips-fade', 'typewriter', 'fade']
+
 export function WritingAiAssist({
   onSettingsSaved,
   highlightKey = null,
@@ -32,6 +35,9 @@ export function WritingAiAssist({
   const [postSubmitStructure, setPostSubmitStructure] = useState(false)
   const [postSubmitSuggestions, setPostSubmitSuggestions] = useState(false)
   const [realtimeAssist, setRealtimeAssist] = useState(false)
+  const [realtimeStreamEnabled, setRealtimeStreamEnabled] = useState(true)
+  const [realtimeStreamEffect, setRealtimeStreamEffect] =
+    useState<RealtimeStreamEffect>('tips-fade')
   const [hasAiAccess, setHasAiAccess] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -44,6 +50,8 @@ export function WritingAiAssist({
     setPostSubmitStructure(saved.postSubmitStructure)
     setPostSubmitSuggestions(saved.postSubmitSuggestions)
     setRealtimeAssist(saved.realtimeAssist)
+    setRealtimeStreamEnabled(saved.realtimeStreamEnabled)
+    setRealtimeStreamEffect(saved.realtimeStreamEffect)
 
     const hasOwnKey = Boolean(saved.encryptedKey && saved.providerId && saved.modelId)
     getAiConfig()
@@ -75,6 +83,8 @@ export function WritingAiAssist({
       postSubmitStructure,
       postSubmitSuggestions,
       realtimeAssist,
+      realtimeStreamEnabled,
+      realtimeStreamEffect,
     }
     saveAiAssistSettings(next)
     onSettingsSaved?.(next)
@@ -93,6 +103,12 @@ export function WritingAiAssist({
 
   const clearFlash = (key: AiAssistToggleKey) => {
     if (flashingKey === key) setFlashingKey(null)
+  }
+
+  const effectLabel = (effect: RealtimeStreamEffect) => {
+    if (effect === 'tips-fade') return t('assist.ai.stream.effect.tipsFade')
+    if (effect === 'typewriter') return t('assist.ai.stream.effect.typewriter')
+    return t('assist.ai.stream.effect.fade')
   }
 
   return (
@@ -189,7 +205,7 @@ export function WritingAiAssist({
 
         <div>
           <p className="text-xs font-medium text-neutral-600">{t('assist.ai.sectionWhileWriting')}</p>
-          <div className="mt-2">
+          <div className="mt-2 space-y-2">
             <label
               ref={bindRowRef('realtimeAssist')}
               className={rowClass('realtimeAssist')}
@@ -213,6 +229,51 @@ export function WritingAiAssist({
                 </p>
               </div>
             </label>
+
+            {realtimeAssist ? (
+              <div className="space-y-2 rounded-lg border border-dashed border-neutral-200 bg-white/80 px-3 py-2.5">
+                <label className="flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={realtimeStreamEnabled}
+                    onChange={(e) => setRealtimeStreamEnabled(e.target.checked)}
+                    className="mt-0.5 rounded border-neutral-300"
+                  />
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-neutral-800">
+                      {t('assist.ai.stream.toggle')}
+                    </span>
+                    <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
+                      {t('assist.ai.stream.toggleDesc')}
+                    </p>
+                  </div>
+                </label>
+
+                {realtimeStreamEnabled ? (
+                  <label className="block">
+                    <span className="text-[11px] font-medium text-neutral-600">
+                      {t('assist.ai.stream.effectLabel')}
+                    </span>
+                    <select
+                      value={realtimeStreamEffect}
+                      onChange={(e) =>
+                        setRealtimeStreamEffect(e.target.value as RealtimeStreamEffect)
+                      }
+                      className="mt-1.5 w-full rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-800 outline-none focus:border-neutral-400 focus:bg-white"
+                    >
+                      {STREAM_EFFECT_OPTIONS.map((effect) => (
+                        <option key={effect} value={effect}>
+                          {effectLabel(effect)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
+                      {t('assist.ai.stream.effectDesc')}
+                    </p>
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
