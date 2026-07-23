@@ -183,6 +183,9 @@ export const esExtra = {
   'assist.realtime.clearBatchMessage':
     "Se borrará de forma permanente este lote de consejos. Confirma con cuidado.",
   'assist.realtime.clearConfirm': "Borrar",
+  'assist.realtime.collapse': "Contraer lote",
+  'assist.realtime.expand': "Expandir lote",
+  'assist.realtime.resizeAria': "Ajustar altura del área de consejos",
   'assist.realtime.type.grammar': "Gramática",
   'assist.realtime.type.wording': "Léxico",
   'assist.realtime.type.polish': "Estilo",

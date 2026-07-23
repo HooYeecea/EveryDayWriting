@@ -183,6 +183,9 @@ export const ptExtra = {
   'assist.realtime.clearBatchMessage':
     "Este lote de dicas ao vivo será removido permanentemente. Confirme com cuidado.",
   'assist.realtime.clearConfirm': "Limpar",
+  'assist.realtime.collapse': "Recolher lote",
+  'assist.realtime.expand': "Expandir lote",
+  'assist.realtime.resizeAria': "Ajustar altura da área de dicas",
   'assist.realtime.type.grammar': "Gramática",
   'assist.realtime.type.wording': "Vocabulário",
   'assist.realtime.type.polish': "Estilo",

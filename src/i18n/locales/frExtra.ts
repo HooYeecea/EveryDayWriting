@@ -183,6 +183,9 @@ export const frExtra = {
   'assist.realtime.clearBatchMessage':
     "Ce lot de conseils en direct sera effacé définitivement. Confirmez avec prudence.",
   'assist.realtime.clearConfirm': "Effacer",
+  'assist.realtime.collapse': "Replier ce lot",
+  'assist.realtime.expand': "Déplier ce lot",
+  'assist.realtime.resizeAria': "Redimensionner la zone des conseils",
   'assist.realtime.type.grammar': "Grammaire",
   'assist.realtime.type.wording': "Lexique",
   'assist.realtime.type.polish': "Style",

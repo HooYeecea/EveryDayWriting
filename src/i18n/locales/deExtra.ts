@@ -183,6 +183,9 @@ export const deExtra = {
   'assist.realtime.clearBatchMessage':
     "Dieser Block Live-Tipps wird dauerhaft gelöscht. Bitte sorgfältig bestätigen.",
   'assist.realtime.clearConfirm': "Löschen",
+  'assist.realtime.collapse': "Block einklappen",
+  'assist.realtime.expand': "Block ausklappen",
+  'assist.realtime.resizeAria': "Höhe des Live-Tipp-Bereichs anpassen",
   'assist.realtime.type.grammar': "Grammatik",
   'assist.realtime.type.wording': "Wortwahl",
   'assist.realtime.type.polish': "Stil",

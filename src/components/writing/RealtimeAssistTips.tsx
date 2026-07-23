@@ -1,4 +1,13 @@
-import { Eraser, FileCheck, Loader2, Sparkles, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Eraser,
+  FileCheck,
+  Loader2,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
 import { useConfirmDialog } from '../common/ConfirmDialog'
 import { useT } from '../../i18n'
 import type { RealtimeAssistTip } from '../../types'
@@ -12,6 +21,11 @@ const TYPE_LABEL_KEY = {
   wording: 'assist.realtime.type.wording',
   polish: 'assist.realtime.type.polish',
 } as const
+
+const HEIGHT_STORAGE_KEY = 'ew-realtime-assist-panel-height'
+const DEFAULT_HEIGHT = 280
+const MIN_HEIGHT = 160
+const MAX_HEIGHT = 520
 
 interface RealtimeAssistTipsProps {
   enabled: boolean
@@ -32,6 +46,18 @@ function formatBatchTime(createdAt: number) {
     })
   } catch {
     return ''
+  }
+}
+
+function loadStoredHeight(): number {
+  try {
+    const raw = sessionStorage.getItem(HEIGHT_STORAGE_KEY)
+    if (!raw) return DEFAULT_HEIGHT
+    const value = Number(raw)
+    if (!Number.isFinite(value)) return DEFAULT_HEIGHT
+    return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, value))
+  } catch {
+    return DEFAULT_HEIGHT
   }
 }
 
@@ -76,6 +102,20 @@ export function RealtimeAssistTips({
 }: RealtimeAssistTipsProps) {
   const t = useT()
   const { confirm, dialog: confirmDialog } = useConfirmDialog()
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set())
+  const [panelHeight, setPanelHeight] = useState(loadStoredHeight)
+  const [isResizing, setIsResizing] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    setCollapsedIds((prev) => {
+      const next = new Set<string>()
+      for (const batch of batches) {
+        if (prev.has(batch.id)) next.add(batch.id)
+      }
+      return next
+    })
+  }, [batches])
 
   if (!enabled) return null
 
@@ -87,6 +127,15 @@ export function RealtimeAssistTips({
   }
 
   const hasBatches = batches.length > 0
+
+  const toggleBatch = (batchId: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(batchId)) next.delete(batchId)
+      else next.add(batchId)
+      return next
+    })
+  }
 
   const handleClearAll = async () => {
     const confirmed = await confirm({
@@ -110,88 +159,200 @@ export function RealtimeAssistTips({
     if (confirmed) onRemoveBatch(batchId)
   }
 
+  const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = panelHeight
+    setIsResizing(true)
+
+    const previousUserSelect = document.body.style.userSelect
+    const previousCursor = document.body.style.cursor
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'row-resize'
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const next = Math.min(
+        MAX_HEIGHT,
+        Math.max(MIN_HEIGHT, startHeight + (moveEvent.clientY - startY)),
+      )
+      setPanelHeight(next)
+    }
+
+    const onUp = () => {
+      setIsResizing(false)
+      document.body.style.userSelect = previousUserSelect
+      document.body.style.cursor = previousCursor
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      setPanelHeight((current) => {
+        try {
+          sessionStorage.setItem(HEIGHT_STORAGE_KEY, String(current))
+        } catch {
+          // ignore
+        }
+        return current
+      })
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+  }
+
   return (
     <>
       <section
-        className={`rounded-xl border border-neutral-200 bg-neutral-50 ${compact ? 'p-3' : 'p-3.5'}`}
+        ref={sectionRef}
+        style={{ height: panelHeight }}
+        className={`relative flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 ${
+          compact ? 'p-3 pb-4' : 'p-3.5 pb-4'
+        }`}
       >
-        <div className="flex items-center gap-2">
-          <FileCheck size={16} className="shrink-0 text-neutral-500" strokeWidth={1.75} />
-          <h4 className="min-w-0 flex-1 text-xs font-medium text-neutral-800">
-            {t('assist.realtime.title')}
-          </h4>
-          {status === 'waiting' && (
-            <span className="text-[10px] text-neutral-400">{t('assist.realtime.waiting')}</span>
-          )}
-          {status === 'loading' && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500">
-              <Loader2 size={12} className="animate-spin" />
-              {t('assist.realtime.loading')}
-            </span>
-          )}
-          {hasBatches && (
-            <button
-              type="button"
-              onClick={() => void handleClearAll()}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-neutral-500 transition-colors hover:bg-neutral-200/70 hover:text-neutral-800"
-              aria-label={t('assist.realtime.clearAll')}
-              title={t('assist.realtime.clearAll')}
-            >
-              <Eraser size={12} strokeWidth={1.75} />
-              {t('assist.realtime.clearAll')}
-            </button>
+        <div className="shrink-0">
+          <div className="flex items-center gap-2">
+            <FileCheck size={16} className="shrink-0 text-neutral-500" strokeWidth={1.75} />
+            <h4 className="min-w-0 flex-1 text-xs font-medium text-neutral-800">
+              {t('assist.realtime.title')}
+            </h4>
+            {status === 'waiting' && (
+              <span className="text-[10px] text-neutral-400">{t('assist.realtime.waiting')}</span>
+            )}
+            {status === 'loading' && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500">
+                <Loader2 size={12} className="animate-spin" />
+                {t('assist.realtime.loading')}
+              </span>
+            )}
+            {hasBatches && (
+              <button
+                type="button"
+                onClick={() => void handleClearAll()}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-neutral-500 transition-colors hover:bg-neutral-200/70 hover:text-neutral-800"
+                aria-label={t('assist.realtime.clearAll')}
+                title={t('assist.realtime.clearAll')}
+              >
+                <Eraser size={12} strokeWidth={1.75} />
+                {t('assist.realtime.clearAll')}
+              </button>
+            )}
+          </div>
+
+          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
+            {t('assist.realtime.hint')}
+          </p>
+
+          {status === 'error' && errorMessage && (
+            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
+              {errorMessage}
+            </p>
           )}
         </div>
 
-        <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
-          {t('assist.realtime.hint')}
-        </p>
+        <div className="mt-2.5 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
+          {!hasBatches && status === 'ready' && (
+            <p className="text-[11px] text-neutral-400">{t('assist.realtime.empty')}</p>
+          )}
 
-        {status === 'error' && errorMessage && (
-          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
-            {errorMessage}
-          </p>
-        )}
+          {!hasBatches && (status === 'idle' || status === 'waiting' || status === 'loading') && (
+            <p className="text-[11px] text-neutral-400">{t('assist.realtime.idle')}</p>
+          )}
 
-        {!hasBatches && status === 'ready' && (
-          <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.empty')}</p>
-        )}
+          {hasBatches && (
+            <div className="space-y-3 pb-1">
+              {batches.map((batch) => {
+                const collapsed = collapsedIds.has(batch.id)
+                return (
+                  <div key={batch.id}>
+                    <div className="mb-1.5 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleBatch(batch.id)}
+                        className="inline-flex shrink-0 items-center justify-center rounded-md p-0.5 text-neutral-400 transition-colors hover:bg-neutral-200/70 hover:text-neutral-700"
+                        aria-expanded={!collapsed}
+                        aria-label={
+                          collapsed ? t('assist.realtime.expand') : t('assist.realtime.collapse')
+                        }
+                        title={
+                          collapsed ? t('assist.realtime.expand') : t('assist.realtime.collapse')
+                        }
+                      >
+                        {collapsed ? (
+                          <ChevronRight size={14} strokeWidth={1.75} />
+                        ) : (
+                          <ChevronDown size={14} strokeWidth={1.75} />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleBatch(batch.id)}
+                        className="min-w-0 flex-1 truncate text-left text-[10px] font-medium tracking-wide text-neutral-400 hover:text-neutral-600"
+                      >
+                        {t('assist.realtime.roundAt', { time: formatBatchTime(batch.createdAt) })}
+                        {collapsed ? (
+                          <span className="ml-1 text-neutral-300">({batch.tips.length})</span>
+                        ) : null}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveBatch(batch.id)}
+                        className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-200/70 hover:text-neutral-700"
+                        aria-label={t('assist.realtime.clearBatch')}
+                        title={t('assist.realtime.clearBatch')}
+                      >
+                        <Trash2 size={12} strokeWidth={1.75} />
+                      </button>
+                    </div>
+                    {!collapsed && (
+                      <ul className="space-y-2">
+                        {batch.tips.map((tip, index) => (
+                          <TipCard
+                            key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
+                            tip={tip}
+                            typeLabel={typeLabel}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
-        {!hasBatches && (status === 'idle' || status === 'waiting' || status === 'loading') && (
-          <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.idle')}</p>
-        )}
-
-        {hasBatches && (
-          <div className="mt-2.5 space-y-3">
-            {batches.map((batch) => (
-              <div key={batch.id}>
-                <div className="mb-1.5 flex items-center gap-2">
-                  <p className="min-w-0 flex-1 text-[10px] font-medium tracking-wide text-neutral-400">
-                    {t('assist.realtime.roundAt', { time: formatBatchTime(batch.createdAt) })}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void handleRemoveBatch(batch.id)}
-                    className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-200/70 hover:text-neutral-700"
-                    aria-label={t('assist.realtime.clearBatch')}
-                    title={t('assist.realtime.clearBatch')}
-                  >
-                    <Trash2 size={12} strokeWidth={1.75} />
-                  </button>
-                </div>
-                <ul className="space-y-2">
-                  {batch.tips.map((tip, index) => (
-                    <TipCard
-                      key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
-                      tip={tip}
-                      typeLabel={typeLabel}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        )}
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={t('assist.realtime.resizeAria')}
+          aria-valuemin={MIN_HEIGHT}
+          aria-valuemax={MAX_HEIGHT}
+          aria-valuenow={panelHeight}
+          tabIndex={0}
+          onPointerDown={handleResizePointerDown}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+            event.preventDefault()
+            const delta = event.key === 'ArrowDown' ? 16 : -16
+            setPanelHeight((current) => {
+              const next = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, current + delta))
+              try {
+                sessionStorage.setItem(HEIGHT_STORAGE_KEY, String(next))
+              } catch {
+                // ignore
+              }
+              return next
+            })
+          }}
+          className="absolute inset-x-0 bottom-0 z-10 flex h-3 cursor-row-resize touch-none items-center justify-center"
+        >
+          <span
+            className={`h-1 w-8 rounded-full transition-colors duration-200 ${
+              isResizing ? 'bg-neutral-500' : 'bg-neutral-300/90 hover:bg-neutral-400'
+            }`}
+          />
+        </div>
       </section>
       {confirmDialog}
     </>

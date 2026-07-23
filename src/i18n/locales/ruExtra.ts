@@ -183,6 +183,9 @@ export const ruExtra = {
   'assist.realtime.clearBatchMessage':
     "Этот блок подсказок будет удалён безвозвратно. Подтвердите осторожно.",
   'assist.realtime.clearConfirm': "Очистить",
+  'assist.realtime.collapse': "Свернуть блок",
+  'assist.realtime.expand': "Развернуть блок",
+  'assist.realtime.resizeAria': "Изменить высоту области подсказок",
   'assist.realtime.type.grammar': "Грамматика",
   'assist.realtime.type.wording': "Лексика",
   'assist.realtime.type.polish': "Стиль",

@@ -196,6 +196,9 @@ export const zhExtra = {
   'assist.realtime.clearBatchMessage':
     '将清除这一批实时建议，且不可恢复。请慎重确认。',
   'assist.realtime.clearConfirm': '确认清空',
+  'assist.realtime.collapse': '折叠本批',
+  'assist.realtime.expand': '展开本批',
+  'assist.realtime.resizeAria': '拖拽调整实时建议区域高度',
   'assist.realtime.type.grammar': '语法',
   'assist.realtime.type.wording': '用词',
   'assist.realtime.type.polish': '润色',
@@ -827,6 +830,9 @@ export const enExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.clearBatchMessage':
     'This will permanently remove this batch of live tips. Please confirm carefully.',
   'assist.realtime.clearConfirm': 'Clear',
+  'assist.realtime.collapse': 'Collapse batch',
+  'assist.realtime.expand': 'Expand batch',
+  'assist.realtime.resizeAria': 'Drag to resize live tips panel',
   'assist.realtime.type.grammar': 'Grammar',
   'assist.realtime.type.wording': 'Wording',
   'assist.realtime.type.polish': 'Polish',
@@ -1459,6 +1465,9 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.clearBatchMessage':
     'この回のリアルタイム提案を削除し、元に戻せません。よく確認してください。',
   'assist.realtime.clearConfirm': '削除する',
+  'assist.realtime.collapse': 'この回を折りたたむ',
+  'assist.realtime.expand': 'この回を展開',
+  'assist.realtime.resizeAria': 'リアルタイム提案エリアの高さを変更',
   'assist.realtime.type.grammar': '文法',
   'assist.realtime.type.wording': '語彙',
   'assist.realtime.type.polish': '推敲',
@@ -2091,6 +2100,9 @@ export const koExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.clearBatchMessage':
     '이 회차의 실시간 제안을 삭제하며 복구할 수 없습니다. 신중히 확인해 주세요.',
   'assist.realtime.clearConfirm': '삭제',
+  'assist.realtime.collapse': '이 회차 접기',
+  'assist.realtime.expand': '이 회차 펼치기',
+  'assist.realtime.resizeAria': '실시간 제안 영역 높이 조절',
   'assist.realtime.type.grammar': '문법',
   'assist.realtime.type.wording': '어휘',
   'assist.realtime.type.polish': '다듬기',
