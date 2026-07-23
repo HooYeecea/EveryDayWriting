@@ -3,6 +3,7 @@ import { callAiProxy, callAiProxyStream } from '../api/ai'
 import { loadAiAssistSettings } from '../storage/aiSettingsStorage'
 import type { RealtimeAssistTip } from '../types'
 import {
+  dedupeTipsAgainstHistory,
   extractStreamingTips,
   htmlToPlainText,
   parseRealtimeAssistResult,
@@ -180,13 +181,15 @@ export function useRealtimeWritingAssist({
                 if (sig === lastSig) return
                 lastSig = sig
 
-                setBatches((prev) =>
-                  prev.map((batch) =>
+                setBatches((prev) => {
+                  const prior = prev.filter((batch) => batch.id !== batchId)
+                  const tips = dedupeTipsAgainstHistory(partialTips, prior)
+                  return prev.map((batch) =>
                     batch.id === batchId
-                      ? { ...batch, tips: partialTips, streaming: true }
+                      ? { ...batch, tips, streaming: true }
                       : batch,
-                  ),
-                )
+                  )
+                })
               },
             )
 
@@ -196,15 +199,20 @@ export function useRealtimeWritingAssist({
             lastSentRef.current = clipped
             setStatus('ready')
             setErrorMessage(null)
-            setBatches((prev) =>
-              prev.map((batch) =>
+
+            let uniqueCount = 0
+            setBatches((prev) => {
+              const prior = prev.filter((batch) => batch.id !== batchId)
+              const tips = dedupeTipsAgainstHistory(parsed.tips, prior)
+              uniqueCount = tips.length
+              return prev.map((batch) =>
                 batch.id === batchId
-                  ? { ...batch, tips: parsed.tips, streaming: false }
+                  ? { ...batch, tips, streaming: false }
                   : batch,
-              ),
-            )
-            setLastBatchTipCount(parsed.tips.length)
-            setUpdatedAt(createdAt)
+              )
+            })
+            setLastBatchTipCount(uniqueCount)
+            if (uniqueCount > 0) setUpdatedAt(createdAt)
             return
           }
 
@@ -223,16 +231,21 @@ export function useRealtimeWritingAssist({
           setErrorMessage(null)
 
           const createdAt = Date.now()
-          setBatches((prev) => [
-            ...prev,
-            {
-              id: createBatchId(),
-              createdAt,
-              tips: parsed.tips,
-            },
-          ])
-          setLastBatchTipCount(parsed.tips.length)
-          setUpdatedAt(createdAt)
+          let uniqueCount = 0
+          setBatches((prev) => {
+            const tips = dedupeTipsAgainstHistory(parsed.tips, prev)
+            uniqueCount = tips.length
+            return [
+              ...prev,
+              {
+                id: createBatchId(),
+                createdAt,
+                tips,
+              },
+            ]
+          })
+          setLastBatchTipCount(uniqueCount)
+          if (uniqueCount > 0) setUpdatedAt(createdAt)
         } catch (err) {
           if (controller.signal.aborted || requestId !== requestIdRef.current) {
             setBatches((prev) => prev.filter((batch) => !batch.streaming))
