@@ -5,6 +5,7 @@ import {
   Calendar,
   Camera,
   Check,
+  KeyRound,
   Loader2,
   LogIn,
   LogOut,
@@ -28,6 +29,7 @@ import { useT } from '../../i18n'
 import type { MessageKey } from '../../i18n'
 import { AiAssistPanel } from '../user/AiAssistPanel'
 import { AnnouncementsPanel } from '../user/AnnouncementsPanel'
+import { ChangePasswordDialog } from '../user/ChangePasswordDialog'
 import { PersonalPlanPanel } from '../user/PersonalPlanPanel'
 import { PrivacySettingsPanel } from '../user/PrivacySettingsPanel'
 import { TokenUsagePanel } from '../user/TokenUsagePanel'
@@ -97,6 +99,7 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
   const [savingNickname, setSavingNickname] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const [tabsBelow, setTabsBelow] = useState(false)
   const avatarFileRef = useRef<HTMLInputElement>(null)
   const nicknameInputRef = useRef<HTMLInputElement>(null)
@@ -530,91 +533,104 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
               aria-hidden={tab !== 'overview'}
             >
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6">
-                <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-                  <button
-                    type="button"
-                    onClick={() => avatarFileRef.current?.click()}
-                    disabled={avatarUploading}
-                    className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-lg font-semibold text-white"
-                  >
-                    {avatarSrc ? (
-                      <img
-                        src={avatarSrc}
-                        alt={user.nickname}
-                        className="h-full w-full object-cover"
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      avatarLabel
-                    )}
-                    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                      {avatarUploading ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <Camera size={16} />
-                      )}
-                    </span>
-                  </button>
-                  <input
-                    ref={avatarFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={handleAvatarChange}
-                  />
-                  <div>
-                    {editingNickname ? (
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          ref={nicknameInputRef}
-                          value={nicknameDraft}
-                          onChange={(e) => setNicknameDraft(e.target.value)}
-                          onKeyDown={handleNicknameKeyDown}
-                          maxLength={50}
-                          disabled={savingNickname}
-                          className="w-40 rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-lg font-medium text-neutral-900 outline-none focus:border-neutral-500"
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
+                    <button
+                      type="button"
+                      onClick={() => avatarFileRef.current?.click()}
+                      disabled={avatarUploading}
+                      className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-lg font-semibold text-white"
+                    >
+                      {avatarSrc ? (
+                        <img
+                          src={avatarSrc}
+                          alt={user.nickname}
+                          className="h-full w-full object-cover"
+                          onError={() => setAvatarError(true)}
                         />
-                        <button
-                          type="button"
-                          onClick={() => void saveNickname()}
-                          disabled={savingNickname}
-                          className="rounded-lg p-1 text-green-600 hover:bg-green-50"
-                        >
-                          <Check size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditingNickname}
-                          disabled={savingNickname}
-                          className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100"
-                        >
-                          <X size={18} />
-                        </button>
+                      ) : (
+                        avatarLabel
+                      )}
+                      <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        {avatarUploading ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <Camera size={16} />
+                        )}
+                      </span>
+                    </button>
+                    <input
+                      ref={avatarFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                    <div className="min-w-0">
+                      {editingNickname ? (
+                        <div className="flex items-center justify-center gap-1.5 sm:justify-start">
+                          <input
+                            ref={nicknameInputRef}
+                            value={nicknameDraft}
+                            onChange={(e) => setNicknameDraft(e.target.value)}
+                            onKeyDown={handleNicknameKeyDown}
+                            maxLength={50}
+                            disabled={savingNickname}
+                            className="w-40 rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-lg font-medium text-neutral-900 outline-none focus:border-neutral-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void saveNickname()}
+                            disabled={savingNickname}
+                            className="rounded-lg p-1 text-green-600 hover:bg-green-50"
+                          >
+                            <Check size={18} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditingNickname}
+                            disabled={savingNickname}
+                            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1.5 sm:justify-start">
+                          <h3 className="text-lg font-medium text-neutral-900">{user.nickname}</h3>
+                          <button
+                            type="button"
+                            onClick={startEditingNickname}
+                            className="rounded-lg p-1 text-neutral-300 hover:bg-neutral-100 hover:text-neutral-500"
+                            title={t('userCenter.editNickname')}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      )}
+                      <div className="mt-1 flex items-center justify-center gap-1.5 text-sm text-neutral-500 sm:justify-start">
+                        <Mail size={14} className="shrink-0" />
+                        <span className="min-w-0 break-all">{user.email}</span>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="text-lg font-medium text-neutral-900">{user.nickname}</h3>
-                        <button
-                          type="button"
-                          onClick={startEditingNickname}
-                          className="rounded-lg p-1 text-neutral-300 hover:bg-neutral-100 hover:text-neutral-500"
-                          title={t('userCenter.editNickname')}
-                        >
-                          <Pencil size={14} />
-                        </button>
+                      <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-neutral-400 sm:justify-start">
+                        <Calendar size={13} className="shrink-0" />
+                        <span>
+                          {t('userCenter.joinedAt')}
+                          {new Date(user.createdAt).toLocaleDateString('zh-CN')}
+                          {user.locationText && ` · ${user.locationText}`}
+                        </span>
                       </div>
-                    )}
-                    <div className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500">
-                      <Mail size={14} />
-                      {user.email}
-                    </div>
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400">
-                      <Calendar size={13} />
-                      {t('userCenter.joinedAt')}
-                      {new Date(user.createdAt).toLocaleDateString('zh-CN')}
-                      {user.locationText && ` · ${user.locationText}`}
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setChangePasswordOpen(true)}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-white sm:w-auto sm:self-center"
+                  >
+                    <KeyRound size={14} strokeWidth={1.75} />
+                    {t('userCenter.changePassword')}
+                  </button>
                 </div>
 
                 <div className="mt-6 grid grid-cols-3 gap-3">
@@ -758,6 +774,11 @@ export function UserCenter({ onReady }: { onReady?: () => void } = {}) {
           </div>
         </div>
       </div>
+
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </div>
   )
 }
