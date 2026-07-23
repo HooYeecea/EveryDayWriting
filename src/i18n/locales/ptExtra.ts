@@ -174,6 +174,15 @@ export const ptExtra = {
   'assist.realtime.idle': "Continue escrevendo; dicas breves aparecem após uma pausa.",
   'assist.realtime.empty': "Sem dicas claras ainda. Continue.",
   'assist.realtime.roundAt': "{time}",
+  'assist.realtime.clearAll': "Limpar tudo",
+  'assist.realtime.clearBatch': "Limpar este lote",
+  'assist.realtime.clearAllTitle': "Limpar todas as dicas",
+  'assist.realtime.clearAllMessage':
+    "Todas as dicas IA ao vivo serão removidas permanentemente. Confirme com cuidado.",
+  'assist.realtime.clearBatchTitle': "Limpar este lote",
+  'assist.realtime.clearBatchMessage':
+    "Este lote de dicas ao vivo será removido permanentemente. Confirme com cuidado.",
+  'assist.realtime.clearConfirm': "Limpar",
   'assist.realtime.type.grammar': "Gramática",
   'assist.realtime.type.wording': "Vocabulário",
   'assist.realtime.type.polish': "Estilo",

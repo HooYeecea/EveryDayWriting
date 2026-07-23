@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { callAiProxy } from '../api/ai'
 import { loadAiAssistSettings } from '../storage/aiSettingsStorage'
 import type { RealtimeAssistTip } from '../types'
@@ -27,6 +27,8 @@ export interface UseRealtimeWritingAssistResult {
   updatedAt: number
   /** 最近一批新增的建议条数（角标用） */
   lastBatchTipCount: number
+  clearHistory: () => void
+  removeBatch: (batchId: string) => void
 }
 
 interface Options {
@@ -59,28 +61,31 @@ export function useRealtimeWritingAssist({
   const lastSentRef = useRef('')
   const clearNonceRef = useRef(clearNonce)
 
-  const resetRequestState = () => {
+  const resetRequestState = useCallback(() => {
     abortRef.current?.abort()
     abortRef.current = null
     requestIdRef.current += 1
     lastSentRef.current = ''
     setStatus('idle')
     setErrorMessage(null)
-  }
+  }, [])
 
-  const clearHistory = () => {
+  const clearHistory = useCallback(() => {
     resetRequestState()
     setBatches([])
     setUpdatedAt(0)
     setLastBatchTipCount(0)
-  }
+  }, [resetRequestState])
+
+  const removeBatch = useCallback((batchId: string) => {
+    setBatches((prev) => prev.filter((batch) => batch.id !== batchId))
+  }, [])
 
   useEffect(() => {
     if (clearNonce === clearNonceRef.current) return
     clearNonceRef.current = clearNonce
     clearHistory()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅响应重写清空信号
-  }, [clearNonce])
+  }, [clearNonce, clearHistory])
 
   useEffect(() => {
     if (!enabled) {
@@ -176,9 +181,7 @@ export function useRealtimeWritingAssist({
     return () => {
       window.clearTimeout(timer)
     }
-    // clearHistory 仅用于 enabled=false / clearNonce，不列入 deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, editorHtml])
+  }, [enabled, editorHtml, clearHistory])
 
   useEffect(() => {
     return () => {
@@ -186,5 +189,13 @@ export function useRealtimeWritingAssist({
     }
   }, [])
 
-  return { batches, status, errorMessage, updatedAt, lastBatchTipCount }
+  return {
+    batches,
+    status,
+    errorMessage,
+    updatedAt,
+    lastBatchTipCount,
+    clearHistory,
+    removeBatch,
+  }
 }

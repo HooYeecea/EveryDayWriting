@@ -174,6 +174,15 @@ export const deExtra = {
   'assist.realtime.idle': "Weiterschreiben; kurze Tipps erscheinen nach einer Pause.",
   'assist.realtime.empty': "Noch keine klaren Tipps. Weiter so.",
   'assist.realtime.roundAt': "{time}",
+  'assist.realtime.clearAll': "Alles löschen",
+  'assist.realtime.clearBatch': "Diesen Block löschen",
+  'assist.realtime.clearAllTitle': "Alle Live-Tipps löschen",
+  'assist.realtime.clearAllMessage':
+    "Alle aktuellen KI-Live-Tipps werden dauerhaft gelöscht. Bitte sorgfältig bestätigen.",
+  'assist.realtime.clearBatchTitle': "Diesen Block löschen",
+  'assist.realtime.clearBatchMessage':
+    "Dieser Block Live-Tipps wird dauerhaft gelöscht. Bitte sorgfältig bestätigen.",
+  'assist.realtime.clearConfirm': "Löschen",
   'assist.realtime.type.grammar': "Grammatik",
   'assist.realtime.type.wording': "Wortwahl",
   'assist.realtime.type.polish': "Stil",

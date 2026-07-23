@@ -517,6 +517,8 @@ export function WritingAssistPanel({
       batches={realtime.batches}
       status={realtime.status}
       errorMessage={realtime.errorMessage}
+      onClearAll={realtime.clearHistory}
+      onRemoveBatch={realtime.removeBatch}
     />
   )
 

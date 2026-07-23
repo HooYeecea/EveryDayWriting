@@ -174,6 +174,15 @@ export const ruExtra = {
   'assist.realtime.idle': "Продолжайте писать; короткие подсказки появятся после паузы.",
   'assist.realtime.empty': "Пока нет явных подсказок. Продолжайте.",
   'assist.realtime.roundAt': "{time}",
+  'assist.realtime.clearAll': "Очистить все",
+  'assist.realtime.clearBatch': "Удалить этот блок",
+  'assist.realtime.clearAllTitle': "Очистить все подсказки",
+  'assist.realtime.clearAllMessage':
+    "Все текущие подсказки ИИ будут удалены безвозвратно. Подтвердите осторожно.",
+  'assist.realtime.clearBatchTitle': "Удалить этот блок",
+  'assist.realtime.clearBatchMessage':
+    "Этот блок подсказок будет удалён безвозвратно. Подтвердите осторожно.",
+  'assist.realtime.clearConfirm': "Очистить",
   'assist.realtime.type.grammar': "Грамматика",
   'assist.realtime.type.wording': "Лексика",
   'assist.realtime.type.polish': "Стиль",

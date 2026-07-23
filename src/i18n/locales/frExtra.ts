@@ -174,6 +174,15 @@ export const frExtra = {
   'assist.realtime.idle': "Continuez ; de brefs conseils apparaissent après une pause.",
   'assist.realtime.empty': "Pas de conseil clair pour l’instant. Continuez.",
   'assist.realtime.roundAt': "{time}",
+  'assist.realtime.clearAll': "Tout effacer",
+  'assist.realtime.clearBatch': "Effacer ce lot",
+  'assist.realtime.clearAllTitle': "Effacer tous les conseils",
+  'assist.realtime.clearAllMessage':
+    "Tous les conseils IA en direct seront effacés définitivement. Confirmez avec prudence.",
+  'assist.realtime.clearBatchTitle': "Effacer ce lot",
+  'assist.realtime.clearBatchMessage':
+    "Ce lot de conseils en direct sera effacé définitivement. Confirmez avec prudence.",
+  'assist.realtime.clearConfirm': "Effacer",
   'assist.realtime.type.grammar': "Grammaire",
   'assist.realtime.type.wording': "Lexique",
   'assist.realtime.type.polish': "Style",

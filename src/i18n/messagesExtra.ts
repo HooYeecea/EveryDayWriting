@@ -187,6 +187,15 @@ export const zhExtra = {
   'assist.realtime.idle': '继续写作，停笔后会给出简短建议。',
   'assist.realtime.empty': '暂无明显建议，可继续写。',
   'assist.realtime.roundAt': '{time}',
+  'assist.realtime.clearAll': '全部清空',
+  'assist.realtime.clearBatch': '清除本批',
+  'assist.realtime.clearAllTitle': '清空全部实时建议',
+  'assist.realtime.clearAllMessage':
+    '将清空当前全部 AI 实时建议，且不可恢复。请慎重确认。',
+  'assist.realtime.clearBatchTitle': '清除本批建议',
+  'assist.realtime.clearBatchMessage':
+    '将清除这一批实时建议，且不可恢复。请慎重确认。',
+  'assist.realtime.clearConfirm': '确认清空',
   'assist.realtime.type.grammar': '语法',
   'assist.realtime.type.wording': '用词',
   'assist.realtime.type.polish': '润色',
@@ -809,6 +818,15 @@ export const enExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.idle': 'Keep writing; brief tips appear after you pause.',
   'assist.realtime.empty': 'No clear tips yet. Keep going.',
   'assist.realtime.roundAt': '{time}',
+  'assist.realtime.clearAll': 'Clear all',
+  'assist.realtime.clearBatch': 'Clear this batch',
+  'assist.realtime.clearAllTitle': 'Clear all live tips',
+  'assist.realtime.clearAllMessage':
+    'This will permanently remove all current AI live tips. Please confirm carefully.',
+  'assist.realtime.clearBatchTitle': 'Clear this batch',
+  'assist.realtime.clearBatchMessage':
+    'This will permanently remove this batch of live tips. Please confirm carefully.',
+  'assist.realtime.clearConfirm': 'Clear',
   'assist.realtime.type.grammar': 'Grammar',
   'assist.realtime.type.wording': 'Wording',
   'assist.realtime.type.polish': 'Polish',
@@ -1432,6 +1450,15 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.idle': '書き続けてください。停止後に短い提案が出ます。',
   'assist.realtime.empty': '特に提案はありません。続けて書けます。',
   'assist.realtime.roundAt': '{time}',
+  'assist.realtime.clearAll': 'すべてクリア',
+  'assist.realtime.clearBatch': 'この回を削除',
+  'assist.realtime.clearAllTitle': 'リアルタイム提案をすべて削除',
+  'assist.realtime.clearAllMessage':
+    '現在の AI リアルタイム提案をすべて削除し、元に戻せません。よく確認してください。',
+  'assist.realtime.clearBatchTitle': 'この回の提案を削除',
+  'assist.realtime.clearBatchMessage':
+    'この回のリアルタイム提案を削除し、元に戻せません。よく確認してください。',
+  'assist.realtime.clearConfirm': '削除する',
   'assist.realtime.type.grammar': '文法',
   'assist.realtime.type.wording': '語彙',
   'assist.realtime.type.polish': '推敲',
@@ -2055,6 +2082,15 @@ export const koExtra: Record<ExtraMessageKey, string> = {
   'assist.realtime.idle': '계속 쓰세요. 멈추면 짧은 제안이 나타납니다.',
   'assist.realtime.empty': '특별한 제안이 없습니다. 계속 쓰세요.',
   'assist.realtime.roundAt': '{time}',
+  'assist.realtime.clearAll': '전체 비우기',
+  'assist.realtime.clearBatch': '이 회차 삭제',
+  'assist.realtime.clearAllTitle': '실시간 제안 전체 삭제',
+  'assist.realtime.clearAllMessage':
+    '현재 AI 실시간 제안을 모두 삭제하며 복구할 수 없습니다. 신중히 확인해 주세요.',
+  'assist.realtime.clearBatchTitle': '이 회차 제안 삭제',
+  'assist.realtime.clearBatchMessage':
+    '이 회차의 실시간 제안을 삭제하며 복구할 수 없습니다. 신중히 확인해 주세요.',
+  'assist.realtime.clearConfirm': '삭제',
   'assist.realtime.type.grammar': '문법',
   'assist.realtime.type.wording': '어휘',
   'assist.realtime.type.polish': '다듬기',

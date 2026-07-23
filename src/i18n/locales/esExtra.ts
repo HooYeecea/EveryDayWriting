@@ -174,6 +174,15 @@ export const esExtra = {
   'assist.realtime.idle': "Sigue escribiendo; verás consejos breves tras una pausa.",
   'assist.realtime.empty': "Aún no hay consejos claros. Sigue.",
   'assist.realtime.roundAt': "{time}",
+  'assist.realtime.clearAll': "Borrar todo",
+  'assist.realtime.clearBatch': "Borrar este lote",
+  'assist.realtime.clearAllTitle': "Borrar todos los consejos",
+  'assist.realtime.clearAllMessage':
+    "Se borrarán de forma permanente todos los consejos IA en vivo. Confirma con cuidado.",
+  'assist.realtime.clearBatchTitle': "Borrar este lote",
+  'assist.realtime.clearBatchMessage':
+    "Se borrará de forma permanente este lote de consejos. Confirma con cuidado.",
+  'assist.realtime.clearConfirm': "Borrar",
   'assist.realtime.type.grammar': "Gramática",
   'assist.realtime.type.wording': "Léxico",
   'assist.realtime.type.polish': "Estilo",

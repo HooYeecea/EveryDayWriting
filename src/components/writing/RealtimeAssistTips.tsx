@@ -1,4 +1,5 @@
-import { FileCheck, Loader2, Sparkles } from 'lucide-react'
+import { Eraser, FileCheck, Loader2, Sparkles, Trash2 } from 'lucide-react'
+import { useConfirmDialog } from '../common/ConfirmDialog'
 import { useT } from '../../i18n'
 import type { RealtimeAssistTip } from '../../types'
 import type {
@@ -17,6 +18,8 @@ interface RealtimeAssistTipsProps {
   batches: RealtimeAssistTipBatch[]
   status: RealtimeAssistStatus
   errorMessage: string | null
+  onClearAll: () => void
+  onRemoveBatch: (batchId: string) => void
   compact?: boolean
 }
 
@@ -67,9 +70,12 @@ export function RealtimeAssistTips({
   batches,
   status,
   errorMessage,
+  onClearAll,
+  onRemoveBatch,
   compact = false,
 }: RealtimeAssistTipsProps) {
   const t = useT()
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
 
   if (!enabled) return null
 
@@ -82,65 +88,113 @@ export function RealtimeAssistTips({
 
   const hasBatches = batches.length > 0
 
+  const handleClearAll = async () => {
+    const confirmed = await confirm({
+      title: t('assist.realtime.clearAllTitle'),
+      message: t('assist.realtime.clearAllMessage'),
+      confirmLabel: t('assist.realtime.clearConfirm'),
+      cancelLabel: t('common.cancel'),
+      variant: 'warning',
+    })
+    if (confirmed) onClearAll()
+  }
+
+  const handleRemoveBatch = async (batchId: string) => {
+    const confirmed = await confirm({
+      title: t('assist.realtime.clearBatchTitle'),
+      message: t('assist.realtime.clearBatchMessage'),
+      confirmLabel: t('assist.realtime.clearConfirm'),
+      cancelLabel: t('common.cancel'),
+      variant: 'warning',
+    })
+    if (confirmed) onRemoveBatch(batchId)
+  }
+
   return (
-    <section
-      className={`rounded-xl border border-neutral-200 bg-neutral-50 ${compact ? 'p-3' : 'p-3.5'}`}
-    >
-      <div className="flex items-center gap-2">
-        <FileCheck size={16} className="shrink-0 text-neutral-500" strokeWidth={1.75} />
-        <h4 className="min-w-0 flex-1 text-xs font-medium text-neutral-800">
-          {t('assist.realtime.title')}
-        </h4>
-        {status === 'waiting' && (
-          <span className="text-[10px] text-neutral-400">{t('assist.realtime.waiting')}</span>
-        )}
-        {status === 'loading' && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500">
-            <Loader2 size={12} className="animate-spin" />
-            {t('assist.realtime.loading')}
-          </span>
-        )}
-      </div>
-
-      <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
-        {t('assist.realtime.hint')}
-      </p>
-
-      {status === 'error' && errorMessage && (
-        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
-          {errorMessage}
-        </p>
-      )}
-
-      {!hasBatches && status === 'ready' && (
-        <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.empty')}</p>
-      )}
-
-      {!hasBatches && (status === 'idle' || status === 'waiting' || status === 'loading') && (
-        <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.idle')}</p>
-      )}
-
-      {hasBatches && (
-        <div className="mt-2.5 space-y-3">
-          {batches.map((batch) => (
-            <div key={batch.id}>
-              <p className="mb-1.5 text-[10px] font-medium tracking-wide text-neutral-400">
-                {t('assist.realtime.roundAt', { time: formatBatchTime(batch.createdAt) })}
-              </p>
-              <ul className="space-y-2">
-                {batch.tips.map((tip, index) => (
-                  <TipCard
-                    key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
-                    tip={tip}
-                    typeLabel={typeLabel}
-                  />
-                ))}
-              </ul>
-            </div>
-          ))}
+    <>
+      <section
+        className={`rounded-xl border border-neutral-200 bg-neutral-50 ${compact ? 'p-3' : 'p-3.5'}`}
+      >
+        <div className="flex items-center gap-2">
+          <FileCheck size={16} className="shrink-0 text-neutral-500" strokeWidth={1.75} />
+          <h4 className="min-w-0 flex-1 text-xs font-medium text-neutral-800">
+            {t('assist.realtime.title')}
+          </h4>
+          {status === 'waiting' && (
+            <span className="text-[10px] text-neutral-400">{t('assist.realtime.waiting')}</span>
+          )}
+          {status === 'loading' && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500">
+              <Loader2 size={12} className="animate-spin" />
+              {t('assist.realtime.loading')}
+            </span>
+          )}
+          {hasBatches && (
+            <button
+              type="button"
+              onClick={() => void handleClearAll()}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-neutral-500 transition-colors hover:bg-neutral-200/70 hover:text-neutral-800"
+              aria-label={t('assist.realtime.clearAll')}
+              title={t('assist.realtime.clearAll')}
+            >
+              <Eraser size={12} strokeWidth={1.75} />
+              {t('assist.realtime.clearAll')}
+            </button>
+          )}
         </div>
-      )}
-    </section>
+
+        <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
+          {t('assist.realtime.hint')}
+        </p>
+
+        {status === 'error' && errorMessage && (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
+            {errorMessage}
+          </p>
+        )}
+
+        {!hasBatches && status === 'ready' && (
+          <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.empty')}</p>
+        )}
+
+        {!hasBatches && (status === 'idle' || status === 'waiting' || status === 'loading') && (
+          <p className="mt-2 text-[11px] text-neutral-400">{t('assist.realtime.idle')}</p>
+        )}
+
+        {hasBatches && (
+          <div className="mt-2.5 space-y-3">
+            {batches.map((batch) => (
+              <div key={batch.id}>
+                <div className="mb-1.5 flex items-center gap-2">
+                  <p className="min-w-0 flex-1 text-[10px] font-medium tracking-wide text-neutral-400">
+                    {t('assist.realtime.roundAt', { time: formatBatchTime(batch.createdAt) })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleRemoveBatch(batch.id)}
+                    className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-200/70 hover:text-neutral-700"
+                    aria-label={t('assist.realtime.clearBatch')}
+                    title={t('assist.realtime.clearBatch')}
+                  >
+                    <Trash2 size={12} strokeWidth={1.75} />
+                  </button>
+                </div>
+                <ul className="space-y-2">
+                  {batch.tips.map((tip, index) => (
+                    <TipCard
+                      key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
+                      tip={tip}
+                      typeLabel={typeLabel}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      {confirmDialog}
+    </>
   )
 }
 
