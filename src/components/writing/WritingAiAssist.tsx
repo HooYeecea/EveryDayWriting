@@ -8,6 +8,7 @@ import {
   type AiAssistSettings,
   type RealtimeStreamEffect,
 } from '../../storage/aiSettingsStorage'
+import { MenuSelect } from '../common/MenuSelect'
 
 export type AiAssistToggleKey = keyof Pick<
   AiAssistSettings,
@@ -250,27 +251,27 @@ export function WritingAiAssist({
                 </label>
 
                 {realtimeStreamEnabled ? (
-                  <label className="block">
+                  <div className="block">
                     <span className="text-[11px] font-medium text-neutral-600">
                       {t('assist.ai.stream.effectLabel')}
                     </span>
-                    <select
+                    <MenuSelect
+                      className="mt-1.5"
                       value={realtimeStreamEffect}
-                      onChange={(e) =>
-                        setRealtimeStreamEffect(e.target.value as RealtimeStreamEffect)
+                      options={STREAM_EFFECT_OPTIONS.map((effect) => ({
+                        value: effect,
+                        label: effectLabel(effect),
+                      }))}
+                      onChange={(value) =>
+                        setRealtimeStreamEffect(value as RealtimeStreamEffect)
                       }
-                      className="mt-1.5 w-full rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-800 outline-none focus:border-neutral-400 focus:bg-white"
-                    >
-                      {STREAM_EFFECT_OPTIONS.map((effect) => (
-                        <option key={effect} value={effect}>
-                          {effectLabel(effect)}
-                        </option>
-                      ))}
-                    </select>
+                      ariaLabel={t('assist.ai.stream.effectLabel')}
+                      buttonClassName="h-9 rounded-lg border-neutral-200 bg-neutral-50 px-2.5 text-xs hover:bg-white"
+                    />
                     <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
                       {t('assist.ai.stream.effectDesc')}
                     </p>
-                  </label>
+                  </div>
                 ) : null}
               </div>
             ) : null}
