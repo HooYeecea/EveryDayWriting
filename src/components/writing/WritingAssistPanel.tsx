@@ -16,7 +16,11 @@ import { ASSIST_FEATURES, getAssistFeature, type AssistFeatureId } from './assis
 import { formatSecondsForRail, WritingTimerAssist } from './WritingTimerAssist'
 import { WritingAiAssist, type AiAssistToggleKey } from './WritingAiAssist'
 import { RealtimeAssistBadge, RealtimeAssistTips } from './RealtimeAssistTips'
-import { useRealtimeWritingAssist } from '../../hooks/useRealtimeWritingAssist'
+import {
+  useRealtimeWritingAssist,
+  type RealtimeAssistStatus,
+  type RealtimeAssistTipBatch,
+} from '../../hooks/useRealtimeWritingAssist'
 import { useT } from '../../i18n'
 import {
   loadAiAssistSettings,
@@ -359,7 +363,11 @@ interface AssistPanelContentProps {
   highlightAiNonce?: number
   highlightTimerNonce?: number
   realtimeEnabled?: boolean
-  realtimeTips?: ReactNode
+  realtimeBatches?: RealtimeAssistTipBatch[]
+  realtimeStatus?: RealtimeAssistStatus
+  realtimeErrorMessage?: string | null
+  onRealtimeClearAll?: () => void
+  onRealtimeRemoveBatch?: (batchId: string) => void
 }
 
 function AssistPanelContent({
@@ -376,12 +384,18 @@ function AssistPanelContent({
   highlightAiNonce = 0,
   highlightTimerNonce = 0,
   realtimeEnabled = false,
-  realtimeTips = null,
+  realtimeBatches = [],
+  realtimeStatus = 'idle',
+  realtimeErrorMessage = null,
+  onRealtimeClearAll,
+  onRealtimeRemoveBatch,
 }: AssistPanelContentProps) {
   const t = useT()
   const activeFeatureMeta = activeFeature ? getAssistFeature(activeFeature) : null
   const showTimerDetail = panelOpen && activeFeature === 'writing-timer'
   const showAiDetail = panelOpen && activeFeature === 'ai-assistant'
+  const canRenderRealtime =
+    realtimeEnabled && Boolean(onRealtimeClearAll) && Boolean(onRealtimeRemoveBatch)
 
   return (
     <>
@@ -407,7 +421,18 @@ function AssistPanelContent({
 
       {panelOpen && !activeFeature && (
         <div className="flex-1 overflow-y-auto p-4">
-          {realtimeEnabled && realtimeTips ? <div className="mb-4">{realtimeTips}</div> : null}
+          {canRenderRealtime ? (
+            <div className="mb-4">
+              <RealtimeAssistTips
+                enabled={realtimeEnabled}
+                batches={realtimeBatches}
+                status={realtimeStatus}
+                errorMessage={realtimeErrorMessage}
+                onClearAll={onRealtimeClearAll!}
+                onRemoveBatch={onRealtimeRemoveBatch!}
+              />
+            </div>
+          ) : null}
           <div className="space-y-2">
             <p className="mb-3 text-xs text-neutral-500">{t('assist.pickFeature')}</p>
             {ASSIST_FEATURES.map((feature) => {
@@ -443,7 +468,18 @@ function AssistPanelContent({
       )}
 
       <div className={showAiDetail ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
-        {realtimeEnabled && realtimeTips ? <div className="mb-4">{realtimeTips}</div> : null}
+        {showAiDetail && canRenderRealtime ? (
+          <div className="mb-4">
+            <RealtimeAssistTips
+              enabled={realtimeEnabled}
+              batches={realtimeBatches}
+              status={realtimeStatus}
+              errorMessage={realtimeErrorMessage}
+              onClearAll={onRealtimeClearAll!}
+              onRemoveBatch={onRealtimeRemoveBatch!}
+            />
+          </div>
+        ) : null}
         <WritingAiAssist
           onSettingsSaved={onAiSettingsSaved}
           highlightKey={highlightAiKey}
@@ -511,16 +547,14 @@ export function WritingAssistPanel({
     }
   }, [panelOpen, realtimeEnabled, realtime.updatedAt])
 
-  const realtimeTipsNode = (
-    <RealtimeAssistTips
-      enabled={realtimeEnabled}
-      batches={realtime.batches}
-      status={realtime.status}
-      errorMessage={realtime.errorMessage}
-      onClearAll={realtime.clearHistory}
-      onRemoveBatch={realtime.removeBatch}
-    />
-  )
+  const realtimeTipsProps = {
+    enabled: realtimeEnabled,
+    batches: realtime.batches,
+    status: realtime.status,
+    errorMessage: realtime.errorMessage,
+    onClearAll: realtime.clearHistory,
+    onRemoveBatch: realtime.removeBatch,
+  }
 
   const handleTimerRunningChange = useCallback(
     (running: boolean, displaySeconds: number, paused: boolean) => {
@@ -583,7 +617,11 @@ export function WritingAssistPanel({
     onTimerRunningChange: handleTimerRunningChange,
     onAiSettingsSaved: handleAiSettingsSaved,
     realtimeEnabled,
-    realtimeTips: realtimeTipsNode,
+    realtimeBatches: realtime.batches,
+    realtimeStatus: realtime.status,
+    realtimeErrorMessage: realtime.errorMessage,
+    onRealtimeClearAll: realtime.clearHistory,
+    onRealtimeRemoveBatch: realtime.removeBatch,
   }
 
   return (
@@ -625,7 +663,11 @@ export function WritingAssistPanel({
 
         {desktopExpanded && !activeFeature && (
           <div className="flex-1 overflow-y-auto p-4">
-            {realtimeEnabled ? <div className="mb-4">{realtimeTipsNode}</div> : null}
+            {realtimeEnabled ? (
+              <div className="mb-4">
+                <RealtimeAssistTips {...realtimeTipsProps} />
+              </div>
+            ) : null}
             <div className="space-y-2">
               <p className="mb-3 text-xs text-neutral-500">{t('assist.pickFeature')}</p>
               {ASSIST_FEATURES.map((feature) => {
@@ -664,7 +706,11 @@ export function WritingAssistPanel({
         <div className={showAiDetail && isDesktop ? 'flex-1 overflow-y-auto p-4' : 'hidden'}>
           {isDesktop && (
             <>
-              {realtimeEnabled ? <div className="mb-4">{realtimeTipsNode}</div> : null}
+              {showAiDetail && realtimeEnabled ? (
+                <div className="mb-4">
+                  <RealtimeAssistTips {...realtimeTipsProps} />
+                </div>
+              ) : null}
               <WritingAiAssist
                 onSettingsSaved={handleAiSettingsSaved}
                 highlightKey={highlightAiKey}
