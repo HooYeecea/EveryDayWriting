@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
+import { useT } from '../../i18n'
 import { EwLogo } from './EwLogo'
 
 export const BRAND_LOADING_MIN_HEIGHT = 320
 
 /** 品牌加载动画：EW 印记 + 呼吸环 + 笔触进度 */
 export function BrandLoading({
-  label = '加载中…',
+  label,
   minHeight = BRAND_LOADING_MIN_HEIGHT,
   className = '',
 }: {
@@ -14,13 +15,16 @@ export function BrandLoading({
   minHeight?: number | null
   className?: string
 }) {
+  const t = useT()
+  const resolvedLabel = label ?? t('common.loading')
+
   return (
     <div
       className={`brand-loading flex flex-col items-center justify-center gap-4 rounded-2xl border border-neutral-200 bg-white px-6 text-center shadow-sm ${className}`}
       style={minHeight == null ? undefined : { minHeight }}
       role="status"
       aria-live="polite"
-      aria-label={label}
+      aria-label={resolvedLabel}
     >
       <div className="brand-loading__stage relative flex h-16 w-16 items-center justify-center">
         <span className="brand-loading__ring" aria-hidden />
@@ -28,7 +32,9 @@ export function BrandLoading({
         <EwLogo className="brand-loading__mark relative z-[1] h-11 w-11" />
       </div>
       <div className="space-y-1.5">
-        <p className="font-sans text-sm font-medium tracking-wide text-neutral-800">{label}</p>
+        <p className="font-sans text-sm font-medium tracking-wide text-neutral-800">
+          {resolvedLabel}
+        </p>
         <p className="font-sans text-[11px] tracking-[0.18em] text-neutral-400 uppercase">
           Everyday Writing
         </p>
@@ -41,7 +47,7 @@ export function BrandLoading({
 }
 
 /** 应用冷启动 / 鉴权恢复时的全屏品牌加载 */
-export function AppBootLoading({ label = '加载中…' }: { label?: string }) {
+export function AppBootLoading({ label }: { label?: string } = {}) {
   return (
     <BrandLoading
       label={label}

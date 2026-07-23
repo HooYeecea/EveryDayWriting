@@ -158,11 +158,56 @@
         </svg>
       </div>
       <div>
-        <p class="boot-label">加载中…</p>
+        <p class="boot-label" id="boot-label">加载中…</p>
         <p class="boot-brand">Everyday Writing</p>
       </div>
       <div class="boot-bar" aria-hidden="true"><span class="boot-bar-fill"></span></div>
     </div>
+    <script>
+      /* 冷启动壳文案：在模块 JS 之前同步读取本地语言偏好，避免闪中文 */
+      ;(function () {
+        var LABELS = {
+          zh: '加载中…',
+          'zh-TW': '載入中…',
+          en: 'Loading…',
+          ja: '読み込み中…',
+          ko: '로딩 중…',
+          fr: 'Chargement…',
+          de: 'Wird geladen…',
+          es: 'Cargando…',
+          pt: 'Carregando…',
+          ru: 'Загрузка…',
+        }
+        var LANGS = {
+          zh: 'zh-CN',
+          'zh-TW': 'zh-TW',
+          en: 'en',
+          ja: 'ja',
+          ko: 'ko',
+          fr: 'fr',
+          de: 'de',
+          es: 'es',
+          pt: 'pt',
+          ru: 'ru',
+        }
+        var locale = 'zh'
+        try {
+          var raw = localStorage.getItem('ew_user_preferences')
+          if (raw) {
+            var parsed = JSON.parse(raw)
+            if (parsed && typeof parsed.locale === 'string' && LABELS[parsed.locale]) {
+              locale = parsed.locale
+            }
+          }
+        } catch (e) {}
+        var label = LABELS[locale] || LABELS.zh
+        var labelEl = document.getElementById('boot-label')
+        if (labelEl) labelEl.textContent = label
+        var splash = document.getElementById('boot-splash')
+        if (splash) splash.setAttribute('aria-label', label)
+        document.documentElement.lang = LANGS[locale] || 'zh-CN'
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
