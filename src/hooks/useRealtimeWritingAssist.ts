@@ -153,11 +153,7 @@ export function useRealtimeWritingAssist({
           setStatus('ready')
           setErrorMessage(null)
 
-          if (parsed.tips.length === 0) {
-            setLastBatchTipCount(0)
-            return
-          }
-
+          // 无论 tips 是否为空，都落一批结果，便于按时间看到「本次分析」
           const createdAt = Date.now()
           setBatches((prev) => [
             ...prev,

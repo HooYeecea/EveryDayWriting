@@ -77,7 +77,11 @@ function TipCard({
         </span>
       </div>
       {tip.original ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-neutral-500 line-through decoration-neutral-300">
+        <p
+          className={`mt-1 text-[11px] leading-relaxed text-neutral-500 ${
+            tip.suggestion ? 'line-through decoration-neutral-300' : ''
+          }`}
+        >
           {tip.original}
         </p>
       ) : null}
@@ -86,6 +90,9 @@ function TipCard({
       ) : null}
       {tip.note ? (
         <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{tip.note}</p>
+      ) : null}
+      {!tip.suggestion && !tip.note && tip.original ? (
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">—</p>
       ) : null}
     </li>
   )
@@ -305,15 +312,21 @@ export function RealtimeAssistTips({
                       </button>
                     </div>
                     {!collapsed && (
-                      <ul className="space-y-2">
-                        {batch.tips.map((tip, index) => (
-                          <TipCard
-                            key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
-                            tip={tip}
-                            typeLabel={typeLabel}
-                          />
-                        ))}
-                      </ul>
+                      batch.tips.length > 0 ? (
+                        <ul className="space-y-2">
+                          {batch.tips.map((tip, index) => (
+                            <TipCard
+                              key={`${batch.id}-${tip.type}-${tip.original}-${index}`}
+                              tip={tip}
+                              typeLabel={typeLabel}
+                            />
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="rounded-lg border border-dashed border-neutral-200 bg-white/70 px-2.5 py-2 text-[11px] text-neutral-400">
+                          {t('assist.realtime.empty')}
+                        </p>
+                      )
                     )}
                   </div>
                 )

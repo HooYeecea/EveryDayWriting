@@ -33,7 +33,8 @@ function normalizeTip(raw: unknown): RealtimeAssistTip | null {
   const note = pickString(item, 'note', 'Note', 'reason', 'Reason')
   const original = pickString(item, 'original', 'Original')
   const type = pickString(item, 'type', 'Type') || 'polish'
-  if (!suggestion && !note) return null
+  // 字段不全也保留：只要有原文、建议或说明之一即可展示
+  if (!original && !suggestion && !note) return null
   return { type, original, suggestion, note }
 }
 
